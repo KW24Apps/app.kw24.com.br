@@ -61,11 +61,12 @@ EH_PROPRIA = """(
 EH_INDICADA = f"NOT {EH_PROPRIA}"
 
 # ── Breakdown por contabilidade (SOMENTE para a divisão visual dos cards KPI) ──
+# Usa contabilidade_responsavel_operacional (NÃO parceiro_indicacao).
 # NÃO altera PARCEIROS_PROPRIOS nem a classificação Ativo/Indicado acima.
 #   ContaFarma = FF CONTABILIDADE LTDA + CONTAFARMA CONTABILIDADE S/S
 #   Capiton    = CAPITON CONTABILIDADE S/S
-EH_CONTAFARMA = "UPPER(TRIM(t.parceiro_indicacao)) IN ('FF CONTABILIDADE LTDA', 'CONTAFARMA CONTABILIDADE S/S')"
-EH_CAPITON    = "UPPER(TRIM(t.parceiro_indicacao)) = 'CAPITON CONTABILIDADE S/S'"
+EH_CONTAFARMA = "UPPER(TRIM(t.contabilidade_responsavel_operacional)) IN ('FF CONTABILIDADE LTDA', 'CONTAFARMA CONTABILIDADE S/S')"
+EH_CAPITON    = "UPPER(TRIM(t.contabilidade_responsavel_operacional)) = 'CAPITON CONTABILIDADE S/S'"
 
 
 # ── Helpers de cláusula ──────────────────────────────────────────────────────
