@@ -54,6 +54,43 @@ try {
     $dao       = new ConfiguracaoDAO();
     $diaInicio = max(1, min(28, (int)($dao->get('financeiro_dia_inicio') ?? 27)));
 
+    // ── Lista dos últimos 6 períodos para o seletor ───────────────────────────
+    if (!empty($_GET['periodos'])) {
+        $hoje = new DateTime();
+        $dia  = (int)$hoje->format('d');
+        $mes  = (int)$hoje->format('m');
+        $ano  = (int)$hoje->format('Y');
+
+        if ($dia >= $diaInicio) {
+            $inicioMes = $mes;
+            $inicioAno = $ano;
+        } else {
+            $inicioMes = $mes - 1;
+            $inicioAno = $ano;
+            if ($inicioMes < 1) { $inicioMes = 12; $inicioAno--; }
+        }
+
+        $baseInicio = new DateTime(sprintf('%04d-%02d-01', $inicioAno, $inicioMes));
+
+        $periodos = [];
+        for ($i = 0; $i < 6; $i++) {
+            $dt = clone $baseInicio;
+            $dt->modify("-{$i} months");
+            $p = calcularPeriodoDeInicio((int)$dt->format('Y'), (int)$dt->format('m'), $diaInicio);
+            $p['atual'] = ($i === 0);
+            $periodos[] = $p;
+        }
+
+        echo json_encode(['sucesso' => true, 'periodos' => $periodos]);
+        exit;
+    }
+
+    // Referência explícita (?ref=MM/YYYY) ou período atual
+    $refParam = $_GET['ref'] ?? null;
+    $periodo  = ($refParam && preg_match('/^\d{2}\/\d{4}$/', $refParam))
+        ? calcularPeriodoPorReferencia($refParam, $diaInicio)
+        : calcularPeriodoAtual($diaInicio);
+
     // Extrai base URL do Bitrix para links externos
     $webhookUrl = $dao->get('financeiro_webhook_bitrix') ?? '';
     preg_match('#^(https?://[^/]+)#', $webhookUrl, $mUrl);
@@ -64,7 +101,7 @@ try {
     if (!$bitrix->isConfigured()) {
         echo json_encode([
             'sucesso'    => true,
-            'periodo'    => calcularPeriodoAtual($diaInicio),
+            'periodo'    => $periodo,
             'cards'      => [],
             'kpi'        => ['totalFatura' => 0, 'totalSuporte' => 0, 'totalDev' => 0, 'totalInfra' => 0],
             'bitrixBase' => '',
@@ -94,9 +131,7 @@ try {
         exit;
     }
 
-    // ── Cards do período atual ─────────────────────────────────────────────────
-    $periodo = calcularPeriodoAtual($diaInicio);
-
+    // ── Cards do período selecionado ───────────────────────────────────────────
     $rawCards = $bitrix->listItems(BX_ENTITY_TYPE, [
         'categoryId' => BX_CAT_FINANC,
         F_CONTROLE   => $periodo['referencia'],
@@ -211,6 +246,22 @@ function calcularPeriodoAtual(int $diaInicio): array {
         if ($inicioMes < 1) { $inicioMes = 12; $inicioAno--; }
     }
 
+    return calcularPeriodoDeInicio($inicioAno, $inicioMes, $diaInicio);
+}
+
+// Referência (MM/YYYY) é sempre o mês de encerramento do período (ver FINANCEIRO.md).
+// Logo o mês de início é sempre um mês antes da referência.
+function calcularPeriodoPorReferencia(string $referencia, int $diaInicio): array {
+    [$refMes, $refAno] = array_map('intval', explode('/', $referencia));
+
+    $inicioMes = $refMes - 1;
+    $inicioAno = $refAno;
+    if ($inicioMes < 1) { $inicioMes = 12; $inicioAno--; }
+
+    return calcularPeriodoDeInicio($inicioAno, $inicioMes, $diaInicio);
+}
+
+function calcularPeriodoDeInicio(int $inicioAno, int $inicioMes, int $diaInicio): array {
     $inicio = new DateTime(sprintf('%04d-%02d-%02d', $inicioAno, $inicioMes, $diaInicio));
     $fim    = clone $inicio;
     $fim->add(new DateInterval('P1M'));
@@ -221,7 +272,7 @@ function calcularPeriodoAtual(int $diaInicio): array {
 
     return [
         'referencia' => sprintf('%02d/%04d', $refMes, $refAno),
-        'inicio'     => $inicio->format('Y-m-d'),
-        'fim'        => $fim->format('Y-m-d'),
+        'inicio'     => $inicio->format('d/m/Y'),
+        'fim'        => $fim->format('d/m/Y'),
     ];
 }

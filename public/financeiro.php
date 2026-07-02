@@ -40,6 +40,21 @@ if (!defined('SYSTEM_ACCESS') && !isset($user_data)) {
     font-size: .78rem;
     color: rgba(255,255,255,.45);
 }
+.fin-periodo-select {
+    background: rgba(255,255,255,0.07);
+    border: 1.5px solid rgba(13,194,255,0.20);
+    border-radius: 8px;
+    color: #fff;
+    font-size: .82rem;
+    font-weight: 600;
+    padding: .5rem .75rem;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+.fin-periodo-select:focus { outline: none; border-color: rgba(13,194,255,0.5); }
+.fin-periodo-select option { background: #0d1e2d; color: #fff; }
 .fin-sync-btn {
     display: flex;
     align-items: center;
@@ -329,6 +344,9 @@ if (!defined('SYSTEM_ACCESS') && !isset($user_data)) {
         </div>
         <div class="fin-periodo-range" id="fin-periodo-range">Carregando…</div>
     </div>
+    <select class="fin-periodo-select" id="fin-periodo-select" onchange="finTrocarPeriodo(this.value)">
+        <option value="">Carregando…</option>
+    </select>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.3rem">
         <?php if (isset($user_data['perfil']) && $user_data['perfil'] === 'admin_interno'): ?>
         <button class="fin-sync-btn" id="finSyncBtn" onclick="finSincronizar()">
@@ -370,7 +388,7 @@ if (!defined('SYSTEM_ACCESS') && !isset($user_data)) {
 <!-- Tabela de cards financeiros -->
 <div class="fin-table-panel">
     <div class="fin-table-header">
-        <span class="fin-table-title"><i class="fas fa-file-invoice-dollar" style="color:#0DC2FF;margin-right:.4rem"></i> Cards Financeiros — período atual</span>
+        <span class="fin-table-title"><i class="fas fa-file-invoice-dollar" style="color:#0DC2FF;margin-right:.4rem"></i> Cards Financeiros — <span id="fin-table-periodo-label">período atual</span></span>
         <span id="fin-total"></span>
     </div>
     <div class="fin-table-scroll">
@@ -674,9 +692,41 @@ if (!defined('SYSTEM_ACCESS') && !isset($user_data)) {
             .catch(function(e) { console.error('histórico:', e); });
     }
 
+    // ── Períodos (seletor) ─────────────────────────────────────────────────────
+    function popularSelectPeriodos(periodos) {
+        var sel = document.getElementById('fin-periodo-select');
+        if (!sel) return;
+        sel.innerHTML = periodos.map(function (p) {
+            var label = (p.referencia || 'Período atual') + (p.atual ? ' (atual)' : '');
+            return '<option value="' + escHtml(p.referencia || '') + '"' + (p.atual ? ' selected' : '') + '>'
+                + escHtml(label) + '</option>';
+        }).join('');
+    }
+
+    function carregarPeriodos() {
+        fetch('/api/financeiro-cards.php?periodos=1', { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var periodos = (data && data.periodos) || [];
+                if (!periodos.length) throw new Error('lista de períodos vazia');
+                popularSelectPeriodos(periodos);
+            })
+            .catch(function(e) {
+                console.error('periodos:', e);
+                popularSelectPeriodos([{ referencia: '', atual: true }]);
+            });
+    }
+
+    // ── Trocar período selecionado ─────────────────────────────────────────────
+    window.finTrocarPeriodo = function (ref) {
+        openDetailId = null;
+        carregarCards(ref || null);
+    };
+
     // ── Carregar cards ─────────────────────────────────────────────────────────
-    function carregarCards() {
-        fetch('/api/financeiro-cards.php', { credentials: 'same-origin' })
+    function carregarCards(ref) {
+        var url = '/api/financeiro-cards.php' + (ref ? ('?ref=' + encodeURIComponent(ref)) : '');
+        fetch(url, { credentials: 'same-origin' })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.erro) {
@@ -693,6 +743,9 @@ if (!defined('SYSTEM_ACCESS') && !isset($user_data)) {
                 var rangeEl = document.getElementById('fin-periodo-range');
                 if (refEl)   refEl.textContent  = p.referencia || '—';
                 if (rangeEl) rangeEl.textContent = (p.inicio && p.fim) ? p.inicio + ' → ' + p.fim : '';
+
+                var tituloEl = document.getElementById('fin-table-periodo-label');
+                if (tituloEl) tituloEl.textContent = p.referencia || 'período atual';
 
                 bitrixBase = data.bitrixBase || '';
 
@@ -721,11 +774,19 @@ if (!defined('SYSTEM_ACCESS') && !isset($user_data)) {
         if (icon) icon.classList.add('fa-spin');
         if (fb)   { fb.textContent = ''; fb.className = 'fin-sync-feedback'; }
 
+        var sel        = document.getElementById('fin-periodo-select');
+        var refSelect  = sel ? sel.value : '';
+        var body       = {};
+        if (/^\d{2}\/\d{4}$/.test(refSelect)) {
+            var partes = refSelect.split('/');
+            body.period = partes[1] + '-' + partes[0]; // YYYY-MM
+        }
+
         fetch('/api/financeiro-sync.php', {
             method:      'POST',
             credentials: 'same-origin',
             headers:     { 'Content-Type': 'application/json' },
-            body:        JSON.stringify({}),
+            body:        JSON.stringify(body),
         })
         .then(function(r) { return r.json(); })
         .then(function(data) {
@@ -750,7 +811,7 @@ if (!defined('SYSTEM_ACCESS') && !isset($user_data)) {
             if (fb) { fb.textContent = msg; fb.className = 'fin-sync-feedback ' + (erros > 0 ? 'erro' : 'ok'); }
 
             openDetailId = null;
-            carregarCards();
+            carregarCards(refSelect || null);
             carregarHistorico();
         })
         .catch(function() {
@@ -761,6 +822,7 @@ if (!defined('SYSTEM_ACCESS') && !isset($user_data)) {
     };
 
     // ── Init ───────────────────────────────────────────────────────────────────
+    carregarPeriodos();
     carregarCards();
     carregarHistorico();
 
