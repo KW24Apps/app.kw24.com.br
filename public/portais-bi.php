@@ -173,7 +173,8 @@ $_pbiVisiveis = $_pbiIsAdmin ? null : ($_SESSION['relatorios_visiveis'] ?? []);
 }
 .portais-table tbody tr:last-child td { border-bottom: none; }
 .portais-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
-.portais-acoes-cell { display: flex; align-items: center; justify-content: flex-end; gap: 6px; vertical-align: middle; }
+.portais-acoes-cell { text-align: right; }
+.portais-acoes-inner { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
 .portais-badge {
     display: inline-block; font-size: .6rem; font-weight: 700;
     padding: .18rem .5rem; border-radius: 20px; white-space: nowrap;
@@ -835,10 +836,12 @@ $_pbiVisiveis = $_pbiIsAdmin ? null : ($_SESSION['relatorios_visiveis'] ?? []);
                     + '<button class="portais-copy-btn" data-copy="' + esc(embed) + '" data-orig-icon="fas fa-code" title="Copiar embed"><i class="fas fa-code"></i></button>'
                 + '</td>'
                 + '<td class="portais-acoes-cell">'
-                    + '<button class="portais-action-btn" data-action="edit" data-id="' + p.id + '">Editar</button>'
-                    + '<button class="portais-action-btn" data-action="preview" data-slug="' + esc(p.slug) + '" title="Abrir relatório filtrado em nova aba">Visualizar</button>'
-                    + '<button class="portais-action-btn warn" data-action="toggle" data-id="' + p.id + '">' + (p.ativo ? 'Desativar' : 'Ativar') + '</button>'
-                    + '<button class="portais-action-btn danger" data-action="delete" data-id="' + p.id + '" data-nome="' + esc(p.nome || p.slug) + '">Excluir</button>'
+                    + '<div class="portais-acoes-inner">'
+                        + '<button class="portais-action-btn" data-action="edit" data-id="' + p.id + '">Editar</button>'
+                        + '<button class="portais-action-btn" data-action="preview" data-slug="' + esc(p.slug) + '" title="Abrir relatório filtrado em nova aba">Visualizar</button>'
+                        + '<button class="portais-action-btn warn" data-action="toggle" data-id="' + p.id + '">' + (p.ativo ? 'Desativar' : 'Ativar') + '</button>'
+                        + '<button class="portais-action-btn danger" data-action="delete" data-id="' + p.id + '" data-nome="' + esc(p.nome || p.slug) + '">Excluir</button>'
+                    + '</div>'
                 + '</td>'
                 + '</tr>';
         });
