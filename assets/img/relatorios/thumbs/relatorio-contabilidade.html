@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Thumb — Relatório Contabilidade</title>
+<style>
+    /* Miniatura estática do Relatório Contabilidade (ContaFarma) — identidade visual
+       replicada de relatorios-bi/relatorio-contabilidade/assets/style.css (só leitura,
+       não alterado). Dados 100% fictícios. Canvas fixo 320x170 — escalado pelo hub via
+       CSS transform. */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+        width: 320px;
+        height: 170px;
+        overflow: hidden;
+        font-family: 'Inter', system-ui, sans-serif;
+        background: linear-gradient(160deg, #182833 0%, #263846 100%);
+    }
+    .wrap { padding: 10px 12px; }
+    .brand {
+        font-family: 'Rubik', sans-serif;
+        font-weight: 700;
+        font-size: 12px;
+        color: #00BBBC;
+        letter-spacing: .02em;
+        margin-bottom: 8px;
+    }
+    .kpis { display: flex; gap: 6px; margin-bottom: 8px; }
+    .kpi {
+        flex: 1;
+        background: #fff;
+        border-radius: 6px;
+        padding: 6px 7px 6px;
+        border-top: 3px solid var(--c);
+        position: relative;
+    }
+    .kpi-label {
+        font-size: 6.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        color: #64748b;
+        margin: 2px 0 2px;
+    }
+    .kpi-value {
+        font-size: 11px;
+        font-weight: 800;
+        color: #1a202c;
+    }
+    .k1 { --c: #00BBBC; }
+    .k2 { --c: #7C3AED; }
+    .k3 { --c: #3B82F6; }
+    .k4 { --c: #F59E0B; }
+    .row { display: flex; gap: 6px; }
+    .chart-card, .table-card {
+        background: #fff;
+        border-radius: 6px;
+        padding: 7px 8px;
+    }
+    .chart-card { width: 96px; display: flex; align-items: center; justify-content: center; }
+    .table-card { flex: 1; }
+    .donut {
+        width: 62px; height: 62px; border-radius: 50%;
+        background: conic-gradient(#00BBBC 0% 38%, #7C3AED 38% 60%, #3B82F6 60% 82%, #F59E0B 82% 100%);
+        position: relative;
+    }
+    .donut::after {
+        content: '';
+        position: absolute; inset: 12px;
+        border-radius: 50%;
+        background: #fff;
+    }
+    .tbl-row { display: flex; justify-content: space-between; font-size: 7px; color: #4a5568; padding: 2.5px 0; border-bottom: 1px solid #e2e8f0; }
+    .tbl-row:last-child { border-bottom: none; }
+    .tbl-row b { color: #1a202c; }
+</style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="brand">CONTABILIDADE</div>
+        <div class="kpis">
+            <div class="kpi k1"><div class="kpi-label">Própria</div><div class="kpi-value">R$ 58k</div></div>
+            <div class="kpi k2"><div class="kpi-label">Indicada</div><div class="kpi-value">R$ 34k</div></div>
+            <div class="kpi k3"><div class="kpi-label">Total</div><div class="kpi-value">R$ 92k</div></div>
+            <div class="kpi k4"><div class="kpi-label">Ticket</div><div class="kpi-value">R$ 640</div></div>
+        </div>
+        <div class="row">
+            <div class="chart-card"><div class="donut"></div></div>
+            <div class="table-card">
+                <div class="tbl-row"><span>Contabilidade A</span><b>R$ 26k</b></div>
+                <div class="tbl-row"><span>Contabilidade B</span><b>R$ 19k</b></div>
+                <div class="tbl-row"><span>Contabilidade C</span><b>R$ 12k</b></div>
+                <div class="tbl-row"><span>Contabilidade D</span><b>R$ 8k</b></div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
