@@ -272,8 +272,14 @@ body {
     display: flex;
     margin-top: 10px;
     padding-top: 8px;
-    border-top: 1px solid #eef2f5;
+    border-top: 1px solid rgba(148, 163, 184, 0.4);
 }
+/* linha horizontal com a MESMA cor da barra do topo do card (opac. ~0.4),
+   igual à divisória vertical ContaFarma | Capiton */
+.kpi-accent-total    .rt-kpi-split { border-top-color: color-mix(in srgb, var(--total)    40%, transparent); }
+.kpi-accent-propria  .rt-kpi-split { border-top-color: color-mix(in srgb, var(--propria)  40%, transparent); }
+.kpi-accent-indicada .rt-kpi-split { border-top-color: color-mix(in srgb, var(--indicada) 40%, transparent); }
+.kpi-accent-ticket   .rt-kpi-split { border-top-color: color-mix(in srgb, var(--ticket)   40%, transparent); }
 .rt-kpi-half {
     flex: 1 1 0;
     min-width: 0;
