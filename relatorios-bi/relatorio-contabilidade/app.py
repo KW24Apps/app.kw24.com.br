@@ -159,12 +159,30 @@ def card(title, children, icon="fa-table", extra_class=""):
 
 
 def kpi_card(label, icon, value_id, sub_id, accent_class):
+    # base = total|propria|indicada|ticket → deriva os ids do breakdown por card
+    base = accent_class.replace("kpi-accent-", "")
     return html.Div(className=f"rt-kpi {accent_class}", children=[
-        html.Div(className="rt-kpi-icon", children=html.I(className=f"fas {icon}")),
-        html.Div(className="rt-kpi-body", children=[
-            html.Div(label, className="rt-kpi-label"),
-            html.Div("—", id=value_id, className="rt-kpi-value"),
-            html.Div("—", id=sub_id, className="rt-kpi-sub"),
+        # linha de cima: ícone + valor total (conteúdo original, inalterado)
+        html.Div(className="rt-kpi-top", children=[
+            html.Div(className="rt-kpi-icon", children=html.I(className=f"fas {icon}")),
+            html.Div(className="rt-kpi-body", children=[
+                html.Div(label, className="rt-kpi-label"),
+                html.Div("—", id=value_id, className="rt-kpi-value"),
+                html.Div("—", id=sub_id, className="rt-kpi-sub"),
+            ]),
+        ]),
+        # ── Breakdown por contabilidade (largura cheia: ContaFarma | Capiton) ──
+        html.Div(className="rt-kpi-split", children=[
+            html.Div(className="rt-kpi-half", children=[
+                html.Div("ContaFarma", className="rt-kpi-half-label"),
+                html.Div("—", id=f"kpi-{base}-cf-val", className="rt-kpi-half-val"),
+                html.Div("—", id=f"kpi-{base}-cf-qtd", className="rt-kpi-half-qtd"),
+            ]),
+            html.Div(className="rt-kpi-half rt-kpi-half-right", children=[
+                html.Div("Capiton", className="rt-kpi-half-label"),
+                html.Div("—", id=f"kpi-{base}-cap-val", className="rt-kpi-half-val"),
+                html.Div("—", id=f"kpi-{base}-cap-qtd", className="rt-kpi-half-qtd"),
+            ]),
         ]),
     ])
 
@@ -787,6 +805,15 @@ def limpar_datas(_n):
     Output("kpi-indicada-qtd", "children"),
     Output("kpi-ticket", "children"),
     Output("kpi-ticket-sub", "children"),
+    # Breakdown ContaFarma × Capiton (4 cards × val/qtd de cada lado)
+    Output("kpi-total-cf-val", "children"),    Output("kpi-total-cf-qtd", "children"),
+    Output("kpi-total-cap-val", "children"),   Output("kpi-total-cap-qtd", "children"),
+    Output("kpi-propria-cf-val", "children"),  Output("kpi-propria-cf-qtd", "children"),
+    Output("kpi-propria-cap-val", "children"), Output("kpi-propria-cap-qtd", "children"),
+    Output("kpi-indicada-cf-val", "children"), Output("kpi-indicada-cf-qtd", "children"),
+    Output("kpi-indicada-cap-val", "children"),Output("kpi-indicada-cap-qtd", "children"),
+    Output("kpi-ticket-cf-val", "children"),   Output("kpi-ticket-cf-qtd", "children"),
+    Output("kpi-ticket-cap-val", "children"),  Output("kpi-ticket-cap-qtd", "children"),
     Output("ct-data", "data"),
     Output("cf-store", "data"),
     Output("error-banner", "children"),
@@ -831,6 +858,7 @@ def load_data(aba, data_de, data_ate, _n):
             f" Erro ao carregar os dados: {e}",
         ])
         return ("—", "—", "—", "—", "—", "—", "—", "—",
+                *(["—"] * 16),
                 {"vendedores": [], "indicadas": {}, "detalhe": []}, cf_reset, banner)
 
     k = d["kpis"]
@@ -871,11 +899,34 @@ def load_data(aba, data_de, data_ate, _n):
 
     store = {"vendedores": vendedores, "indicadas": indicadas_por_resp, "detalhe": detalhe}
 
+    # ── Breakdown ContaFarma × Capiton por card ──────────────────────────────
+    cf  = k.get("contafarma", {})
+    cap = k.get("capiton", {})
+    def _tk(g):  # ticket médio de um grupo (valor total / qtd total)
+        tq = _i(g.get("total_qtd")); tv = _f(g.get("total_valor"))
+        return (tv / tq) if tq else 0.0
+    def _neg(n): return f"{fmt_num(n)} neg."
+    bd = (
+        # Vendas Total
+        fmt_brl(cf.get("total_valor")),    _neg(cf.get("total_qtd")),
+        fmt_brl(cap.get("total_valor")),   _neg(cap.get("total_qtd")),
+        # Vendas Ativas (própria)
+        fmt_brl(cf.get("propria_valor")),  _neg(cf.get("propria_qtd")),
+        fmt_brl(cap.get("propria_valor")), _neg(cap.get("propria_qtd")),
+        # Vendas Indicadas
+        fmt_brl(cf.get("indicada_valor")), _neg(cf.get("indicada_qtd")),
+        fmt_brl(cap.get("indicada_valor")),_neg(cap.get("indicada_qtd")),
+        # Ticket Médio
+        fmt_brl(_tk(cf)),  _neg(cf.get("total_qtd")),
+        fmt_brl(_tk(cap)), _neg(cap.get("total_qtd")),
+    )
+
     return (
         fmt_brl(total_valor), f"{fmt_num(total_qtd)} negócios",
         fmt_brl(k.get("propria_valor")), f"{fmt_num(k.get('propria_qtd'))} negócios",
         fmt_brl(k.get("indicada_valor")), f"{fmt_num(k.get('indicada_qtd'))} negócios",
         fmt_brl(ticket), "valor médio por negócio",
+        *bd,
         store, cf_reset, None,
     )
 

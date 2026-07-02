@@ -224,10 +224,10 @@ body {
     padding: 16px 18px;
     height: 100%;          /* todas as 4 colunas com a MESMA altura */
     display: flex;
-    align-items: center;
-    gap: 14px;
+    flex-direction: column;   /* linha de cima (ícone+valor) + breakdown full-width */
     border-top: 4px solid var(--accent);
 }
+.rt-kpi-top { display: flex; align-items: center; gap: 14px; }
 
 .kpi-accent-total    { border-top-color: var(--total); }
 .kpi-accent-propria  { border-top-color: var(--propria); }
@@ -266,6 +266,47 @@ body {
     color: #94a3b8;
     margin-top: 1px;
 }
+
+/* ── Breakdown ContaFarma × Capiton — divisão vertical dos cards KPI ───────── */
+.rt-kpi-split {
+    display: flex;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid #eef2f5;
+}
+.rt-kpi-half {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0 2px;
+}
+/* linha divisória vertical fina — cor = a da barra do topo daquele card (opac. ~0.4) */
+.rt-kpi-half-right { border-left: 1px solid rgba(148, 163, 184, 0.4); padding-left: 8px; }
+.kpi-accent-total    .rt-kpi-half-right { border-left-color: color-mix(in srgb, var(--total)    40%, transparent); }
+.kpi-accent-propria  .rt-kpi-half-right { border-left-color: color-mix(in srgb, var(--propria)  40%, transparent); }
+.kpi-accent-indicada .rt-kpi-half-right { border-left-color: color-mix(in srgb, var(--indicada) 40%, transparent); }
+.kpi-accent-ticket   .rt-kpi-half-right { border-left-color: color-mix(in srgb, var(--ticket)   40%, transparent); }
+.rt-kpi-half-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #94a3b8;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.rt-kpi-half-val {
+    font-family: 'Rubik', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.rt-kpi-half-qtd { font-size: 0.66rem; color: #a0aec0; margin-top: 1px; }
 
 /* Erro */
 .rt-error {

@@ -60,6 +60,13 @@ EH_PROPRIA = """(
 # Indicada = não-própria (qualquer valor não-vazio fora da lista de próprios).
 EH_INDICADA = f"NOT {EH_PROPRIA}"
 
+# ── Breakdown por contabilidade (SOMENTE para a divisão visual dos cards KPI) ──
+# NÃO altera PARCEIROS_PROPRIOS nem a classificação Ativo/Indicado acima.
+#   ContaFarma = FF CONTABILIDADE LTDA + CONTAFARMA CONTABILIDADE S/S
+#   Capiton    = CAPITON CONTABILIDADE S/S
+EH_CONTAFARMA = "UPPER(TRIM(t.parceiro_indicacao)) IN ('FF CONTABILIDADE LTDA', 'CONTAFARMA CONTABILIDADE S/S')"
+EH_CAPITON    = "UPPER(TRIM(t.parceiro_indicacao)) = 'CAPITON CONTABILIDADE S/S'"
+
 
 # ── Helpers de cláusula ──────────────────────────────────────────────────────
 def _etapa_clause(aba):
@@ -114,22 +121,32 @@ def get_kpis(aba, data_de=None, data_ate=None, ct_completo=True, ct_indicador=No
     """Quantidade e soma de valor — total, internas (próprias) e indicadas. O
     ticket médio (total_valor / total_qtd) é calculado na apresentação (app.py)."""
     where, params = _base(aba, data_de, data_ate, ct_completo, ct_indicador, ct_contab)
-    sql = f"""
-        SELECT
-            COUNT(*)                                            AS total_qtd,
-            COALESCE(SUM(t.valor), 0)                           AS total_valor,
-            COUNT(*) FILTER (WHERE {EH_PROPRIA})                AS propria_qtd,
-            COALESCE(SUM(t.valor) FILTER (WHERE {EH_PROPRIA}), 0) AS propria_valor,
-            COUNT(*) FILTER (WHERE {EH_INDICADA})               AS indicada_qtd,
-            COALESCE(SUM(t.valor) FILTER (WHERE {EH_INDICADA}), 0) AS indicada_valor
-        FROM tbl_onboard t
-        WHERE {where}
-    """
-    return fetch_one(sql, params) or {
-        "total_qtd": 0, "total_valor": 0,
-        "propria_qtd": 0, "propria_valor": 0,
-        "indicada_qtd": 0, "indicada_valor": 0,
-    }
+
+    # 3 grupos, cada um com as MESMAS 6 métricas (total/própria/indicada × qtd/valor):
+    #   ""     → todos (KPIs atuais, inalterados)
+    #   "cf_"  → só ContaFarma      "cap_" → só Capiton  (breakdown dos cards)
+    _grupos = {"": "TRUE", "cf_": EH_CONTAFARMA, "cap_": EH_CAPITON}
+    _cols = []
+    for pref, cond in _grupos.items():
+        _cols += [
+            f"COUNT(*) FILTER (WHERE {cond}) AS {pref}total_qtd",
+            f"COALESCE(SUM(t.valor) FILTER (WHERE {cond}), 0) AS {pref}total_valor",
+            f"COUNT(*) FILTER (WHERE {cond} AND {EH_PROPRIA}) AS {pref}propria_qtd",
+            f"COALESCE(SUM(t.valor) FILTER (WHERE {cond} AND {EH_PROPRIA}), 0) AS {pref}propria_valor",
+            f"COUNT(*) FILTER (WHERE {cond} AND {EH_INDICADA}) AS {pref}indicada_qtd",
+            f"COALESCE(SUM(t.valor) FILTER (WHERE {cond} AND {EH_INDICADA}), 0) AS {pref}indicada_valor",
+        ]
+    sql = f"SELECT {', '.join(_cols)} FROM tbl_onboard t WHERE {where}"
+    row = fetch_one(sql, params) or {}
+
+    _campos = ["total_qtd", "total_valor", "propria_qtd", "propria_valor", "indicada_qtd", "indicada_valor"]
+    def _bloco(pref):
+        return {k: (row.get(pref + k) or 0) for k in _campos}
+
+    kpis = _bloco("")                 # KPIs atuais (flat) — mesma estrutura de antes
+    kpis["contafarma"] = _bloco("cf_")  # breakdown ContaFarma (para os cards)
+    kpis["capiton"]    = _bloco("cap_") # breakdown Capiton
+    return kpis
 
 
 # ── Bloco 2: Tabela por vendedor (responsavel_pela_execucao) ─────────────────
