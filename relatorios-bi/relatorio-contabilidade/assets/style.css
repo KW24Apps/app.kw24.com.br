@@ -374,15 +374,16 @@ body {
 }
 
 /* Sublinhas por contabilidade (ContaFarma/Capiton) — subordinadas ao vendedor */
-.rt-vend-row td { border-bottom: none; }   /* conecta o vendedor às suas sublinhas */
+.rt-vend-row td { border-bottom: none; font-weight: 700; }  /* vendedor: linha inteira em negrito, cola nas sublinhas */
 .rt-vend-sub td {
     padding: 2px 10px;
     font-size: 0.72rem;
     color: #94a3b8;
+    font-weight: 400;   /* sublinhas SEM negrito */
     border-bottom: none;
 }
-.rt-vend-sub td:first-child { padding-left: 26px; font-weight: 600; }  /* recuo */
-.rt-vend-sub-end td { border-bottom: 1px solid #e2e8f0; }              /* fecha o grupo */
+.rt-vend-sub td:first-child { padding-left: 26px; }        /* recuo */
+.rt-vend-sub-end td { border-bottom: 1px solid #e2e8f0; }  /* fecha o grupo */
 
 /* Bloco 2 direita: linha de tipo de contrato (clicável) = filtro tipo_contrato */
 .rt-tipo-row {
