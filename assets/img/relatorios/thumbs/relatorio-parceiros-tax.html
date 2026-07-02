@@ -2,87 +2,113 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Thumb — Relatório Parceiros TAX</title>
+<title>Thumb — Relatório Parceiros TAX (NimbusTax)</title>
 <style>
-    /* Miniatura estática do Relatório Parceiros Nimbus TAX — identidade visual replicada
-       de relatorios-bi/relatorio-parceiros-tax/assets/style.css (só leitura, não alterado).
-       Dados 100% fictícios. Canvas fixo 320x170 — escalado pelo hub via CSS transform. */
+    /* Miniatura estática — identidade visual fiel ao relatório real (NimbusTax), replicada
+       de relatorios-bi/relatorio-parceiros-tax/assets/style.css (só leitura, não alterado):
+       fundo em gradiente escuro, pill ativa na cor --accent real (#0DC2FF), caixas de
+       resumo escuras com números em destaque, cards brancos (etapas do funil + donut de
+       produtos). Dados 100% fictícios. Canvas fixo 320x170 — escalado pelo hub via CSS
+       transform.
+       Nota: mostra um subconjunto das abas (Dashboard / Funil Diagnóstico ativa / Funil
+       Operacional / Sem Oportunidade) e omite a tabela separada "Status dos Negócios" —
+       priorizando os elementos mais visualmente distintos (pill ativa, caixas de resumo,
+       tabela de etapas, donut multi-cor) pra caber em 320x170 sem overflow, conforme
+       instruído. */
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
-        width: 320px;
-        height: 170px;
-        overflow: hidden;
+        width: 320px; height: 170px; overflow: hidden;
         font-family: 'Inter', system-ui, sans-serif;
         background: linear-gradient(160deg, #0b1f2a 0%, #0e2c3a 100%);
     }
-    .wrap { padding: 10px 12px; }
-    .brand {
-        font-family: 'Rubik', sans-serif;
-        font-weight: 700;
-        font-size: 12px;
-        color: #0DC2FF;
-        letter-spacing: .02em;
-        margin-bottom: 8px;
-    }
-    .kpis { display: flex; gap: 6px; margin-bottom: 8px; }
-    .kpi {
-        flex: 1;
-        background: #fff;
-        border-radius: 6px;
-        padding: 6px 7px;
-    }
-    .kpi-label {
-        font-size: 6.5px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: .05em;
-        color: #64748b;
-        margin-bottom: 2px;
-    }
-    .kpi-value {
-        font-size: 12px;
-        font-weight: 800;
-        color: #1a202c;
-    }
-    .row { display: flex; gap: 6px; }
-    .chart-card, .table-card {
-        background: #fff;
-        border-radius: 6px;
-        padding: 7px 8px;
-    }
-    .chart-card { width: 96px; display: flex; align-items: center; justify-content: center; }
-    .table-card { flex: 1; }
-    .donut {
-        width: 62px; height: 62px; border-radius: 50%;
-        background: conic-gradient(#0DC2FF 0% 45%, #26FF93 45% 72%, #e2e8f0 72% 100%);
-        position: relative;
-    }
-    .donut::after {
-        content: '';
-        position: absolute; inset: 12px;
-        border-radius: 50%;
-        background: #fff;
-    }
-    .tbl-row { display: flex; justify-content: space-between; font-size: 7px; color: #4a5568; padding: 2.5px 0; border-bottom: 1px solid #e2e8f0; }
-    .tbl-row:last-child { border-bottom: none; }
-    .tbl-row b { color: #1a202c; }
+
+    .topbar { display: flex; align-items: center; gap: 5px; padding: 6px 8px 5px; }
+    .brand { font-size: 8px; font-weight: 700; color: #0DC2FF; letter-spacing: .02em; margin-right: 1px; white-space: nowrap; }
+    .tab { font-size: 4.3px; font-weight: 600; border-radius: 6px; padding: 2px 5px; color: #94a3b8; background: rgba(255,255,255,.06); white-space: nowrap; }
+    .tab-active { background: #0DC2FF; color: #06202b; font-weight: 700; }
+
+    .summary-row { display: flex; gap: 5px; padding: 0 8px 5px; }
+    .summary-box { flex: 1; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); border-radius: 5px; padding: 4px 6px; }
+    .summary-title { font-size: 4.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #64748b; margin-bottom: 2px; }
+    .stat-row { display: flex; justify-content: space-between; align-items: baseline; }
+    .stat-label { font-size: 5.5px; color: #94a3b8; }
+    .stat-value { font-size: 9px; font-weight: 800; color: #0DC2FF; }
+
+    .body-row { display: flex; gap: 5px; padding: 0 8px 6px; }
+
+    .funil-card { flex: 1; background: #fff; border-radius: 5px; padding: 5px 7px; }
+    .card-title { font-size: 5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #94a3b8; margin-bottom: 3px; }
+    .f-head { display: flex; justify-content: space-between; font-size: 4.8px; font-weight: 700; color: #94a3b8; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; margin-bottom: 2px; }
+    .f-row { display: flex; justify-content: space-between; font-size: 6px; color: #475569; padding: 1.7px 0; border-bottom: 1px solid #f1f5f9; gap: 4px; }
+    .f-row:last-child { border-bottom: none; }
+    .f-row b { color: #0f172a; font-weight: 700; white-space: nowrap; }
+    .f-row span:first-child { flex: 1; }
+
+    .donut-card { width: 108px; background: #fff; border-radius: 5px; padding: 5px 7px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .donut-wrap { position: relative; width: 50px; height: 50px; flex-shrink: 0; margin-top: 1px; }
+    .donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .donut-num { font-size: 8px; font-weight: 800; color: #0f172a; }
+    .donut-lbl { font-size: 4px; color: #94a3b8; text-transform: uppercase; letter-spacing: .03em; }
+    .legend { font-size: 4.5px; color: #475569; width: 100%; }
+    .l-row { display: flex; align-items: center; gap: 2.5px; margin-bottom: 1.4px; }
+    .dot { width: 4px; height: 4px; border-radius: 50%; flex-shrink: 0; }
 </style>
 </head>
 <body>
-    <div class="wrap">
-        <div class="brand">NIMBUS TAX</div>
-        <div class="kpis">
-            <div class="kpi"><div class="kpi-label">Parceiros</div><div class="kpi-value">42</div></div>
-            <div class="kpi"><div class="kpi-label">Oportunidades</div><div class="kpi-value">118</div></div>
-            <div class="kpi"><div class="kpi-label">Conversão</div><div class="kpi-value">68%</div></div>
+    <div class="topbar">
+        <span class="brand">NimbusTax</span>
+        <span class="tab">Dashboard</span>
+        <span class="tab tab-active">Funil Diagnóstico</span>
+        <span class="tab">Funil Operacional</span>
+        <span class="tab">Sem Oportunidade</span>
+    </div>
+
+    <div class="summary-row">
+        <div class="summary-box">
+            <div class="summary-title">Últimos 7 dias</div>
+            <div class="stat-row"><span class="stat-label">Criados</span><span class="stat-value">19</span></div>
+            <div class="stat-row"><span class="stat-label">Concluídos</span><span class="stat-value">7</span></div>
         </div>
-        <div class="row">
-            <div class="chart-card"><div class="donut"></div></div>
-            <div class="table-card">
-                <div class="tbl-row"><span>Parceiro Alfa</span><b>R$ 32k</b></div>
-                <div class="tbl-row"><span>Parceiro Beta</span><b>R$ 21k</b></div>
-                <div class="tbl-row"><span>Parceiro Gama</span><b>R$ 14k</b></div>
-                <div class="tbl-row"><span>Parceiro Delta</span><b>R$ 9k</b></div>
+        <div class="summary-box">
+            <div class="summary-title">Últimos 30 dias</div>
+            <div class="stat-row"><span class="stat-label">Criados</span><span class="stat-value">91</span></div>
+            <div class="stat-row"><span class="stat-label">Concluídos</span><span class="stat-value">23</span></div>
+        </div>
+    </div>
+
+    <div class="body-row">
+        <div class="funil-card">
+            <div class="card-title">Etapas do Funil</div>
+            <div class="f-head"><span>Etapa</span><span>Total</span><span>Valor</span></div>
+            <div class="f-row"><span>Coleta de documentos</span><span>57</span><b>R$114k</b></div>
+            <div class="f-row"><span>Triagem</span><span>2</span><b>R$4k</b></div>
+            <div class="f-row"><span>Relatório preliminar</span><span>14</span><b>R$28k</b></div>
+            <div class="f-row"><span>Suspenso</span><span>444</span><b>R$888k</b></div>
+            <div class="f-row"><span>Proposta</span><span>93</span><b>R$186k</b></div>
+        </div>
+        <div class="donut-card">
+            <div class="donut-wrap">
+                <!-- CONTAGEM TOP 9 + OUTROS POR PRODUTO — simplificado p/ 6 faixas legíveis
+                     no tamanho da miniatura (em vez de 9+1 fatias finas ilegíveis). -->
+                <svg width="50" height="50" viewBox="0 0 50 50">
+                    <circle cx="25" cy="25" r="19" fill="none" stroke="#0DC2FF" stroke-width="8" stroke-dasharray="35 84.4" transform="rotate(-90 25 25)"/>
+                    <circle cx="25" cy="25" r="19" fill="none" stroke="#26FF93" stroke-width="8" stroke-dasharray="24 95.4" stroke-dashoffset="-35" transform="rotate(-90 25 25)"/>
+                    <circle cx="25" cy="25" r="19" fill="none" stroke="#8b5cf6" stroke-width="8" stroke-dasharray="18 101.4" stroke-dashoffset="-59" transform="rotate(-90 25 25)"/>
+                    <circle cx="25" cy="25" r="19" fill="none" stroke="#f59e0b" stroke-width="8" stroke-dasharray="14 105.4" stroke-dashoffset="-77" transform="rotate(-90 25 25)"/>
+                    <circle cx="25" cy="25" r="19" fill="none" stroke="#4f83f7" stroke-width="8" stroke-dasharray="11 108.4" stroke-dashoffset="-91" transform="rotate(-90 25 25)"/>
+                    <circle cx="25" cy="25" r="19" fill="none" stroke="#94a3b8" stroke-width="8" stroke-dasharray="17.4 102" stroke-dashoffset="-102" transform="rotate(-90 25 25)"/>
+                    <circle cx="25" cy="25" r="14.5" fill="#fff"/>
+                </svg>
+                <div class="donut-center">
+                    <span class="donut-num">118</span>
+                    <span class="donut-lbl">total</span>
+                </div>
+            </div>
+            <div class="legend">
+                <div class="l-row"><div class="dot" style="background:#0DC2FF"></div>Certidões 30%</div>
+                <div class="l-row"><div class="dot" style="background:#26FF93"></div>Diagnóstico 20%</div>
+                <div class="l-row"><div class="dot" style="background:#8b5cf6"></div>Retificação 15%</div>
+                <div class="l-row"><div class="dot" style="background:#94a3b8"></div>Outros 15%</div>
             </div>
         </div>
     </div>

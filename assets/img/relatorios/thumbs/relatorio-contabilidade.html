@@ -4,94 +4,110 @@
 <meta charset="UTF-8">
 <title>Thumb — Relatório Contabilidade</title>
 <style>
-    /* Miniatura estática do Relatório Contabilidade (ContaFarma) — identidade visual
-       replicada de relatorios-bi/relatorio-contabilidade/assets/style.css (só leitura,
-       não alterado). Dados 100% fictícios. Canvas fixo 320x170 — escalado pelo hub via
-       CSS transform. */
+    /* Miniatura estática — identidade visual fiel ao relatório real.
+       Fundo escuro, KPI cards brancos com borda esquerda colorida, donuts + tabelas em cards brancos.
+       Dados 100% fictícios. Canvas fixo 320x170 — escalado pelo hub via CSS transform. */
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body {
-        width: 320px;
-        height: 170px;
-        overflow: hidden;
-        font-family: 'Inter', system-ui, sans-serif;
-        background: linear-gradient(160deg, #182833 0%, #263846 100%);
+    html, body { width: 320px; height: 170px; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; background: #0a1520; }
+
+    .header { padding: 6px 10px 5px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid #1a2535; }
+    .title { font-size: 10px; font-weight: 700; color: #e2e8f0; }
+    .tab { font-size: 6.5px; font-weight: 600; border-radius: 10px; padding: 2px 7px; }
+    .tab-active { background: #00c9b1; color: #0a1520; }
+    .tab-inactive { background: #1a2535; color: #64748b; }
+
+    .kpis { display: flex; gap: 5px; padding: 6px 8px 5px; }
+    .kpi { flex: 1; background: #fff; border-radius: 5px; padding: 5px 7px; border-left: 3px solid var(--c); }
+    .kpi-label { font-size: 5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #64748b; margin-bottom: 2px; }
+    .kpi-value { font-size: 9px; font-weight: 800; color: #0f172a; line-height: 1; }
+    .kpi-sub { font-size: 5px; color: #94a3b8; margin-top: 2px; }
+    .k1 { --c: #00c9b1; }
+    .k2 { --c: #4f83f7; }
+    .k3 { --c: #8b5cf6; }
+    .k4 { --c: #f59e0b; }
+
+    .charts { display: flex; gap: 5px; padding: 0 8px 6px; }
+
+    .donut-card {
+        width: 108px; background: #fff; border-radius: 5px; padding: 6px 7px;
+        display: flex; align-items: center; gap: 5px;
     }
-    .wrap { padding: 10px 12px; }
-    .brand {
-        font-family: 'Rubik', sans-serif;
-        font-weight: 700;
-        font-size: 12px;
-        color: #00BBBC;
-        letter-spacing: .02em;
-        margin-bottom: 8px;
+    .donut-wrap { position: relative; width: 54px; height: 54px; flex-shrink: 0; }
+    .donut-center {
+        position: absolute; inset: 0; display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
     }
-    .kpis { display: flex; gap: 6px; margin-bottom: 8px; }
-    .kpi {
-        flex: 1;
-        background: #fff;
-        border-radius: 6px;
-        padding: 6px 7px 6px;
-        border-top: 3px solid var(--c);
-        position: relative;
-    }
-    .kpi-label {
-        font-size: 6.5px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: .05em;
-        color: #64748b;
-        margin: 2px 0 2px;
-    }
-    .kpi-value {
-        font-size: 11px;
-        font-weight: 800;
-        color: #1a202c;
-    }
-    .k1 { --c: #00BBBC; }
-    .k2 { --c: #7C3AED; }
-    .k3 { --c: #3B82F6; }
-    .k4 { --c: #F59E0B; }
-    .row { display: flex; gap: 6px; }
-    .chart-card, .table-card {
-        background: #fff;
-        border-radius: 6px;
-        padding: 7px 8px;
-    }
-    .chart-card { width: 96px; display: flex; align-items: center; justify-content: center; }
-    .table-card { flex: 1; }
-    .donut {
-        width: 62px; height: 62px; border-radius: 50%;
-        background: conic-gradient(#00BBBC 0% 38%, #7C3AED 38% 60%, #3B82F6 60% 82%, #F59E0B 82% 100%);
-        position: relative;
-    }
-    .donut::after {
-        content: '';
-        position: absolute; inset: 12px;
-        border-radius: 50%;
-        background: #fff;
-    }
-    .tbl-row { display: flex; justify-content: space-between; font-size: 7px; color: #4a5568; padding: 2.5px 0; border-bottom: 1px solid #e2e8f0; }
-    .tbl-row:last-child { border-bottom: none; }
-    .tbl-row b { color: #1a202c; }
+    .donut-num { font-size: 9px; font-weight: 800; color: #0f172a; }
+    .donut-lbl { font-size: 4.5px; color: #94a3b8; text-transform: uppercase; letter-spacing: .04em; }
+    .legend { font-size: 5.5px; color: #475569; }
+    .l-row { display: flex; align-items: center; gap: 3px; margin-bottom: 2.5px; }
+    .dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+
+    .table-card { flex: 1; background: #fff; border-radius: 5px; padding: 5px 7px; }
+    .t-section { font-size: 5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #94a3b8; margin-bottom: 2px; }
+    .t-section + .t-section { margin-top: 4px; }
+    .t-head { display: flex; justify-content: space-between; font-size: 5px; font-weight: 700; color: #94a3b8; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; margin-bottom: 2px; }
+    .t-row { display: flex; justify-content: space-between; font-size: 6px; color: #475569; padding: 2px 0; border-bottom: 1px solid #f1f5f9; }
+    .t-row:last-child { border-bottom: none; }
+    .t-row b { color: #0f172a; font-weight: 700; }
 </style>
 </head>
 <body>
-    <div class="wrap">
-        <div class="brand">CONTABILIDADE</div>
-        <div class="kpis">
-            <div class="kpi k1"><div class="kpi-label">Própria</div><div class="kpi-value">R$ 58k</div></div>
-            <div class="kpi k2"><div class="kpi-label">Indicada</div><div class="kpi-value">R$ 34k</div></div>
-            <div class="kpi k3"><div class="kpi-label">Total</div><div class="kpi-value">R$ 92k</div></div>
-            <div class="kpi k4"><div class="kpi-label">Ticket</div><div class="kpi-value">R$ 640</div></div>
-        </div>
-        <div class="row">
-            <div class="chart-card"><div class="donut"></div></div>
-            <div class="table-card">
-                <div class="tbl-row"><span>Contabilidade A</span><b>R$ 26k</b></div>
-                <div class="tbl-row"><span>Contabilidade B</span><b>R$ 19k</b></div>
-                <div class="tbl-row"><span>Contabilidade C</span><b>R$ 12k</b></div>
-                <div class="tbl-row"><span>Contabilidade D</span><b>R$ 8k</b></div>
+    <div class="header">
+        <span class="title">Relatório Comercial</span>
+        <span class="tab tab-active">Vendas Fechadas</span>
+        <span class="tab tab-inactive">Em Negociação</span>
+    </div>
+    <div class="kpis">
+        <div class="kpi k1"><div class="kpi-label">Vendas Total</div><div class="kpi-value">R$9.230</div><div class="kpi-sub">23 negócios</div></div>
+        <div class="kpi k2"><div class="kpi-label">Vendas Ativas</div><div class="kpi-value">R$3.450</div><div class="kpi-sub">13 negócios</div></div>
+        <div class="kpi k3"><div class="kpi-label">Vendas Indicadas</div><div class="kpi-value">R$5.780</div><div class="kpi-sub">10 negócios</div></div>
+        <div class="kpi k4"><div class="kpi-label">Ticket Médio</div><div class="kpi-value">R$401</div><div class="kpi-sub">por negócio</div></div>
+    </div>
+    <div class="charts">
+        <div class="donut-card">
+            <div class="donut-wrap">
+                <!-- Outer ring: distribuição por vendedor (4 cores) -->
+                <!-- Inner ring: Ativo (teal) vs Indicado (amber) -->
+                <svg width="54" height="54" viewBox="0 0 54 54">
+                    <circle cx="27" cy="27" r="21" fill="none" stroke="#00c9b1" stroke-width="9"
+                        stroke-dasharray="51.6 80.3" stroke-dashoffset="0" transform="rotate(-90 27 27)"/>
+                    <circle cx="27" cy="27" r="21" fill="none" stroke="#4f83f7" stroke-width="9"
+                        stroke-dasharray="34.4 97.5" stroke-dashoffset="-51.6" transform="rotate(-90 27 27)"/>
+                    <circle cx="27" cy="27" r="21" fill="none" stroke="#8b5cf6" stroke-width="9"
+                        stroke-dasharray="34.4 97.5" stroke-dashoffset="-86" transform="rotate(-90 27 27)"/>
+                    <circle cx="27" cy="27" r="21" fill="none" stroke="#f59e0b" stroke-width="9"
+                        stroke-dasharray="11.5 120.4" stroke-dashoffset="-120.4" transform="rotate(-90 27 27)"/>
+                    <!-- inner ring -->
+                    <circle cx="27" cy="27" r="11" fill="none" stroke="#00c9b1" stroke-width="5"
+                        stroke-dasharray="39.3 29.8" stroke-dashoffset="0" transform="rotate(-90 27 27)"/>
+                    <circle cx="27" cy="27" r="11" fill="none" stroke="#f59e0b" stroke-width="5"
+                        stroke-dasharray="29.8 39.3" stroke-dashoffset="-39.3" transform="rotate(-90 27 27)"/>
+                    <circle cx="27" cy="27" r="5.5" fill="#fff"/>
+                </svg>
+                <div class="donut-center">
+                    <span class="donut-num">23</span>
+                    <span class="donut-lbl">neg.</span>
+                </div>
             </div>
+            <div class="legend">
+                <div class="l-row"><div class="dot" style="background:#00c9b1"></div>Rafaela 39%</div>
+                <div class="l-row"><div class="dot" style="background:#4f83f7"></div>Andrea 26%</div>
+                <div class="l-row"><div class="dot" style="background:#8b5cf6"></div>Everton 26%</div>
+                <div class="l-row"><div class="dot" style="background:#f59e0b"></div>Andre 9%</div>
+                <div class="l-row" style="margin-top:3px;border-top:1px solid #e2e8f0;padding-top:3px"><div class="dot" style="background:#00c9b1"></div>Ativo 57%</div>
+                <div class="l-row"><div class="dot" style="background:#f59e0b"></div>Indicado 43%</div>
+            </div>
+        </div>
+        <div class="table-card">
+            <div class="t-section">Negócios por Vendedor</div>
+            <div class="t-head"><span>Vendedor</span><span>Ativas</span><span>Total</span></div>
+            <div class="t-row"><span>Andre Cechinel</span><span>1</span><b>R$3.500</b></div>
+            <div class="t-row"><span>Andrea Gomes</span><span>6</span><b>R$3.250</b></div>
+            <div class="t-row"><span>Everton Alves</span><span>1</span><b>R$1.630</b></div>
+            <div class="t-section">Por Tipo de Contrato</div>
+            <div class="t-row"><span>Transferência</span><span>9</span><b>R$4.980</b></div>
+            <div class="t-row"><span>Constituição</span><span>6</span><b>R$4.050</b></div>
         </div>
     </div>
 </body>
