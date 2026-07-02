@@ -13,6 +13,7 @@ if (!$auth->validateSession()) {
 }
 $user = $auth->getCurrentUser();
 $isAdmin = ($user['perfil'] ?? '') === 'admin_interno';
+$uid     = (int)($user['id'] ?? 0);
 // Acesso a portais-bi é controlado por cliente_usuarios.pode_criar_portal (computado em
 // index.php como $_SESSION['pode_criar_portal']), não pelo menu de permission_profiles —
 // ver index.php e ARQUITETURA.md, seção Módulo Relatórios BI.
@@ -69,6 +70,41 @@ try {
         foreach ($bind as $k => $v) { $stmtList->bindValue($k, $v); }
         $stmtList->execute();
         $rows = $stmtList->fetchAll(PDO::FETCH_ASSOC);
+
+        // Enriquecimento por portal: nome amigável do relatório + empresas vinculadas
+        // (mesmo padrão de api/relatorios-bi.php — jsonb_exists em cliente_aplicacoes.config_extra,
+        // escopado por admin/não-admin). Consultado uma vez por slug distinto, não por linha.
+        $slugsPresentes = array_values(array_unique(array_column($rows, 'relatorio_slug')));
+        $nomesRelatorio  = [];
+        $empresasPorSlug = [];
+        if ($slugsPresentes) {
+            $phN = [];
+            $bindN = [];
+            foreach ($slugsPresentes as $i => $slug) { $phN[] = ':n' . $i; $bindN[':n' . $i] = $slug; }
+            $stmtN = $pdo->prepare('SELECT slug, nome_amigavel FROM relatorios_bi WHERE slug IN (' . implode(',', $phN) . ')');
+            $stmtN->execute($bindN);
+            foreach ($stmtN->fetchAll(PDO::FETCH_ASSOC) as $nr) {
+                $nomesRelatorio[$nr['slug']] = $nr['nome_amigavel'];
+            }
+
+            foreach ($slugsPresentes as $slug) {
+                $sqlEmpresas = "SELECT DISTINCT c.id, c.nome
+                                   FROM cliente_aplicacoes ca
+                                   JOIN aplicacoes a ON a.id = ca.aplicacao_id AND a.slug = 'relatorios-bi'
+                                   JOIN clientes c   ON c.id = ca.cliente_id
+                                  WHERE ca.ativo = TRUE AND jsonb_exists(ca.config_extra -> 'relatorios', :slug)";
+                $paramsEmpresas = ['slug' => $slug];
+                if (!$isAdmin) {
+                    $sqlEmpresas .= ' AND ca.cliente_id IN (SELECT cliente_id FROM cliente_usuarios WHERE usuario_id = :uid)';
+                    $paramsEmpresas['uid'] = $uid;
+                }
+                $sqlEmpresas .= ' ORDER BY c.nome';
+                $stmtEmpresas = $pdo->prepare($sqlEmpresas);
+                $stmtEmpresas->execute($paramsEmpresas);
+                $empresasPorSlug[$slug] = $stmtEmpresas->fetchAll(PDO::FETCH_ASSOC);
+            }
+        }
+
         foreach ($rows as &$r) {
             $r['ativo']               = (bool)$r['ativo'];
             $r['filter_values']       = json_decode($r['filter_values'], true) ?? [];
@@ -78,6 +114,8 @@ try {
             $r['ct_contab_values']    = json_decode($r['ct_contab_values']    ?? '[]', true) ?? [];
             $r['ct_contab_labels']    = json_decode($r['ct_contab_labels']    ?? '[]', true) ?? [];
             $r['ct_completo']         = (bool)$r['ct_completo'];
+            $r['relatorio_nome']      = $nomesRelatorio[$r['relatorio_slug']] ?? $r['relatorio_slug'];
+            $r['empresas']            = $empresasPorSlug[$r['relatorio_slug']] ?? [];
         }
         echo json_encode(['sucesso' => true, 'portais' => $rows]);
         exit;

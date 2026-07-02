@@ -469,7 +469,7 @@ window.RBI_THUMBS_DISPONIVEIS = <?= json_encode($_rtThumbsDisponiveis) ?>;
         <div class="rbi-controls">
             <div class="rbi-search-wrap">
                 <i class="ti ti-search"></i>
-                <input type="text" id="rbi-search" placeholder="Buscar relatório..." autocomplete="off">
+                <input type="text" id="rbi-search" placeholder="Buscar..." autocomplete="off">
             </div>
             <select class="rbi-select" id="rbi-empresa-filter">
                 <option value="">Todas as empresas</option>
@@ -545,6 +545,7 @@ window.RBI_THUMBS_DISPONIVEIS = <?= json_encode($_rtThumbsDisponiveis) ?>;
     const btnGrid    = document.getElementById('rbi-view-grid');
     const btnList    = document.getElementById('rbi-view-list');
     let visivel      = true;
+    let _empresaFiltroSalvo = null; // id de empresa restaurado do sessionStorage, aplicado após popular o <select>
 
     function escHtml(s) {
         return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -636,7 +637,7 @@ window.RBI_THUMBS_DISPONIVEIS = <?= json_encode($_rtThumbsDisponiveis) ?>;
         card.className = 'rbi-card';
         card.setAttribute('data-slug', r.slug);
         card.setAttribute('data-nome', (r.nome_amigavel || '').toLowerCase());
-        card.setAttribute('data-empresas', (r.empresas || []).map(function (e) { return e.nome; }).join('|'));
+        card.setAttribute('data-empresas', (r.empresas || []).map(function (e) { return e.id; }).join('|'));
 
         const empresas = r.empresas || [];
         const empresasHtml = empresas.length
@@ -668,6 +669,12 @@ window.RBI_THUMBS_DISPONIVEIS = <?= json_encode($_rtThumbsDisponiveis) ?>;
     }
 
     // ── Busca por texto + filtro de empresa (100% client-side) ──────────────
+    function salvarFiltros() {
+        try {
+            sessionStorage.setItem('bi_filter_search', searchInp.value || '');
+            sessionStorage.setItem('bi_filter_empresa_id', empresaSel.value || '');
+        } catch (e) {}
+    }
     function aplicarFiltros() {
         const termo   = (searchInp.value || '').trim().toLowerCase();
         const empresa = empresaSel.value;
@@ -677,17 +684,24 @@ window.RBI_THUMBS_DISPONIVEIS = <?= json_encode($_rtThumbsDisponiveis) ?>;
             const empresaOk = !empresa || empresas.indexOf(empresa) !== -1;
             card.style.display = (nomeOk && empresaOk) ? '' : 'none';
         });
+        salvarFiltros();
     }
     searchInp.addEventListener('input', aplicarFiltros);
     empresaSel.addEventListener('change', aplicarFiltros);
 
-    // ── Dropdown "Todas as empresas" — agregado a partir dos relatórios carregados ──
+    // ── Dropdown "Todas as empresas" — agregado (por id, deduplicado) a partir dos relatórios carregados ──
     function popularFiltroEmpresas(data) {
-        const nomes = new Set();
-        data.forEach(function (r) { (r.empresas || []).forEach(function (e) { nomes.add(e.nome); }); });
-        const ordenado = Array.from(nomes).sort(function (a, b) { return a.localeCompare(b, 'pt-BR'); });
+        const mapa = new Map();
+        data.forEach(function (r) { (r.empresas || []).forEach(function (e) { mapa.set(String(e.id), e.nome); }); });
+        const ordenado = Array.from(mapa.entries()).sort(function (a, b) { return a[1].localeCompare(b[1], 'pt-BR'); });
         empresaSel.innerHTML = '<option value="">Todas as empresas</option>' +
-            ordenado.map(function (n) { return '<option value="' + escHtml(n) + '">' + escHtml(n) + '</option>'; }).join('');
+            ordenado.map(function (e) { return '<option value="' + escHtml(e[0]) + '">' + escHtml(e[1]) + '</option>'; }).join('');
+        // Restaura o filtro de empresa salvo (sessionStorage), se ainda existir entre as opções atuais.
+        if (_empresaFiltroSalvo !== null) {
+            const existe = Array.from(empresaSel.options).some(function (o) { return o.value === _empresaFiltroSalvo; });
+            if (existe) empresaSel.value = _empresaFiltroSalvo;
+            _empresaFiltroSalvo = null;
+        }
     }
 
     // ── Carregar relatórios ────────────────────────────────────────────────────
@@ -775,6 +789,14 @@ window.RBI_THUMBS_DISPONIVEIS = <?= json_encode($_rtThumbsDisponiveis) ?>;
     let viewSalva = 'grid';
     try { viewSalva = localStorage.getItem('bi_hub_view') || 'grid'; } catch (e) {}
     setView(viewSalva === 'list' ? 'list' : 'grid');
+
+    // Restaura busca/empresa salvos pelo bridge de sessionStorage (compartilhado com portais-bi.php).
+    try {
+        const savedSearch = sessionStorage.getItem('bi_filter_search');
+        if (savedSearch !== null) searchInp.value = savedSearch;
+        _empresaFiltroSalvo = sessionStorage.getItem('bi_filter_empresa_id');
+    } catch (e) {}
+
     loadCards();
 })();
 </script>

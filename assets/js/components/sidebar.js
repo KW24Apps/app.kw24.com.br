@@ -181,7 +181,7 @@ class SidebarManager {
                 { id: 'config-sistema', text: 'Sistema', icon: 'fas fa-tools', url: '?page=configuracoes&action=sistema' }
             ],
             'relatrios-bi': [
-                { id: 'bi-relatorios', text: 'Relatórios', icon: 'fas fa-chart-bar', url: '?page=relatorio-teste' },
+                { id: 'bi-relatorios', text: 'Relatórios', icon: 'fas fa-chart-bar', url: '?page=relatorios-bi' },
                 { id: 'bi-portais',    text: 'Portais',    icon: 'fas fa-globe',     url: '?page=portais-bi' }
             ],
             'financeiro': (() => {
@@ -296,7 +296,7 @@ class SidebarManager {
         const params  = new URLSearchParams(window.location.search);
         const rawPage = params.get('page') || 'dashboard';
         // Sub-páginas do cadastro ativam o link "Cadastro" na sidebar
-        const subpageMap = { 'organizacoes': 'cadastro', 'usuarios': 'cadastro', 'aplicacoes': 'cadastro', 'permissoes': 'cadastro', 'financeiro-relatorios': 'financeiro', 'portais': 'financeiro', 'portais-bi': 'relatorio-teste' };
+        const subpageMap = { 'organizacoes': 'cadastro', 'usuarios': 'cadastro', 'aplicacoes': 'cadastro', 'permissoes': 'cadastro', 'financeiro-relatorios': 'financeiro', 'portais': 'financeiro', 'portais-bi': 'relatorios-bi' };
         const curPage = subpageMap[rawPage] || rawPage;
 
         const links = this.sidebar.querySelectorAll('.sidebar-link');

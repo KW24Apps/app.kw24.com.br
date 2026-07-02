@@ -93,10 +93,10 @@ $_podeAcessarPortaisBi = ($user_data['perfil'] ?? '') === 'admin_interno' || !em
 // Requisição AJAX — retorna só o conteúdo da página
 if (isset($_GET['ajax'])) {
     $page          = $_GET['page'] ?? 'dashboard';
-    $allowed_pages = ['dashboard', 'cadastro', 'usuarios', 'aplicacoes', 'permissoes', 'relatorio', 'relatorio-teste', 'logs', 'configuracoes', 'bancodados', 'financeiro', 'financeiro-relatorios', 'portais', 'portais-bi', 'base-conhecimento', 'organizacoes', 'mcp-bitrix24'];
+    $allowed_pages = ['dashboard', 'cadastro', 'usuarios', 'aplicacoes', 'permissoes', 'relatorio', 'relatorios-bi', 'logs', 'configuracoes', 'bancodados', 'financeiro', 'financeiro-relatorios', 'portais', 'portais-bi', 'base-conhecimento', 'organizacoes', 'mcp-bitrix24'];
     if (!in_array($page, $allowed_pages)) $page = 'dashboard';
     if ($allowedPagesByProfile !== null && !in_array($page, $allowedPagesByProfile)) $page = 'dashboard';
-    if ($page === 'portais-bi' && !$_podeAcessarPortaisBi) $page = 'relatorio-teste';
+    if ($page === 'portais-bi' && !$_podeAcessarPortaisBi) $page = 'relatorios-bi';
     $content_file = __DIR__ . "/public/{$page}.php";
     if (file_exists($content_file)) include $content_file;
     exit;
@@ -104,7 +104,7 @@ if (isset($_GET['ajax'])) {
 
 // Determina qual página carregar
 $page = $_GET['page'] ?? 'dashboard';
-$allowed_pages = ['dashboard', 'cadastro', 'usuarios', 'aplicacoes', 'permissoes', 'relatorio', 'relatorio-teste', 'logs', 'configuracoes', 'financeiro', 'financeiro-relatorios', 'portais', 'portais-bi', 'base-conhecimento', 'organizacoes', 'mcp-bitrix24'];
+$allowed_pages = ['dashboard', 'cadastro', 'usuarios', 'aplicacoes', 'permissoes', 'relatorio', 'relatorios-bi', 'logs', 'configuracoes', 'financeiro', 'financeiro-relatorios', 'portais', 'portais-bi', 'base-conhecimento', 'organizacoes', 'mcp-bitrix24'];
 
 // configuracoes, organizacoes e mcp-bitrix24: apenas admin_interno
 if (in_array($page, ['configuracoes', 'organizacoes', 'mcp-bitrix24']) && ($user_data['perfil'] ?? '') !== 'admin_interno') {
@@ -114,7 +114,7 @@ if (in_array($page, ['configuracoes', 'organizacoes', 'mcp-bitrix24']) && ($user
 
 // portais-bi: apenas admin_interno ou usuários com pode_criar_portal
 if ($page === 'portais-bi' && !$_podeAcessarPortaisBi) {
-    header('Location: ?page=relatorio-teste');
+    header('Location: ?page=relatorios-bi');
     exit;
 }
 

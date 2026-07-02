@@ -75,9 +75,9 @@ $_sidebarMostraRelatoriosBi = ($user_data['perfil'] ?? '') === 'admin_interno'
                 <span style="flex:1;height:1px;background:rgba(255,255,255,.13)"></span>
             </div>
         </li>
-        <?php if (_sidebarGroupOk(['relatorio-teste', 'portais-bi']) && $_sidebarMostraRelatoriosBi): ?>
+        <?php if (_sidebarGroupOk(['relatorios-bi', 'portais-bi']) && $_sidebarMostraRelatoriosBi): ?>
         <li>
-            <a href="?page=relatorio-teste" class="sidebar-link">
+            <a href="?page=relatorios-bi" class="sidebar-link">
                 <div class="sidebar-link-inner">
                     <span class="sidebar-link-icon"><i class="fas fa-chart-bar"></i></span>
                     <span class="sidebar-link-text">Relatórios BI</span>

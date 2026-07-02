@@ -25,6 +25,55 @@ $_pbiVisiveis = $_pbiIsAdmin ? null : ($_SESSION['relatorios_visiveis'] ?? []);
     text-transform: uppercase; letter-spacing: .06em;
     color: rgba(255,255,255,.5);
 }
+.pbi-filter-controls {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+}
+.pbi-search-wrap { position: relative; }
+.pbi-search-wrap i {
+    position: absolute;
+    left: .6rem; top: 50%; transform: translateY(-50%);
+    color: rgba(255,255,255,.3);
+    font-size: .65rem;
+    pointer-events: none;
+}
+#pbi-search {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 7px;
+    padding: .4rem .6rem .4rem 1.7rem;
+    color: #fff;
+    font-family: inherit;
+    font-size: .7rem;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: normal;
+    outline: none;
+    width: 160px;
+    box-sizing: border-box;
+    transition: border-color .15s;
+}
+#pbi-search:focus { border-color: rgba(13,194,255,0.5); }
+#pbi-search::placeholder { color: rgba(255,255,255,.3); }
+.pbi-empresa-select {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 7px;
+    padding: .4rem .6rem;
+    color: #fff;
+    font-family: inherit;
+    font-size: .7rem;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: normal;
+    outline: none;
+    cursor: pointer;
+    max-width: 180px;
+}
+.pbi-empresa-select option { background: #0d1e2d; }
+.pbi-count { color: rgba(255,255,255,.2); font-size: .6rem; white-space: nowrap; }
 .portais-card-body { padding: 1.25rem; }
 .portais-form-grid {
     display: grid;
@@ -109,12 +158,22 @@ $_pbiVisiveis = $_pbiIsAdmin ? null : ($_SESSION['relatorios_visiveis'] ?? []);
     letter-spacing: .05em; color: rgba(255,255,255,.35);
     border-bottom: 1px solid rgba(255,255,255,0.07); white-space: nowrap;
 }
+.portais-table thead th:last-child { text-align: right; }
 .portais-table td {
     padding: .7rem .9rem; border-bottom: 1px solid rgba(255,255,255,0.05);
     color: rgba(255,255,255,.82); vertical-align: middle;
+    position: relative;
+}
+.portais-table tbody td:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: 0; top: 25%;
+    height: 50%; width: 1px;
+    background: rgba(255,255,255,0.10);
 }
 .portais-table tbody tr:last-child td { border-bottom: none; }
 .portais-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
+.portais-acoes-cell { display: flex; justify-content: flex-end; gap: 6px; }
 .portais-badge {
     display: inline-block; font-size: .6rem; font-weight: 700;
     padding: .18rem .5rem; border-radius: 20px; white-space: nowrap;
@@ -142,7 +201,7 @@ $_pbiVisiveis = $_pbiIsAdmin ? null : ($_SESSION['relatorios_visiveis'] ?? []);
 .portais-action-btn {
     background: none; border: 1px solid rgba(255,255,255,0.12);
     color: rgba(255,255,255,.6); font-size: .65rem; font-weight: 600;
-    padding: .25rem .6rem; border-radius: 5px; cursor: pointer; margin-right: .3rem;
+    padding: 6px 12px; border-radius: 5px; cursor: pointer;
     transition: all .15s; white-space: nowrap;
 }
 .portais-action-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
@@ -237,7 +296,16 @@ $_pbiVisiveis = $_pbiIsAdmin ? null : ($_SESSION['relatorios_visiveis'] ?? []);
     <div class="portais-card-header">
         <i class="fas fa-list" style="color:#0DC2FF"></i>
         <span>Portais ativos</span>
-        <span id="pbi-count" style="margin-left:auto;color:rgba(255,255,255,.2);font-size:.6rem"></span>
+        <div class="pbi-filter-controls">
+            <div class="pbi-search-wrap">
+                <i class="fas fa-search"></i>
+                <input type="text" id="pbi-search" placeholder="Buscar..." autocomplete="off">
+            </div>
+            <select class="pbi-empresa-select" id="pbi-empresa-filter">
+                <option value="">Todas as empresas</option>
+            </select>
+            <span id="pbi-count" class="pbi-count"></span>
+        </div>
     </div>
     <div class="portais-tbl-scroll">
         <table class="portais-table">
@@ -360,6 +428,9 @@ $_pbiVisiveis = $_pbiIsAdmin ? null : ($_SESSION['relatorios_visiveis'] ?? []);
     var _portais      = {};
     var _tipo         = 'parceiro';
     var _filterItems  = [];
+    var _empresaFiltroSalvo = null; // id de empresa restaurado do sessionStorage (bridge com relatorios-bi.php)
+    var searchInp     = document.getElementById('pbi-search');
+    var empresaSel    = document.getElementById('pbi-empresa-filter');
 
     function esc(s) {
         return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -664,14 +735,52 @@ $_pbiVisiveis = $_pbiIsAdmin ? null : ($_SESSION['relatorios_visiveis'] ?? []);
         .catch(function () { pbiShowMsg('Erro de rede.', true); });
     };
 
+    // ── Busca por texto + filtro de empresa (100% client-side, com sessionStorage
+    // bridge compartilhado com relatorios-bi.php — mesmas chaves, sem tabs/topbar) ──────
+    function pbiSalvarFiltros() {
+        try {
+            sessionStorage.setItem('bi_filter_search', searchInp.value || '');
+            sessionStorage.setItem('bi_filter_empresa_id', empresaSel.value || '');
+        } catch (e) {}
+    }
+    function pbiAplicarFiltros() {
+        var termo   = (searchInp.value || '').trim().toLowerCase();
+        var empresa = empresaSel.value;
+        document.querySelectorAll('#pbi-tbody tr[data-id]').forEach(function (tr) {
+            var nomeOk    = !termo || (tr.getAttribute('data-nome') || '').indexOf(termo) !== -1;
+            var empresas  = (tr.getAttribute('data-empresas') || '').split('|');
+            var empresaOk = !empresa || empresas.indexOf(empresa) !== -1;
+            tr.style.display = (nomeOk && empresaOk) ? '' : 'none';
+        });
+        pbiSalvarFiltros();
+    }
+    searchInp.addEventListener('input', pbiAplicarFiltros);
+    empresaSel.addEventListener('change', pbiAplicarFiltros);
+
+    function pbiPopularFiltroEmpresas(portais) {
+        var mapa = new Map();
+        portais.forEach(function (p) { (p.empresas || []).forEach(function (e) { mapa.set(String(e.id), e.nome); }); });
+        var ordenado = Array.from(mapa.entries()).sort(function (a, b) { return a[1].localeCompare(b[1], 'pt-BR'); });
+        empresaSel.innerHTML = '<option value="">Todas as empresas</option>' +
+            ordenado.map(function (e) { return '<option value="' + esc(e[0]) + '">' + esc(e[1]) + '</option>'; }).join('');
+        if (_empresaFiltroSalvo !== null) {
+            var existe = Array.from(empresaSel.options).some(function (o) { return o.value === _empresaFiltroSalvo; });
+            if (existe) empresaSel.value = _empresaFiltroSalvo;
+            _empresaFiltroSalvo = null;
+        }
+    }
+
     // ── Carregar lista ─────────────────────────────────────────────────────
     function loadPortais() {
         fetch('/api/portais-bi.php?action=list')
             .then(function (r) { return r.json(); })
             .then(function (d) {
                 _portais = {};
-                (d.portais || []).forEach(function (p) { _portais[p.id] = p; });
-                renderTable(d.portais || []);
+                var portais = d.portais || [];
+                portais.forEach(function (p) { _portais[p.id] = p; });
+                pbiPopularFiltroEmpresas(portais);
+                renderTable(portais);
+                pbiAplicarFiltros();
             })
             .catch(function () {
                 document.getElementById('pbi-tbody').innerHTML =
@@ -695,6 +804,8 @@ $_pbiVisiveis = $_pbiIsAdmin ? null : ($_SESSION['relatorios_visiveis'] ?? []);
             var badge = p.ativo
                 ? '<span class="portais-badge portais-badge-ativo">Ativo</span>'
                 : '<span class="portais-badge portais-badge-inativo">Inativo</span>';
+            var nomePortal    = p.nome || p.slug || '';
+            var empresasAttr  = (p.empresas || []).map(function (e) { return e.id; }).join('|');
             var filtros, tipoTxt;
             if (p.relatorio_slug === CT_SLUG) {
                 var indTxt  = p.ct_completo ? 'Relatório Completo' : (p.ct_indicador_labels || []).join(', ');
@@ -709,10 +820,10 @@ $_pbiVisiveis = $_pbiIsAdmin ? null : ($_SESSION['relatorios_visiveis'] ?? []);
                 tipoTxt = p.filter_type;
             }
 
-            html += '<tr>'
+            html += '<tr data-id="' + p.id + '" data-nome="' + esc(nomePortal.toLowerCase()) + '" data-empresas="' + esc(empresasAttr) + '">'
                 + '<td>'
-                    + '<div style="font-weight:600;color:#fff;font-size:.75rem">' + esc(p.nome || p.slug) + '</div>'
-                    + '<div style="font-size:.6rem;color:rgba(255,255,255,.3);margin-top:.15rem">' + esc(p.relatorio_slug) + '</div>'
+                    + '<div style="font-weight:600;color:#fff;font-size:.85rem">' + esc(p.relatorio_nome || p.relatorio_slug) + '</div>'
+                    + '<div style="font-size:.65rem;color:rgba(255,255,255,.4);margin-top:.15rem">' + esc(nomePortal) + '</div>'
                 + '</td>'
                 + '<td><span class="portais-badge-tipo">' + esc(tipoTxt) + '</span></td>'
                 + '<td style="font-size:.68rem;color:rgba(255,255,255,.7);max-width:200px;word-break:break-word;white-space:normal">' + esc(filtros) + '</td>'
@@ -723,7 +834,7 @@ $_pbiVisiveis = $_pbiIsAdmin ? null : ($_SESSION['relatorios_visiveis'] ?? []);
                 + '<td style="text-align:center">'
                     + '<button class="portais-copy-btn" data-copy="' + esc(embed) + '" data-orig-icon="fas fa-code" title="Copiar embed"><i class="fas fa-code"></i></button>'
                 + '</td>'
-                + '<td style="white-space:nowrap">'
+                + '<td class="portais-acoes-cell">'
                     + '<button class="portais-action-btn" data-action="edit" data-id="' + p.id + '">Editar</button>'
                     + '<button class="portais-action-btn" data-action="preview" data-slug="' + esc(p.slug) + '" title="Abrir relatório filtrado em nova aba">Visualizar</button>'
                     + '<button class="portais-action-btn warn" data-action="toggle" data-id="' + p.id + '">' + (p.ativo ? 'Desativar' : 'Ativar') + '</button>'
@@ -886,6 +997,13 @@ $_pbiVisiveis = $_pbiIsAdmin ? null : ($_SESSION['relatorios_visiveis'] ?? []);
     function pbiHideMsg() { document.getElementById('pbi-msg').style.display = 'none'; }
 
     // ── Init ───────────────────────────────────────────────────────────────
+    // Restaura busca/empresa salvos pelo bridge de sessionStorage (compartilhado com relatorios-bi.php).
+    try {
+        var savedSearch = sessionStorage.getItem('bi_filter_search');
+        if (savedSearch !== null) searchInp.value = savedSearch;
+        _empresaFiltroSalvo = sessionStorage.getItem('bi_filter_empresa_id');
+    } catch (e) {}
+
     loadRelatorios();
     loadPortais();
 })();

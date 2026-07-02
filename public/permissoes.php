@@ -176,9 +176,9 @@ const PERM_MENU_TREE = [
         { key: 'aplicacoes',   label: 'Aplicações',      icon: 'fas fa-th' },
     ]},
     { key: 'relatorio',        label: 'Relatórios',      icon: 'fas fa-chart-bar',           children: [] },
-    { key: 'relatorio-teste',  label: 'Relatórios BI',   icon: 'fas fa-chart-line',          children: [
-        { key: 'relatorio-teste', label: 'Hub de Relatórios', icon: 'fas fa-chart-bar' },
-        { key: 'portais-bi',      label: 'Portais BI',        icon: 'fas fa-globe' },
+    { key: 'relatorios-bi',    label: 'Relatórios BI',   icon: 'fas fa-chart-line',          children: [
+        { key: 'relatorios-bi',  label: 'Hub de Relatórios', icon: 'fas fa-chart-bar' },
+        { key: 'portais-bi',     label: 'Portais BI',        icon: 'fas fa-globe' },
     ]},
     { key: 'logs',             label: 'Logs',            icon: 'fas fa-file-alt',            children: [] },
     { key: 'financeiro',       label: 'Financeiro',      icon: 'fas fa-dollar-sign',         children: [

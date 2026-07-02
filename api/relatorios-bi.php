@@ -25,7 +25,7 @@ if ($action === 'list') {
     );
 
     // Enriquecimento por relatório (empresas vinculadas + usuários com acesso) para o hub
-    // (public/relatorio-teste.php). admin_interno vê tudo; usuário comum só as próprias
+    // (public/relatorios-bi.php). admin_interno vê tudo; usuário comum só as próprias
     // empresas/seu próprio usuário — nunca dados de outros clientes/usuários.
     foreach ($rows as $i => $r) {
         $relatorioId = (int)$r['id'];

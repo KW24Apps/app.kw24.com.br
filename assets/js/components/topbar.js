@@ -87,7 +87,7 @@ class TopbarManager {
         // (flags globais setadas em index.php a partir da sessão — ver Relatórios BI/aplicação).
         const _biPodeCriarPortal = !!(window.IS_ADMIN_INTERNO || window.PODE_CRIAR_PORTAL);
         const _biSubmenus = [
-            { id: 'bi-relatorios', text: 'Relatórios', icon: 'fas fa-chart-bar', url: '?page=relatorio-teste' }
+            { id: 'bi-relatorios', text: 'Relatórios', icon: 'fas fa-chart-bar', url: '?page=relatorios-bi' }
         ];
         if (_biPodeCriarPortal) {
             _biSubmenus.push({ id: 'bi-portais', text: 'Portais', icon: 'fas fa-globe', url: '?page=portais-bi' });
@@ -118,7 +118,7 @@ class TopbarManager {
                 { id: 'fin-dashboard',  text: 'Dashboard',  icon: 'fas fa-chart-pie',           url: '?page=financeiro' },
                 { id: 'fin-relatorios', text: 'Relatórios', icon: 'fas fa-file-invoice-dollar', url: '?page=financeiro-relatorios' }
             ],
-            'relatorio-teste': _biSubmenus,
+            'relatorios-bi': _biSubmenus,
             'portais-bi': _biSubmenus
         };
 
@@ -127,7 +127,7 @@ class TopbarManager {
         const action    = curParams.get('action') || '';
 
         // Sub-páginas agrupadas sob o menu pai para exibir os mesmos submenus
-        const subpageMap = { 'usuarios': 'cadastro', 'aplicacoes': 'cadastro', 'permissoes': 'cadastro', 'organizacoes': 'cadastro', 'financeiro-relatorios': 'financeiro', 'portais-bi': 'relatorio-teste' };
+        const subpageMap = { 'usuarios': 'cadastro', 'aplicacoes': 'cadastro', 'permissoes': 'cadastro', 'organizacoes': 'cadastro', 'financeiro-relatorios': 'financeiro', 'portais-bi': 'relatorios-bi' };
         const parentPage = subpageMap[page] || page;
         const submenus  = submenusMap[parentPage] || [];
 
