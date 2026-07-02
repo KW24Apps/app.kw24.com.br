@@ -67,6 +67,10 @@ EH_INDICADA = f"NOT {EH_PROPRIA}"
 #   Capiton    = CAPITON CONTABILIDADE S/S
 EH_CONTAFARMA = "UPPER(TRIM(t.contabilidade_responsavel_operacional)) IN ('FF CONTABILIDADE LTDA', 'CONTAFARMA CONTABILIDADE S/S')"
 EH_CAPITON    = "UPPER(TRIM(t.contabilidade_responsavel_operacional)) = 'CAPITON CONTABILIDADE S/S'"
+# Grupo de contabilidade por negócio (usado no `detalhe` p/ as sublinhas da tabela
+# de vendedores serem re-derivadas no cross-filter). 'contafarma' | 'capiton' | 'outro'.
+CONTAB_GRUPO_CASE = (f"CASE WHEN {EH_CONTAFARMA} THEN 'contafarma' "
+                     f"WHEN {EH_CAPITON} THEN 'capiton' ELSE 'outro' END")
 
 
 # ── Helpers de cláusula ──────────────────────────────────────────────────────
@@ -163,7 +167,12 @@ def get_vendedores(aba, data_de=None, data_ate=None, ct_completo=True, ct_indica
             COUNT(*) FILTER (WHERE {EH_INDICADA})                 AS indicada_qtd,
             COALESCE(SUM(t.valor) FILTER (WHERE {EH_INDICADA}), 0) AS indicada_valor,
             COUNT(*)                                              AS total_qtd,
-            COALESCE(SUM(t.valor), 0)                             AS total_valor
+            COALESCE(SUM(t.valor), 0)                             AS total_valor,
+            -- Breakdown por contabilidade (sublinhas ContaFarma/Capiton)
+            COUNT(*) FILTER (WHERE {EH_CONTAFARMA})                  AS cf_qtd,
+            COALESCE(SUM(t.valor) FILTER (WHERE {EH_CONTAFARMA}), 0)  AS cf_valor,
+            COUNT(*) FILTER (WHERE {EH_CAPITON})                     AS cap_qtd,
+            COALESCE(SUM(t.valor) FILTER (WHERE {EH_CAPITON}), 0)     AS cap_valor
         FROM tbl_onboard t
         WHERE {where}
         GROUP BY 1
@@ -271,6 +280,7 @@ def get_detalhamento(date_from, date_to, tab, vendedor_filter=None, tipo_venda_f
             CASE WHEN {EH_PROPRIA} THEN 'interno' ELSE 'indicado' END    AS tipo_venda,
             COALESCE(NULLIF(TRIM(t.etapa), ''), '—')                     AS etapa,
             COALESCE(NULLIF(TRIM(t.tipo_de_contrato), ''), '(Sem tipo)') AS tipo_de_contrato,
+            {CONTAB_GRUPO_CASE}                                          AS contab_grupo,
             COALESCE(t.valor, 0)                                         AS valor
         FROM tbl_onboard t
         WHERE {where}{extra}

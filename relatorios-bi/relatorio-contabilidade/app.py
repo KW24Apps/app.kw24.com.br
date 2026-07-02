@@ -504,6 +504,16 @@ def build_vendedores_table(vendedores, cf):
                 html.Td(fmt_brl(r["total_valor"]),    style={"textAlign": "right", "fontWeight": 700}),
             ],
         ))
+        # Sublinhas por contabilidade (subordinadas à linha do vendedor; não clicáveis)
+        _subs = (("ContaFarma", r.get("cf_qtd", 0),  r.get("cf_valor", 0)),
+                 ("Capiton",    r.get("cap_qtd", 0), r.get("cap_valor", 0)))
+        for i, (lbl, q, v) in enumerate(_subs):
+            cls = "rt-vend-sub" + (" rt-vend-sub-end" if i == len(_subs) - 1 else "")
+            body.append(html.Tr(className=cls, children=[
+                html.Td(lbl, style={"textAlign": "left"}),
+                html.Td(f"{fmt_num(q)} neg.", colSpan=4, style={"textAlign": "right"}),
+                html.Td(fmt_brl(v), style={"textAlign": "right"}),
+            ]))
 
     return html.Table([head, html.Tbody(body)], className="rt-table rt-table-click")
 
@@ -596,7 +606,9 @@ def aggregate_vendedores(detalhe):
         if a is None:
             a = agg[resp] = {"responsavel": resp, "propria_qtd": 0, "propria_valor": 0.0,
                              "indicada_qtd": 0, "indicada_valor": 0.0,
-                             "total_qtd": 0, "total_valor": 0.0}
+                             "total_qtd": 0, "total_valor": 0.0,
+                             # sublinhas por contabilidade
+                             "cf_qtd": 0, "cf_valor": 0.0, "cap_qtd": 0, "cap_valor": 0.0}
         val = _f(d.get("valor"))
         a["total_qtd"] += 1
         a["total_valor"] += val
@@ -606,6 +618,13 @@ def aggregate_vendedores(detalhe):
         else:
             a["indicada_qtd"] += 1
             a["indicada_valor"] += val
+        grp = d.get("contab_grupo")
+        if grp == "contafarma":
+            a["cf_qtd"] += 1
+            a["cf_valor"] += val
+        elif grp == "capiton":
+            a["cap_qtd"] += 1
+            a["cap_valor"] += val
     rows = list(agg.values())
     rows.sort(key=lambda r: (-r["total_valor"], r["responsavel"]))
     return rows
@@ -894,6 +913,7 @@ def load_data(aba, data_de, data_ate, _n):
         "tipo_venda":       r.get("tipo_venda"),   # 'interno' | 'indicado'
         "etapa":            r.get("etapa"),
         "tipo_de_contrato": r.get("tipo_de_contrato"),
+        "contab_grupo":     r.get("contab_grupo"),  # 'contafarma' | 'capiton' | 'outro'
         "valor":            _f(r.get("valor")),
     } for r in d["detalhe"]]
 
