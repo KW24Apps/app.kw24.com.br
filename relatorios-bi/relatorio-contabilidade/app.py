@@ -504,15 +504,17 @@ def build_vendedores_table(vendedores, cf):
                 html.Td(fmt_brl(r["total_valor"]),    style={"textAlign": "right", "fontWeight": 700}),
             ],
         ))
-        # Sublinhas por contabilidade (subordinadas à linha do vendedor; não clicáveis)
-        _subs = (("ContaFarma", r.get("cf_qtd", 0),  r.get("cf_valor", 0)),
-                 ("Capiton",    r.get("cap_qtd", 0), r.get("cap_valor", 0)))
-        for i, (lbl, q, v) in enumerate(_subs):
+        # Sublinhas por contabilidade (subordinadas; não clicáveis) — TODAS as colunas
+        _subs = (("ContaFarma", "cf"), ("Capiton", "cap"))
+        for i, (lbl, pfx) in enumerate(_subs):
             cls = "rt-vend-sub" + (" rt-vend-sub-end" if i == len(_subs) - 1 else "")
             body.append(html.Tr(className=cls, children=[
                 html.Td(lbl, style={"textAlign": "left"}),
-                html.Td(f"{fmt_num(q)} neg.", colSpan=4, style={"textAlign": "right"}),
-                html.Td(fmt_brl(v), style={"textAlign": "right"}),
+                html.Td(fmt_num(r.get(f"{pfx}_propria_qtd", 0)),   style={"textAlign": "right"}),
+                html.Td(fmt_brl(r.get(f"{pfx}_propria_valor", 0)), style={"textAlign": "right"}),
+                html.Td(fmt_num(r.get(f"{pfx}_indicada_qtd", 0)),  style={"textAlign": "right"}),
+                html.Td(fmt_brl(r.get(f"{pfx}_indicada_valor", 0)),style={"textAlign": "right"}),
+                html.Td(fmt_brl(r.get(f"{pfx}_total_valor", 0)),   style={"textAlign": "right"}),
             ]))
 
     return html.Table([head, html.Tbody(body)], className="rt-table rt-table-click")
@@ -599,32 +601,37 @@ def aggregate_vendedores(detalhe):
     """Reagrupa `detalhe` por vendedor (mesmo formato de queries.get_vendedores):
     qtd/valor internos (tipo_venda='interno'), indicados e total. Usado para que o
     cross-filter por tipo_contrato re-derive a tabela e o donut sem novo round-trip."""
+    def _novo(resp):
+        a = {"responsavel": resp, "propria_qtd": 0, "propria_valor": 0.0,
+             "indicada_qtd": 0, "indicada_valor": 0.0, "total_qtd": 0, "total_valor": 0.0}
+        # sublinhas por contabilidade: cada uma com ativas/indicadas/total próprios
+        for pfx in ("cf", "cap"):
+            a[f"{pfx}_propria_qtd"] = 0;  a[f"{pfx}_propria_valor"] = 0.0
+            a[f"{pfx}_indicada_qtd"] = 0; a[f"{pfx}_indicada_valor"] = 0.0
+            a[f"{pfx}_total_valor"] = 0.0
+        return a
+
     agg = {}
     for d in detalhe or []:
         resp = d.get("vendedor") or "(Sem responsável)"
-        a = agg.get(resp)
-        if a is None:
-            a = agg[resp] = {"responsavel": resp, "propria_qtd": 0, "propria_valor": 0.0,
-                             "indicada_qtd": 0, "indicada_valor": 0.0,
-                             "total_qtd": 0, "total_valor": 0.0,
-                             # sublinhas por contabilidade
-                             "cf_qtd": 0, "cf_valor": 0.0, "cap_qtd": 0, "cap_valor": 0.0}
+        a = agg.get(resp) or agg.setdefault(resp, _novo(resp))
         val = _f(d.get("valor"))
+        interno = d.get("tipo_venda") == "interno"
         a["total_qtd"] += 1
         a["total_valor"] += val
-        if d.get("tipo_venda") == "interno":
-            a["propria_qtd"] += 1
-            a["propria_valor"] += val
+        if interno:
+            a["propria_qtd"] += 1; a["propria_valor"] += val
         else:
-            a["indicada_qtd"] += 1
-            a["indicada_valor"] += val
+            a["indicada_qtd"] += 1; a["indicada_valor"] += val
+        # breakdown por contabilidade × (ativas/indicadas)
         grp = d.get("contab_grupo")
-        if grp == "contafarma":
-            a["cf_qtd"] += 1
-            a["cf_valor"] += val
-        elif grp == "capiton":
-            a["cap_qtd"] += 1
-            a["cap_valor"] += val
+        pfx = "cf" if grp == "contafarma" else ("cap" if grp == "capiton" else None)
+        if pfx:
+            a[f"{pfx}_total_valor"] += val
+            if interno:
+                a[f"{pfx}_propria_qtd"] += 1;  a[f"{pfx}_propria_valor"] += val
+            else:
+                a[f"{pfx}_indicada_qtd"] += 1; a[f"{pfx}_indicada_valor"] += val
     rows = list(agg.values())
     rows.sort(key=lambda r: (-r["total_valor"], r["responsavel"]))
     return rows
