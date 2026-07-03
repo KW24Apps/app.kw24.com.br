@@ -173,12 +173,12 @@ def kpi_card(label, icon, value_id, sub_id, accent_class):
         ]),
         # ── Breakdown por contabilidade (largura cheia: ContaFarma | Capiton) ──
         html.Div(className="rt-kpi-split", children=[
-            html.Div(className="rt-kpi-half", children=[
+            html.Div(className="rt-kpi-half rt-kpi-half-cf", children=[
                 html.Div("ContaFarma", className="rt-kpi-half-label"),
                 html.Div("—", id=f"kpi-{base}-cf-val", className="rt-kpi-half-val"),
                 html.Div("—", id=f"kpi-{base}-cf-qtd", className="rt-kpi-half-qtd"),
             ]),
-            html.Div(className="rt-kpi-half rt-kpi-half-right", children=[
+            html.Div(className="rt-kpi-half rt-kpi-half-right rt-kpi-half-cap", children=[
                 html.Div("Capiton", className="rt-kpi-half-label"),
                 html.Div("—", id=f"kpi-{base}-cap-val", className="rt-kpi-half-val"),
                 html.Div("—", id=f"kpi-{base}-cap-qtd", className="rt-kpi-half-qtd"),
@@ -507,7 +507,7 @@ def build_vendedores_table(vendedores, cf):
         # Sublinhas por contabilidade (subordinadas; não clicáveis) — TODAS as colunas
         _subs = (("ContaFarma", "cf"), ("Capiton", "cap"))
         for i, (lbl, pfx) in enumerate(_subs):
-            cls = "rt-vend-sub" + (" rt-vend-sub-end" if i == len(_subs) - 1 else "")
+            cls = f"rt-vend-sub rt-vend-sub-{pfx}" + (" rt-vend-sub-end" if i == len(_subs) - 1 else "")
             body.append(html.Tr(className=cls, children=[
                 html.Td(lbl, style={"textAlign": "left"}),
                 html.Td(fmt_num(r.get(f"{pfx}_propria_qtd", 0)),   style={"textAlign": "right"}),

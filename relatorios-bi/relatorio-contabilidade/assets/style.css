@@ -17,6 +17,9 @@
     --indicada: #7C3AED;
     --total: #3B82F6;
     --ticket: #F59E0B;
+    /* Cores por contabilidade (breakdown): ContaFarma teal, Capiton laranja (capiton.com.br) */
+    --contafarma: #00BBBC;
+    --capiton: #FF5F2D;
     /* CHANGE 3 — espaçamento/forma uniformes de todas as seções e cards */
     --section-gap: 1.25rem;
     --card-radius: 12px;
@@ -313,6 +316,9 @@ body {
     text-overflow: ellipsis;
 }
 .rt-kpi-half-qtd { font-size: 0.66rem; color: #a0aec0; margin-top: 1px; }
+/* cor por contabilidade só no LABEL e na QTD (o valor em R$ mantém a cor atual) */
+.rt-kpi-half-cf  .rt-kpi-half-label, .rt-kpi-half-cf  .rt-kpi-half-qtd { color: var(--contafarma); }
+.rt-kpi-half-cap .rt-kpi-half-label, .rt-kpi-half-cap .rt-kpi-half-qtd { color: var(--capiton); }
 
 /* Erro */
 .rt-error {
@@ -384,6 +390,9 @@ body {
 }
 .rt-vend-sub td:first-child { padding-left: 26px; }        /* recuo */
 .rt-vend-sub-end td { border-bottom: 1px solid #e2e8f0; }  /* fecha o grupo */
+/* cor por contabilidade — linha inteira (nome + valores) */
+.rt-vend-sub-cf  td { color: var(--contafarma); }
+.rt-vend-sub-cap td { color: var(--capiton); }
 
 /* Bloco 2 direita: linha de tipo de contrato (clicável) = filtro tipo_contrato */
 .rt-tipo-row {
