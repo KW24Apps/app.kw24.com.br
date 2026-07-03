@@ -399,10 +399,12 @@ def build_donut(vendedores, cf):
     return fig
 
 
-def build_donut_legend(vendedores, cf):
+def build_donut_legend(vendedores, cf, leg_type="ct-leg"):
     """Legenda HTML (direita do donut). Por vendedor: bolinha (cor do anel interno),
     nome, barra de MESMA largura dividida teal/âmbar pelo split interno/indicado, e
-    o % do TOTAL de negócios à direita. Abaixo: itens Interno/Indicado + legenda."""
+    o % do TOTAL de negócios à direita. Abaixo: itens Interno/Indicado + legenda.
+    `leg_type` = tipo do id dos itens clicáveis (permite duas legendas sem colidir:
+    'ct-leg' no Dashboard, 'ct-leg-r' na report view)."""
     vs = _vend_donut_rows(vendedores)
     if not vs:
         return [html.Div("Sem dados para o período.", className="rt-empty")]
@@ -419,7 +421,7 @@ def build_donut_legend(vendedores, cf):
         dim = bool(sel) and name != sel
         active = name == sel
         items.append(html.Div(
-            id={"type": "ct-leg", "index": _enc(name)}, n_clicks=0,
+            id={"type": leg_type, "index": _enc(name)}, n_clicks=0,
             className="ct-leg-item" + (" ct-dim" if dim else "") + (" ct-leg-active" if active else ""),
             children=[
                 html.Span(className="ct-leg-dot", style={"backgroundColor": vend_color(i)}),
@@ -848,18 +850,49 @@ app.layout = html.Div(className="rt-app", children=[
         # ── Bloco 1: KPIs (largura cheia, 4 colunas iguais) ──────────────────
         kpi_row(),
 
-        # ── Donut da EQUIPE (informativo, não filtra) — largura cheia ─────────
-        html.Div(className="rt-card ct-team-card ct-team-solo", children=[
-            html.Div(className="rt-card-head", children=[
-                html.I(className="fas fa-users"),
-                html.Span("Equipe — Ativo × Indicado"),
+        # ── Linha dos donuts: por vendedor (esq., filtra) + EQUIPE (dir.) ─────
+        # Layout ORIGINAL (pré-Dashboard) restaurado. O donut de vendedores aqui é
+        # uma instância própria da report view (ids sufixados "-r") — a do Dashboard
+        # permanece intacta. Ambas leem/escrevem o mesmo cf-store.
+        html.Div(className="ct-donut-row", children=[
+            # Donut 1 — por vendedor (filtra)
+            html.Div(className="rt-card ct-donut-card", children=[
+                html.Div(className="rt-card-head", children=[
+                    html.I(className="fas fa-chart-pie"),
+                    html.Span("Distribuição por Vendedor (Ativo × Indicado)"),
+                    html.Div(id="cf-chip-r-wrap", className="ct-chip-wrap", style={"display": "none"}, children=[
+                        html.I(className="fas fa-filter"),
+                        html.Span(id="cf-chip-r-text", className="ct-chip-text"),
+                        html.Button("×", id="cf-chip-r-clear", className="ct-chip-x", title="Limpar filtro"),
+                    ]),
+                ]),
+                html.Div(className="rt-card-body", children=[
+                    html.Div(className="ct-donut", children=[
+                        html.Div(className="ct-donut-left", children=[
+                            html.Div(className="ct-donut-circle", children=dcc.Graph(
+                                id="ct-donut-r", figure=empty_fig("Carregando…"),
+                                config={"displayModeBar": False},
+                                style={"height": "360px", "width": "360px"})),
+                        ]),
+                        html.Div(className="ct-donut-right", children=[
+                            html.Div(id="ct-donut-legend-r", className="ct-donut-legend"),
+                        ]),
+                    ]),
+                ]),
             ]),
-            html.Div(className="rt-card-body ct-team-body", children=[
-                html.Div(className="ct-team-circle", children=dcc.Graph(
-                    id="ct-donut2", figure=empty_fig("Carregando…"),
-                    config={"displayModeBar": False, "staticPlot": True},
-                    style={"height": "300px", "width": "300px"})),
-                html.Div(id="ct-donut2-legend", className="ct-teamleg"),
+            # Donut 2 — EQUIPE (informativo, não filtra)
+            html.Div(className="rt-card ct-team-card", children=[
+                html.Div(className="rt-card-head", children=[
+                    html.I(className="fas fa-users"),
+                    html.Span("Equipe — Ativo × Indicado"),
+                ]),
+                html.Div(className="rt-card-body ct-team-body", children=[
+                    html.Div(className="ct-team-circle", children=dcc.Graph(
+                        id="ct-donut2", figure=empty_fig("Carregando…"),
+                        config={"displayModeBar": False, "staticPlot": True},
+                        style={"height": "300px", "width": "300px"})),
+                    html.Div(id="ct-donut2-legend", className="ct-teamleg"),
+                ]),
             ]),
         ]),
 
@@ -1120,6 +1153,11 @@ def load_data(aba, data_de, data_ate, _n):
     Output("ct-parceiros", "figure"),
     Output("cf-chip-text", "children"),
     Output("cf-chip-wrap", "style"),
+    # Donut de vendedores da report view (instância "-r", mesmo figure/legenda/chip)
+    Output("ct-donut-r", "figure"),
+    Output("ct-donut-legend-r", "children"),
+    Output("cf-chip-r-text", "children"),
+    Output("cf-chip-r-wrap", "style"),
     Input("ct-data", "data"),
     Input("cf-store", "data"),
 )
@@ -1156,7 +1194,8 @@ def render_views(data, cf):
         ]
 
     donut = build_donut(vend_agg, cf)
-    legend = build_donut_legend(vend_agg, cf)
+    legend = build_donut_legend(vend_agg, cf)               # legenda do Dashboard (type ct-leg)
+    legend_r = build_donut_legend(vend_agg, cf, "ct-leg-r")  # legenda da report view (type ct-leg-r)
     team_donut = build_team_donut(detalhe, cf)
     team_legend = build_team_legend(detalhe, cf)
     parceiros = build_parceiros_chart(detalhe, cf)
@@ -1176,7 +1215,8 @@ def render_views(data, cf):
         chip_style = {"display": "none"}
 
     return (vend_tbl, contr_tbl, det_data, det_cols, det_style, donut, legend,
-            team_donut, team_legend, parceiros, txt, chip_style)
+            team_donut, team_legend, parceiros, txt, chip_style,
+            donut, legend_r, txt, chip_style)
 
 
 # ── Cross-filter: toggles centrais (vendedor e tipo_contrato são exclusivos) ──
@@ -1237,6 +1277,37 @@ def cf_from_legend(_n, cur):
     return _cf_toggle(cur, _dec(ctx.triggered_id["index"]), None)
 
 
+# A'/B'. Mesmos cliques (donut + legenda) da instância da report view ("-r").
+@callback(
+    Output("cf-store", "data", allow_duplicate=True),
+    Output("ct-donut-r", "clickData"),
+    Input("ct-donut-r", "clickData"),
+    State("cf-store", "data"),
+    prevent_initial_call=True,
+)
+def cf_from_donut_r(click, cur):
+    if not click or not click.get("points"):
+        return no_update, no_update
+    cd = click["points"][0].get("customdata")
+    if not isinstance(cd, list) or not cd:
+        return no_update, None
+    vendedor = cd[0]
+    tipo = cd[1] if len(cd) >= 2 else None
+    return _cf_toggle(cur, vendedor, tipo), None
+
+
+@callback(
+    Output("cf-store", "data", allow_duplicate=True),
+    Input({"type": "ct-leg-r", "index": ALL}, "n_clicks"),
+    State("cf-store", "data"),
+    prevent_initial_call=True,
+)
+def cf_from_legend_r(_n, cur):
+    if not ctx.triggered or not ctx.triggered[0]["value"]:
+        return no_update
+    return _cf_toggle(cur, _dec(ctx.triggered_id["index"]), None)
+
+
 # C. Clique na linha de vendedor (tabela) → vendedor (tipo=None).
 @callback(
     Output("cf-store", "data", allow_duplicate=True),
@@ -1282,13 +1353,22 @@ def cf_from_parceiros(click, cur):
     return _cf_toggle_parceiro(cur, parceiro), None
 
 
-# F. Limpar filtro pelo "×" do chip.
+# F. Limpar filtro pelo "×" do chip (Dashboard e report view).
 @callback(
     Output("cf-store", "data", allow_duplicate=True),
     Input("cf-chip-clear", "n_clicks"),
     prevent_initial_call=True,
 )
 def cf_clear(_n):
+    return dict(CF_EMPTY)
+
+
+@callback(
+    Output("cf-store", "data", allow_duplicate=True),
+    Input("cf-chip-r-clear", "n_clicks"),
+    prevent_initial_call=True,
+)
+def cf_clear_r(_n):
     return dict(CF_EMPTY)
 
 
