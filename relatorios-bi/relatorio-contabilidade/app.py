@@ -28,6 +28,7 @@ Produção:      gunicorn app:server -b 127.0.0.1:8051
 """
 
 import os
+import re
 import base64
 import calendar
 from datetime import date
@@ -93,6 +94,26 @@ ABA_DATASET = {"dashboard": "fechadas"}
 # indicadores externos). Comparação em UPPER(TRIM(...)).
 PARCEIROS_EXCLUIR = {"FF CONTABILIDADE LTDA", "CONTAFARMA CONTABILIDADE S/S",
                      "CAPITON CONTABILIDADE S/S"}
+# Title Case dos nomes de parceiros (só exibição). Palavras que permanecem em
+# MAIÚSCULO (match exato, case-insensitive) e conectivos que ficam minúsculos.
+_PARC_UPPER = {"LTDA", "S/C", "S/S", "SC", "SS", "ME", "EPP", "EIRELI", "SA", "S/A"}
+_PARC_LOWER = {"e", "de", "da", "do", "das", "dos"}
+
+
+def _title_parceiro(nome):
+    """Title Case pt-BR: capitaliza cada palavra, mantém siglas (LTDA, S/C, ...)
+    em maiúsculo e conectivos (e, de, da, ...) em minúsculo — exceto a 1ª palavra.
+    Capitaliza cada segmento de letras (trata hífen/barra: 'E-CONTÁBIL' → 'E-Contábil')."""
+    palavras = (nome or "").split()
+    out = []
+    for i, w in enumerate(palavras):
+        if w.upper() in _PARC_UPPER:
+            out.append(w.upper())
+        elif i > 0 and w.lower() in _PARC_LOWER:
+            out.append(w.lower())
+        else:
+            out.append(re.sub(r"[^\W\d_]+", lambda m: m.group(0).capitalize(), w.lower()))
+    return " ".join(out)
 TIPO_VENDA_LABEL = {"interno": "Ativo", "indicado": "Indicado"}
 # Rótulo da contabilidade (coluna Contabilidade no Detalhamento) — a partir de contab_grupo
 CONTAB_LABEL = {"contafarma": "ContaFarma", "capiton": "Capiton"}
@@ -497,19 +518,20 @@ def build_parceiros_chart(detalhe, cf):
     total = sum(counts.values()) or 1
     sel = (cf or {}).get("parceiro")
 
-    names = [k for k, _ in items]
+    raw_names = [k for k, _ in items]              # nome cru → customdata (cross-filter)
+    disp_names = [_title_parceiro(k) for k in raw_names]  # Title Case → rótulo do eixo Y
     vals  = [v for _, v in items]
     texts = [f"{v}  ·  {v / total * 100:.0f}%" for v in vals]
 
-    def barcol(name):
+    def barcol(name):  # compara pelo nome CRU (== cf.parceiro)
         if not sel:
             return COR_INDICADO
         return COR_INDICADO if name == sel else _hex_to_rgba(COR_INDICADO, 0.28)
 
     fig = go.Figure(go.Bar(
-        x=vals, y=names, orientation="h",
-        marker=dict(color=[barcol(n) for n in names], line=dict(color="#ffffff", width=1)),
-        customdata=[[n] for n in names],
+        x=vals, y=disp_names, orientation="h",
+        marker=dict(color=[barcol(n) for n in raw_names], line=dict(color="#ffffff", width=1)),
+        customdata=[[n] for n in raw_names],
         text=texts, textposition="outside", cliponaxis=False,
         textfont=dict(size=11, color="#475569", family="Inter"),
         hovertemplate="%{y}<br>%{x} negócios<extra></extra>",
@@ -520,7 +542,7 @@ def build_parceiros_chart(detalhe, cf):
         showlegend=False, bargap=0.35,
         xaxis=dict(visible=False, range=[0, (max(vals) or 1) * 1.20]),
         yaxis=dict(autorange="reversed",  # maior quantidade no topo
-                   tickfont=dict(size=12, color="#334155", family="Inter")),
+                   tickfont=dict(size=12, color="#334155", family="Inter", weight=700)),  # nome em negrito
     )
     return fig
 
