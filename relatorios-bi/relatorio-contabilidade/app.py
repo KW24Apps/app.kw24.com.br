@@ -518,7 +518,7 @@ def build_parceiros_chart(detalhe, cf):
         a["valor"] += _f(d.get("valor"))
     if not agg:
         return empty_fig("Sem parceiros indicadores no período")
-    items = sorted(agg.items(), key=lambda kv: (-kv[1]["qtd"], kv[0]))
+    items = sorted(agg.items(), key=lambda kv: (-kv[1]["valor"], kv[0]))
     total = sum(a["qtd"] for _, a in items) or 1
     sel = (cf or {}).get("parceiro")
 
