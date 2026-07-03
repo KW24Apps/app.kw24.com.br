@@ -2,6 +2,52 @@
  * TOPBAR JAVASCRIPT - Versão otimizada
  */
 
+// Utilitário de permissão para tabs do topbar. Lê o mesmo dado já exposto pelo
+// PHP para a sidebar (`data-allowed-menus` em #sidebar — ver views/layouts/sidebar.php:
+// null = perfil irrestrito/admin_interno, array = slugs de página permitidos).
+// Compartilhado com sidebar.js (definir aqui evita duplicar a lógica de filtro).
+window.KW24TopbarPermissions = {
+    _allowedPagesCache: undefined,
+
+    getAllowedPages() {
+        if (this._allowedPagesCache !== undefined) return this._allowedPagesCache;
+        let allowed = null;
+        const sidebarEl = document.getElementById('sidebar');
+        if (sidebarEl && sidebarEl.dataset.allowedMenus) {
+            try {
+                allowed = JSON.parse(sidebarEl.dataset.allowedMenus);
+            } catch (e) {
+                allowed = null;
+            }
+        }
+        this._allowedPagesCache = allowed;
+        return allowed;
+    },
+
+    extractPageSlug(url) {
+        if (!url) return '';
+        const query = url.indexOf('?') >= 0 ? url.slice(url.indexOf('?') + 1) : '';
+        return new URLSearchParams(query).get('page') || '';
+    },
+
+    isPageAllowed(pageSlug) {
+        const allowed = this.getAllowedPages();
+        if (allowed === null) return true; // irrestrito (admin_interno ou sem perfil vinculado)
+        if (!pageSlug) return true;
+        return Array.isArray(allowed) && allowed.includes(pageSlug);
+    },
+
+    filterSubmenus(submenus) {
+        if (!Array.isArray(submenus)) return submenus;
+        return submenus.filter(item => this.isPageAllowed(this.extractPageSlug(item.url)));
+    },
+
+    firstAllowedUrl(submenus, fallbackUrl) {
+        const filtered = this.filterSubmenus(submenus || []);
+        return filtered.length ? filtered[0].url : fallbackUrl;
+    }
+};
+
 class TopbarManager {
     constructor() {
         this.topbar = null;
@@ -178,8 +224,10 @@ class TopbarManager {
     updateSubmenus(submenusData, parentMenu) {
         if (!this.submenus) return;
 
-        this.renderSubmenus(submenusData, parentMenu);
-        this.setSubmenuState(submenusData?.length ? 'active' : 'empty');
+        const allowedSubmenus = window.KW24TopbarPermissions.filterSubmenus(submenusData);
+
+        this.renderSubmenus(allowedSubmenus, parentMenu);
+        this.setSubmenuState(allowedSubmenus?.length ? 'active' : 'empty');
     }
 
     renderSubmenus(submenusData, parentMenu) {

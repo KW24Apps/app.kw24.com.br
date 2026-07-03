@@ -91,8 +91,11 @@ class SidebarManager {
                 this.sidebar.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
                 item.classList.add('active');
 
-                // Carrega conteúdo via AJAX
-                const url = menuData.url;
+                // Aba padrão ao abrir o menu = primeira aba permitida pelo perfil do usuário
+                // (não necessariamente a primeira do array hardcoded nem o href fixo do link).
+                const url = window.KW24TopbarPermissions
+                    ? window.KW24TopbarPermissions.firstAllowedUrl(submenus, menuData.url)
+                    : menuData.url;
                 if (!url || url === '#') return;
 
                 const ajaxUrl = url + (url.includes('?') ? '&' : '?') + 'ajax=1';
