@@ -506,22 +506,25 @@ def build_parceiros_chart(detalhe, cf):
     parceiro, que é a própria fonte) → seleção de vendedor mostra só os parceiros
     daquele vendedor."""
     det = _filter_detalhe(detalhe, cf, dims=("vendedor", "tipo_venda", "tipo_contrato"))
-    counts = {}
+    agg = {}
     for d in det:
         p = (d.get("parceiro") or "").strip()
         if not p or p.upper() in PARCEIROS_EXCLUIR:
             continue
-        counts[p] = counts.get(p, 0) + 1
-    if not counts:
+        a = agg.setdefault(p, {"qtd": 0, "valor": 0.0})
+        a["qtd"] += 1
+        a["valor"] += _f(d.get("valor"))
+    if not agg:
         return empty_fig("Sem parceiros indicadores no período")
-    items = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
-    total = sum(counts.values()) or 1
+    items = sorted(agg.items(), key=lambda kv: (-kv[1]["qtd"], kv[0]))
+    total = sum(a["qtd"] for _, a in items) or 1
     sel = (cf or {}).get("parceiro")
 
     raw_names = [k for k, _ in items]              # nome cru → customdata (cross-filter)
     disp_names = [_title_parceiro(k) for k in raw_names]  # Title Case → rótulo do eixo Y
-    vals  = [v for _, v in items]
-    texts = [f"{v}  ·  {v / total * 100:.0f}%" for v in vals]
+    vals  = [a["qtd"] for _, a in items]
+    # "qtd · % · R$" ao lado da barra
+    texts = [f"{a['qtd']} · {a['qtd'] / total * 100:.0f}% · {fmt_brl(a['valor'])}" for _, a in items]
 
     def barcol(name):  # compara pelo nome CRU (== cf.parceiro)
         if not sel:
@@ -533,16 +536,18 @@ def build_parceiros_chart(detalhe, cf):
         marker=dict(color=[barcol(n) for n in raw_names], line=dict(color="#ffffff", width=1)),
         customdata=[[n] for n in raw_names],
         text=texts, textposition="outside", cliponaxis=False,
-        textfont=dict(size=11, color="#475569", family="Inter"),
+        # mesmo estilo do percentual da legenda do donut (.ct-leg-pct)
+        textfont=dict(size=11, color="#64748b", family="Inter", weight=700),
         hovertemplate="%{y}<br>%{x} negócios<extra></extra>",
     ))
     fig.update_layout(
-        margin=dict(t=6, b=6, l=8, r=44),
+        margin=dict(t=6, b=6, l=8, r=150),   # espaço à direita p/ o texto "qtd · % · R$"
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         showlegend=False, bargap=0.35,
-        xaxis=dict(visible=False, range=[0, (max(vals) or 1) * 1.20]),
+        xaxis=dict(visible=False, range=[0, (max(vals) or 1) * 1.04]),
+        # mesmo estilo do nome do vendedor na legenda do donut (.ct-leg-name)
         yaxis=dict(autorange="reversed",  # maior quantidade no topo
-                   tickfont=dict(size=12, color="#334155", family="Inter", weight=700)),  # nome em negrito
+                   tickfont=dict(size=12, color="#1f2937", family="Inter", weight=600)),
     )
     return fig
 
