@@ -40,3 +40,5 @@ venv/
 
 # Script de teste local — roda o app sem o prefixo do nginx. NUNCA vai para produção.
 relatorios-bi/*/run_local.py
+# Túnel SSH local para o banco — contém credenciais. NUNCA vai para o repositório.
+relatorios-bi/*/_tunnel.py
