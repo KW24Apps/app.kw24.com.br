@@ -48,6 +48,16 @@ body {
     gap: var(--section-gap);
 }
 
+/* As views Dashboard/relatório são wrappers intermediários: reproduzem o mesmo
+   espaçamento vertical do .rt-app entre os blocos internos (KPIs, donuts,
+   tabelas, detalhamento). O display real (flex/none) vem inline do toggle_views. */
+#ct-dashboard-view,
+#ct-report-view {
+    display: flex;
+    flex-direction: column;
+    gap: var(--section-gap);
+}
+
 /* Cabeçalho */
 .rt-header {
     display: flex;

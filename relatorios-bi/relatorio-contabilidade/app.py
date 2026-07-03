@@ -960,9 +960,10 @@ def highlight_tab(aba):
     Input("ct-aba", "data"),
 )
 def toggle_views(aba):
+    # display:flex (não block) p/ o gap vertical do wrapper valer entre os blocos.
     if (aba or ABA_DEFAULT) == "dashboard":
-        return {"display": "block"}, {"display": "none"}
-    return {"display": "none"}, {"display": "block"}
+        return {"display": "flex"}, {"display": "none"}
+    return {"display": "none"}, {"display": "flex"}
 
 
 # ── Filtro de data: abrir/fechar painel, mostrar "Limpar", limpar ────────────
