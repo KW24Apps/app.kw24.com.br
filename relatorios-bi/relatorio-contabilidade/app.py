@@ -118,9 +118,11 @@ TIPO_VENDA_LABEL = {"interno": "Ativo", "indicado": "Indicado"}
 # Rótulo da contabilidade (coluna Contabilidade no Detalhamento) — a partir de contab_grupo
 CONTAB_LABEL = {"contafarma": "ContaFarma", "capiton": "Capiton"}
 
-# Cross-filter vazio (4 dimensões). vendedor/tipo_venda, tipo_contrato e parceiro
-# são mutuamente exclusivos (ativar um zera os outros) — ver _cf_toggle*.
-CF_EMPTY = {"vendedor": None, "tipo_venda": None, "tipo_contrato": None, "parceiro": None}
+# Cross-filter vazio (5 dimensões). vendedor/tipo_venda, tipo_contrato, parceiro e
+# contab são mutuamente exclusivos (ativar um zera os outros) — ver _cf_toggle*.
+# contab ∈ {'contafarma','capiton'} (clique nos blocos dos cards KPI).
+CF_EMPTY = {"vendedor": None, "tipo_venda": None, "tipo_contrato": None,
+            "parceiro": None, "contab": None}
 
 
 def mes_atual_range():
@@ -201,13 +203,16 @@ def kpi_card(label, icon, value_id, sub_id, accent_class):
             ]),
         ]),
         # ── Breakdown por contabilidade (largura cheia: ContaFarma | Capiton) ──
+        # Cada metade é clicável → cross-filter por contabilidade (contab).
         html.Div(className="rt-kpi-split", children=[
-            html.Div(className="rt-kpi-half rt-kpi-half-cf", children=[
+            html.Div(className="rt-kpi-half rt-kpi-half-cf rt-kpi-half-click", n_clicks=0,
+                     id={"type": "ct-kpi-contab", "index": f"contafarma:{base}"}, children=[
                 html.Div("ContaFarma", className="rt-kpi-half-label"),
                 html.Div("—", id=f"kpi-{base}-cf-val", className="rt-kpi-half-val"),
                 html.Div("—", id=f"kpi-{base}-cf-qtd", className="rt-kpi-half-qtd"),
             ]),
-            html.Div(className="rt-kpi-half rt-kpi-half-right rt-kpi-half-cap", children=[
+            html.Div(className="rt-kpi-half rt-kpi-half-right rt-kpi-half-cap rt-kpi-half-click", n_clicks=0,
+                     id={"type": "ct-kpi-contab", "index": f"capiton:{base}"}, children=[
                 html.Div("Capiton", className="rt-kpi-half-label"),
                 html.Div("—", id=f"kpi-{base}-cap-val", className="rt-kpi-half-val"),
                 html.Div("—", id=f"kpi-{base}-cap-qtd", className="rt-kpi-half-qtd"),
@@ -217,7 +222,8 @@ def kpi_card(label, icon, value_id, sub_id, accent_class):
 
 
 def kpi_row():
-    return html.Div(className="rt-kpi-row", children=[
+    # id p/ o render_kpis marcar a contabilidade selecionada (classe contab-sel-*).
+    return html.Div(id="kpi-row", className="rt-kpi-row", children=[
         kpi_card("Vendas Total",     "fa-layer-group", "kpi-total-valor",    "kpi-total-qtd",    "kpi-accent-total"),
         kpi_card("Vendas Ativas",  "fa-house",       "kpi-propria-valor",  "kpi-propria-qtd",  "kpi-accent-propria"),
         kpi_card("Vendas Indicadas", "fa-handshake",   "kpi-indicada-valor", "kpi-indicada-qtd", "kpi-accent-indicada"),
@@ -507,7 +513,7 @@ def build_parceiros_chart(detalhe, cf):
     cross-filter por parceiro. Filtra por vendedor/tipo_venda/tipo_contrato (não por
     parceiro, que é a própria fonte) → seleção de vendedor mostra só os parceiros
     daquele vendedor."""
-    det = _filter_detalhe(detalhe, cf, dims=("vendedor", "tipo_venda", "tipo_contrato"))
+    det = _filter_detalhe(detalhe, cf, dims=("vendedor", "tipo_venda", "tipo_contrato", "contab"))
     agg = {}
     for d in det:
         p = (d.get("parceiro") or "").strip()
@@ -616,7 +622,7 @@ def build_contratos_table(detalhe, cf):
     então NÃO filtra por tipo_contrato (mostra todas as linhas p/ seleção); aplica
     só vendedor/tipo_venda e destaca a linha do tipo_contrato ativo. Clicar numa
     linha aplica/limpa o filtro por tipo de contrato (toggle)."""
-    filt = _filter_detalhe(detalhe, cf, dims=("vendedor", "tipo_venda"))
+    filt = _filter_detalhe(detalhe, cf, dims=("vendedor", "tipo_venda", "contab"))
     if not filt:
         return html.P("Sem dados para o filtro atual.", className="rt-empty")
     agg = {}
@@ -684,7 +690,7 @@ DETALHE_STYLE_CELL_COND = [
 ]
 
 
-def _filter_detalhe(detalhe, cf, dims=("vendedor", "tipo_venda", "tipo_contrato", "parceiro")):
+def _filter_detalhe(detalhe, cf, dims=("vendedor", "tipo_venda", "tipo_contrato", "parceiro", "contab")):
     """Filtra `detalhe` pelas dimensões do cross-filter pedidas em `dims`.
     Cada componente aplica só as dimensões que NÃO são a sua própria fonte:
       - Detalhamento / donut equipe → todas as dimensões.
@@ -696,6 +702,7 @@ def _filter_detalhe(detalhe, cf, dims=("vendedor", "tipo_venda", "tipo_contrato"
     t = cf.get("tipo_venda") if "tipo_venda" in dims else None
     tc = cf.get("tipo_contrato") if "tipo_contrato" in dims else None
     pa = cf.get("parceiro") if "parceiro" in dims else None
+    cb = cf.get("contab") if "contab" in dims else None
     out = []
     for d in detalhe or []:
         if v and d.get("vendedor") != v:
@@ -705,6 +712,8 @@ def _filter_detalhe(detalhe, cf, dims=("vendedor", "tipo_venda", "tipo_contrato"
         if tc and d.get("tipo_de_contrato") != tc:
             continue
         if pa and d.get("parceiro") != pa:
+            continue
+        if cb and d.get("contab_grupo") != cb:
             continue
         out.append(d)
     return out
@@ -748,6 +757,24 @@ def aggregate_vendedores(detalhe):
     rows = list(agg.values())
     rows.sort(key=lambda r: (-r["total_valor"], r["responsavel"]))
     return rows
+
+
+def compute_kpis(rows):
+    """Re-deriva os KPIs (mesma estrutura de queries.get_kpis) a partir das linhas
+    de `detalhe` já filtradas pelo cross-filter. Idêntico ao SQL: própria = tipo_venda
+    'interno', indicada = 'indicado' (EH_INDICADA = NOT EH_PROPRIA); grupos cf/cap por
+    contab_grupo. Validado numericamente contra get_kpis (fechadas/negociacao/período)."""
+    def _b(rs):
+        pr  = [r for r in rs if r.get("tipo_venda") == "interno"]
+        ind = [r for r in rs if r.get("tipo_venda") == "indicado"]
+        _s = lambda xs: sum(_f(r.get("valor")) for r in xs)
+        return {"total_qtd": len(rs),  "total_valor": _s(rs),
+                "propria_qtd": len(pr), "propria_valor": _s(pr),
+                "indicada_qtd": len(ind), "indicada_valor": _s(ind)}
+    k = _b(rows)
+    k["contafarma"] = _b([r for r in rows if r.get("contab_grupo") == "contafarma"])
+    k["capiton"]    = _b([r for r in rows if r.get("contab_grupo") == "capiton"])
+    return k
 
 
 def build_detalhamento_data(detalhe, cf, aba=None):
@@ -997,25 +1024,10 @@ def limpar_datas(_n):
     return None, None
 
 
-# ── Carga de dados: KPIs (período) + dataset da aba; reseta o cross-filter ────
+# ── Carga de dados: dataset da aba/período → ct-data; reseta o cross-filter ───
+# Os KPIs NÃO são mais montados aqui: viram responsabilidade do render_kpis (lê
+# ct-data + cf-store), p/ reagirem ao cross-filter por contabilidade.
 @callback(
-    Output("kpi-total-valor", "children"),
-    Output("kpi-total-qtd", "children"),
-    Output("kpi-propria-valor", "children"),
-    Output("kpi-propria-qtd", "children"),
-    Output("kpi-indicada-valor", "children"),
-    Output("kpi-indicada-qtd", "children"),
-    Output("kpi-ticket", "children"),
-    Output("kpi-ticket-sub", "children"),
-    # Breakdown ContaFarma × Capiton (4 cards × val/qtd de cada lado)
-    Output("kpi-total-cf-val", "children"),    Output("kpi-total-cf-qtd", "children"),
-    Output("kpi-total-cap-val", "children"),   Output("kpi-total-cap-qtd", "children"),
-    Output("kpi-propria-cf-val", "children"),  Output("kpi-propria-cf-qtd", "children"),
-    Output("kpi-propria-cap-val", "children"), Output("kpi-propria-cap-qtd", "children"),
-    Output("kpi-indicada-cf-val", "children"), Output("kpi-indicada-cf-qtd", "children"),
-    Output("kpi-indicada-cap-val", "children"),Output("kpi-indicada-cap-qtd", "children"),
-    Output("kpi-ticket-cf-val", "children"),   Output("kpi-ticket-cf-qtd", "children"),
-    Output("kpi-ticket-cap-val", "children"),  Output("kpi-ticket-cap-qtd", "children"),
     Output("ct-data", "data"),
     Output("cf-store", "data"),
     Output("error-banner", "children"),
@@ -1062,15 +1074,8 @@ def load_data(aba, data_de, data_ate, _n):
             html.I(className="fas fa-triangle-exclamation"),
             f" Erro ao carregar os dados: {e}",
         ])
-        return ("—", "—", "—", "—", "—", "—", "—", "—",
-                *(["—"] * 16),
-                {"vendedores": [], "indicadas": {}, "detalhe": [], "aba": aba or ABA_DEFAULT},
+        return ({"vendedores": [], "indicadas": {}, "detalhe": [], "aba": aba or ABA_DEFAULT},
                 cf_reset, banner)
-
-    k = d["kpis"]
-    total_qtd = _i(k.get("total_qtd"))
-    total_valor = _f(k.get("total_valor"))
-    ticket = (total_valor / total_qtd) if total_qtd else 0.0
 
     vendedores = [{
         "responsavel":    r["responsavel"],
@@ -1108,36 +1113,64 @@ def load_data(aba, data_de, data_ate, _n):
 
     store = {"vendedores": vendedores, "indicadas": indicadas_por_resp,
              "detalhe": detalhe, "aba": aba}
+    return (store, cf_reset, None)
 
-    # ── Breakdown ContaFarma × Capiton por card ──────────────────────────────
-    cf  = k.get("contafarma", {})
-    cap = k.get("capiton", {})
-    def _tk(g):  # ticket médio de um grupo (valor total / qtd total)
-        tq = _i(g.get("total_qtd")); tv = _f(g.get("total_valor"))
-        return (tv / tq) if tq else 0.0
+
+# ── KPIs (Bloco 1): re-derivados de `detalhe` filtrado por contab (cross-filter) ─
+# Clicar em ContaFarma/Capiton nos cards filtra os KPIs por contabilidade; sem
+# filtro, mostram o total da aba/período (idêntico ao get_kpis — validado).
+@callback(
+    Output("kpi-total-valor", "children"),
+    Output("kpi-total-qtd", "children"),
+    Output("kpi-propria-valor", "children"),
+    Output("kpi-propria-qtd", "children"),
+    Output("kpi-indicada-valor", "children"),
+    Output("kpi-indicada-qtd", "children"),
+    Output("kpi-ticket", "children"),
+    Output("kpi-ticket-sub", "children"),
+    # Breakdown ContaFarma × Capiton (4 cards × val/qtd de cada lado)
+    Output("kpi-total-cf-val", "children"),    Output("kpi-total-cf-qtd", "children"),
+    Output("kpi-total-cap-val", "children"),   Output("kpi-total-cap-qtd", "children"),
+    Output("kpi-propria-cf-val", "children"),  Output("kpi-propria-cf-qtd", "children"),
+    Output("kpi-propria-cap-val", "children"), Output("kpi-propria-cap-qtd", "children"),
+    Output("kpi-indicada-cf-val", "children"), Output("kpi-indicada-cf-qtd", "children"),
+    Output("kpi-indicada-cap-val", "children"),Output("kpi-indicada-cap-qtd", "children"),
+    Output("kpi-ticket-cf-val", "children"),   Output("kpi-ticket-cf-qtd", "children"),
+    Output("kpi-ticket-cap-val", "children"),  Output("kpi-ticket-cap-qtd", "children"),
+    Output("kpi-row", "className"),   # marca a contabilidade selecionada (indicador visual)
+    Input("ct-data", "data"),
+    Input("cf-store", "data"),
+)
+def render_kpis(data, cf):
+    cf = cf or dict(CF_EMPTY)
+    detalhe = (data or {}).get("detalhe", [])
+    k = compute_kpis(_filter_detalhe(detalhe, cf, dims=("contab",)))
+    total_qtd = _i(k.get("total_qtd"))
+    ticket = (_f(k.get("total_valor")) / total_qtd) if total_qtd else 0.0
+    cfk = k["contafarma"]; capk = k["capiton"]
+    def _tk(g):
+        tq = _i(g.get("total_qtd"))
+        return (_f(g.get("total_valor")) / tq) if tq else 0.0
     def _neg(n): return f"{fmt_num(n)} neg."
     bd = (
-        # Vendas Total
-        fmt_brl(cf.get("total_valor")),    _neg(cf.get("total_qtd")),
-        fmt_brl(cap.get("total_valor")),   _neg(cap.get("total_qtd")),
-        # Vendas Ativas (própria)
-        fmt_brl(cf.get("propria_valor")),  _neg(cf.get("propria_qtd")),
-        fmt_brl(cap.get("propria_valor")), _neg(cap.get("propria_qtd")),
-        # Vendas Indicadas
-        fmt_brl(cf.get("indicada_valor")), _neg(cf.get("indicada_qtd")),
-        fmt_brl(cap.get("indicada_valor")),_neg(cap.get("indicada_qtd")),
-        # Ticket Médio
-        fmt_brl(_tk(cf)),  _neg(cf.get("total_qtd")),
-        fmt_brl(_tk(cap)), _neg(cap.get("total_qtd")),
+        fmt_brl(cfk["total_valor"]),    _neg(cfk["total_qtd"]),
+        fmt_brl(capk["total_valor"]),   _neg(capk["total_qtd"]),
+        fmt_brl(cfk["propria_valor"]),  _neg(cfk["propria_qtd"]),
+        fmt_brl(capk["propria_valor"]), _neg(capk["propria_qtd"]),
+        fmt_brl(cfk["indicada_valor"]), _neg(cfk["indicada_qtd"]),
+        fmt_brl(capk["indicada_valor"]),_neg(capk["indicada_qtd"]),
+        fmt_brl(_tk(cfk)),  _neg(cfk["total_qtd"]),
+        fmt_brl(_tk(capk)), _neg(capk["total_qtd"]),
     )
-
+    sel = cf.get("contab")
+    row_cls = "rt-kpi-row" + (f" contab-sel-{sel}" if sel in ("contafarma", "capiton") else "")
     return (
-        fmt_brl(total_valor), f"{fmt_num(total_qtd)} negócios",
+        fmt_brl(k.get("total_valor")), f"{fmt_num(total_qtd)} negócios",
         fmt_brl(k.get("propria_valor")), f"{fmt_num(k.get('propria_qtd'))} negócios",
         fmt_brl(k.get("indicada_valor")), f"{fmt_num(k.get('indicada_qtd'))} negócios",
         fmt_brl(ticket), "valor médio por negócio",
         *bd,
-        store, cf_reset, None,
+        row_cls,
     )
 
 
@@ -1172,7 +1205,7 @@ def render_views(data, cf):
     # tipo_contrato + parceiro → o filtro por tipo de contrato reflete na tabela/
     # donut, e a seleção de um parceiro (Dashboard) mostra no donut só os vendedores
     # que atenderam aquele parceiro. O destaque de vendedor/tipo_venda vem do cf.
-    det_vend = _filter_detalhe(detalhe, cf, dims=("tipo_contrato", "parceiro"))
+    det_vend = _filter_detalhe(detalhe, cf, dims=("tipo_contrato", "parceiro", "contab"))
     vend_agg = aggregate_vendedores(det_vend)
 
     aba = data.get("aba") or ABA_DEFAULT
@@ -1223,28 +1256,41 @@ def render_views(data, cf):
 
 # ── Cross-filter: toggles centrais (vendedor e tipo_contrato são exclusivos) ──
 def _cf_toggle(cur, vendedor, tipo):
-    """Aplica filtro por vendedor (+tipo_venda). Sempre ZERA tipo_contrato/parceiro."""
+    """Aplica filtro por vendedor (+tipo_venda). Sempre ZERA tipo_contrato/parceiro/contab."""
     cur = cur or {}
     if cur.get("vendedor") == vendedor and cur.get("tipo_venda") == tipo:
         return dict(CF_EMPTY)
-    return {"vendedor": vendedor, "tipo_venda": tipo, "tipo_contrato": None, "parceiro": None}
+    return {"vendedor": vendedor, "tipo_venda": tipo, "tipo_contrato": None,
+            "parceiro": None, "contab": None}
 
 
 def _cf_toggle_tipo(cur, tipo_contrato):
-    """Aplica filtro por tipo de contrato. Sempre ZERA vendedor/tipo_venda/parceiro."""
+    """Aplica filtro por tipo de contrato. Sempre ZERA vendedor/tipo_venda/parceiro/contab."""
     cur = cur or {}
     if cur.get("tipo_contrato") == tipo_contrato:
         return dict(CF_EMPTY)
-    return {"vendedor": None, "tipo_venda": None, "tipo_contrato": tipo_contrato, "parceiro": None}
+    return {"vendedor": None, "tipo_venda": None, "tipo_contrato": tipo_contrato,
+            "parceiro": None, "contab": None}
 
 
 def _cf_toggle_parceiro(cur, parceiro):
     """Aplica filtro por parceiro (card Parceiros Indicadores). Mutuamente exclusivo
-    com vendedor/tipo_venda/tipo_contrato (zera todos)."""
+    com vendedor/tipo_venda/tipo_contrato/contab (zera todos)."""
     cur = cur or {}
     if cur.get("parceiro") == parceiro:
         return dict(CF_EMPTY)
-    return {"vendedor": None, "tipo_venda": None, "tipo_contrato": None, "parceiro": parceiro}
+    return {"vendedor": None, "tipo_venda": None, "tipo_contrato": None,
+            "parceiro": parceiro, "contab": None}
+
+
+def _cf_toggle_contab(cur, grupo):
+    """Aplica filtro por contabilidade (blocos ContaFarma/Capiton dos cards KPI).
+    grupo ∈ {'contafarma','capiton'}. Mutuamente exclusivo com os demais (zera todos)."""
+    cur = cur or {}
+    if cur.get("contab") == grupo:
+        return dict(CF_EMPTY)
+    return {"vendedor": None, "tipo_venda": None, "tipo_contrato": None,
+            "parceiro": None, "contab": grupo}
 
 
 # A. Clique no donut (anel interno → vendedor; anel externo → vendedor + tipo).
@@ -1334,6 +1380,20 @@ def cf_from_tipo(_n, cur):
     if not ctx.triggered or not ctx.triggered[0]["value"]:
         return no_update
     return _cf_toggle_tipo(cur, _dec(ctx.triggered_id["index"]))
+
+
+# D2. Clique num bloco ContaFarma/Capiton dos cards KPI → contab.
+@callback(
+    Output("cf-store", "data", allow_duplicate=True),
+    Input({"type": "ct-kpi-contab", "index": ALL}, "n_clicks"),
+    State("cf-store", "data"),
+    prevent_initial_call=True,
+)
+def cf_from_kpi_contab(_n, cur):
+    if not ctx.triggered or not ctx.triggered[0]["value"]:
+        return no_update
+    grupo = ctx.triggered_id["index"].split(":")[0]   # 'contafarma' | 'capiton'
+    return _cf_toggle_contab(cur, grupo)
 
 
 # E. Clique numa barra de "Parceiros Indicadores" (Dashboard) → parceiro.

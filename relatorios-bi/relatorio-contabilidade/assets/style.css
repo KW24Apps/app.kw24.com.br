@@ -330,6 +330,19 @@ body {
 .rt-kpi-half-cf  .rt-kpi-half-label, .rt-kpi-half-cf  .rt-kpi-half-qtd { color: var(--contafarma); }
 .rt-kpi-half-cap .rt-kpi-half-label, .rt-kpi-half-cap .rt-kpi-half-qtd { color: var(--capiton); }
 
+/* Blocos ContaFarma/Capiton clicáveis → cross-filter por contabilidade */
+.rt-kpi-half-click { cursor: pointer; border-radius: 6px; transition: background 0.12s, box-shadow 0.12s; }
+.rt-kpi-half-click:hover { background: rgba(148, 163, 184, 0.10); }
+/* indicador discreto de selecionado: fundo levemente tingido + anel fino na cor */
+.contab-sel-contafarma .rt-kpi-half-cf {
+    background: color-mix(in srgb, var(--contafarma) 12%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--contafarma) 55%, transparent);
+}
+.contab-sel-capiton .rt-kpi-half-cap {
+    background: color-mix(in srgb, var(--capiton) 12%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--capiton) 55%, transparent);
+}
+
 /* Erro */
 .rt-error {
     background: #fef2f2;
