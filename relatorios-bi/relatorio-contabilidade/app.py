@@ -524,7 +524,7 @@ def build_parceiros_chart(detalhe, cf):
 
     raw_names = [k for k, _ in items]              # nome cru → customdata (cross-filter)
     disp_names = [_title_parceiro(k) for k in raw_names]  # Title Case → rótulo do eixo Y
-    vals  = [a["qtd"] for _, a in items]
+    vals  = [a["valor"] for _, a in items]         # eixo X: comprimento da barra ∝ valor R$
     # "qtd · % · R$" ao lado da barra
     texts = [f"{a['qtd']} · {a['qtd'] / total * 100:.0f}% · {fmt_brl(a['valor'])}" for _, a in items]
 
@@ -542,7 +542,8 @@ def build_parceiros_chart(detalhe, cf):
         # font-family "Inter, system-ui, sans-serif" · 11px · 700 · rgb(100,116,139).
         # A família COMPLETA (com fallback) evita o Plotly cair no serif no SVG.
         textfont=dict(size=11, color="#64748b", family="Inter, system-ui, sans-serif", weight=700),
-        hovertemplate="%{y}<br>%{x} negócios<extra></extra>",
+        # hover reusa o rótulo "qtd · % · R$" (x agora é o valor, não a quantidade)
+        hovertext=texts, hovertemplate="%{y}<br>%{hovertext}<extra></extra>",
     ))
     fig.update_layout(
         margin=dict(t=6, b=6, l=8, r=150),   # espaço à direita p/ o texto "qtd · % · R$"
@@ -551,7 +552,7 @@ def build_parceiros_chart(detalhe, cf):
         xaxis=dict(visible=False, range=[0, (max(vals) or 1) * 1.04]),
         # Valores computados REAIS de .ct-leg-name (nome do vendedor na legenda):
         # font-family "Inter, sans-serif" · 12px · 600 · rgb(31,41,55).
-        yaxis=dict(autorange="reversed",  # maior quantidade no topo
+        yaxis=dict(autorange="reversed",  # maior valor no topo
                    tickfont=dict(size=12, color="#1f2937", family="Inter, sans-serif", weight=600)),
     )
     return fig
