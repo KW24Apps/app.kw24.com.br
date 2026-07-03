@@ -7,18 +7,40 @@ if (!defined('SYSTEM_ACCESS') && !isset($user_data)) {
 require_once __DIR__ . '/../helpers/Database.php';
 
 try {
-    $db    = Database::getInstance();
-    $busca = trim($_GET['busca'] ?? '');
+    $db     = Database::getInstance();
+    $busca  = trim($_GET['busca'] ?? '');
+    $perfil = $user_data['perfil'] ?? '';
+    $uid    = $user_data['id'] ?? 0;
+
+    $where  = [];
+    $params = [];
 
     if ($busca) {
-        $users = $db->fetchAll(
-            "SELECT id, nome, username, email, perfil, ativo, ultimo_acesso FROM usuarios
-             WHERE nome ILIKE :b OR username ILIKE :b OR email ILIKE :b ORDER BY nome ASC",
-            ['b' => "%{$busca}%"]
-        );
-    } else {
-        $users = $db->fetchAll("SELECT id, nome, username, email, perfil, ativo, ultimo_acesso FROM usuarios ORDER BY nome ASC");
+        $where[]     = '(nome ILIKE :b OR username ILIKE :b OR email ILIKE :b)';
+        $params['b'] = "%{$busca}%";
     }
+
+    // Admin Interno vê todos os usuários. Usuário Cliente vê só a si mesmo.
+    // Admin Cliente vê os usuários que compartilham ao menos uma empresa com ele
+    // (via cliente_usuarios) — inclui ele mesmo, já que compartilha empresa consigo.
+    if ($perfil === 'usuario_cliente') {
+        $where[]       = 'id = :uid';
+        $params['uid'] = $uid;
+    } elseif ($perfil !== 'admin_interno') {
+        $where[]       = 'id IN (
+            SELECT DISTINCT cu2.usuario_id
+              FROM cliente_usuarios cu1
+              JOIN cliente_usuarios cu2 ON cu2.cliente_id = cu1.cliente_id
+             WHERE cu1.usuario_id = :uid
+        )';
+        $params['uid'] = $uid;
+    }
+
+    $sql = 'SELECT id, nome, username, email, perfil, ativo, ultimo_acesso FROM usuarios';
+    if ($where) $sql .= ' WHERE ' . implode(' AND ', $where);
+    $sql .= ' ORDER BY nome ASC';
+
+    $users = $db->fetchAll($sql, $params);
     $total = count($users);
 
 } catch (Exception $e) {

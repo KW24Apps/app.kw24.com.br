@@ -10,20 +10,31 @@ if (!defined('SYSTEM_ACCESS') && !isset($user_data)) {
 require_once __DIR__ . '/../helpers/Database.php';
 
 try {
-    $db    = Database::getInstance();
-    $busca = trim($_GET['busca'] ?? '');
+    $db     = Database::getInstance();
+    $busca  = trim($_GET['busca'] ?? '');
+    $perfil = $user_data['perfil'] ?? '';
+
+    $where  = [];
+    $params = [];
 
     if ($busca) {
-        $clientes = $db->fetchAll(
-            "SELECT id, nome, cnpj, telefone, email FROM clientes
-             WHERE nome ILIKE :b OR cnpj ILIKE :b OR email ILIKE :b
-             ORDER BY nome ASC",
-            ['b' => "%{$busca}%"]
-        );
-    } else {
-        $clientes = $db->fetchAll("SELECT id, nome, cnpj, telefone, email FROM clientes ORDER BY nome ASC");
+        $where[]     = '(nome ILIKE :b OR cnpj ILIKE :b OR email ILIKE :b)';
+        $params['b'] = "%{$busca}%";
     }
-    $total = count($clientes);
+
+    // Admin Interno vê todos os clientes. Admin Cliente e Usuário Cliente só veem
+    // os clientes vinculados a eles via cliente_usuarios.
+    if ($perfil !== 'admin_interno') {
+        $where[]       = 'id IN (SELECT cliente_id FROM cliente_usuarios WHERE usuario_id = :uid)';
+        $params['uid'] = $user_data['id'] ?? 0;
+    }
+
+    $sql = 'SELECT id, nome, cnpj, telefone, email FROM clientes';
+    if ($where) $sql .= ' WHERE ' . implode(' AND ', $where);
+    $sql .= ' ORDER BY nome ASC';
+
+    $clientes = $db->fetchAll($sql, $params);
+    $total    = count($clientes);
 
 } catch (Exception $e) {
     echo '<div style="color:#e53e3e;padding:2rem">Erro ao carregar clientes: ' . htmlspecialchars($e->getMessage()) . '</div>';
