@@ -659,12 +659,13 @@ def aggregate_vendedores(detalhe):
     return rows
 
 
-def build_detalhamento_data(detalhe, cf):
+def build_detalhamento_data(detalhe, cf, aba=None):
+    em_negociacao = (aba == "negociacao")
     rows = []
     for d in _filter_detalhe(detalhe, cf):
         bid = d.get("bitrix_id")
         link = d.get("link_deal")
-        rows.append({
+        row = {
             "id": f"[{bid}]({link})" if (bid is not None and link) else (str(bid) if bid is not None else "—"),
             "cliente": d.get("cliente") or "—",
             "contabilidade": CONTAB_LABEL.get(d.get("contab_grupo"), "—"),
@@ -673,7 +674,13 @@ def build_detalhamento_data(detalhe, cf):
             "etapa": d.get("etapa") or "—",
             "tipo_de_contrato": d.get("tipo_de_contrato") or "—",
             "valor": fmt_brl(d.get("valor")),
-        })
+        }
+        if em_negociacao:
+            # dias em negociação: TODAY - criado_em (calculado no SQL). None → "—".
+            dias = d.get("dias_negociacao")
+            row["em_negociacao"] = f"{dias} dias" if dias is not None else "—"
+            row["em_negociacao_dias"] = dias if dias is not None else -1  # sentinela p/ filter_query
+        rows.append(row)
     return rows
 
 
@@ -908,7 +915,8 @@ def load_data(aba, data_de, data_ate, _n):
         ])
         return ("—", "—", "—", "—", "—", "—", "—", "—",
                 *(["—"] * 16),
-                {"vendedores": [], "indicadas": {}, "detalhe": []}, cf_reset, banner)
+                {"vendedores": [], "indicadas": {}, "detalhe": [], "aba": aba or ABA_DEFAULT},
+                cf_reset, banner)
 
     k = d["kpis"]
     total_qtd = _i(k.get("total_qtd"))
@@ -944,10 +952,12 @@ def load_data(aba, data_de, data_ate, _n):
         "etapa":            r.get("etapa"),
         "tipo_de_contrato": r.get("tipo_de_contrato"),
         "contab_grupo":     r.get("contab_grupo"),  # 'contafarma' | 'capiton' | 'outro'
+        "dias_negociacao":  r.get("dias_negociacao"),  # dias desde criado_em (aba Em Negociação)
         "valor":            _f(r.get("valor")),
     } for r in d["detalhe"]]
 
-    store = {"vendedores": vendedores, "indicadas": indicadas_por_resp, "detalhe": detalhe}
+    store = {"vendedores": vendedores, "indicadas": indicadas_por_resp,
+             "detalhe": detalhe, "aba": aba or ABA_DEFAULT}
 
     # ── Breakdown ContaFarma × Capiton por card ──────────────────────────────
     cf  = k.get("contafarma", {})
@@ -986,6 +996,8 @@ def load_data(aba, data_de, data_ate, _n):
     Output("ct-vendedores", "children"),
     Output("ct-contratos", "children"),
     Output("tbl-detalhamento", "data"),
+    Output("tbl-detalhamento", "columns"),
+    Output("tbl-detalhamento", "style_data_conditional"),
     Output("ct-donut", "figure"),
     Output("ct-donut-legend", "children"),
     Output("ct-donut2", "figure"),
@@ -1006,9 +1018,26 @@ def render_views(data, cf):
     det_vend = _filter_detalhe(detalhe, cf, dims=("tipo_contrato",))
     vend_agg = aggregate_vendedores(det_vend)
 
+    aba = data.get("aba") or ABA_DEFAULT
     vend_tbl = build_vendedores_table(vend_agg, cf)
     contr_tbl = build_contratos_table(detalhe, cf)
-    det_data = build_detalhamento_data(detalhe, cf)
+    det_data = build_detalhamento_data(detalhe, cf, aba)
+
+    # Detalhamento: só na aba "Em Negociação" acrescenta a coluna "Em Negociação"
+    # (dias desde criado_em), inserida antes de "Valor"; linha inteira vermelha se
+    # dias >= 10 (mesmo padrão visual do NimbusTax "Em Proposta").
+    det_cols = DETALHE_COLS
+    det_style = []
+    if aba == "negociacao":
+        ins = next(i for i, c in enumerate(DETALHE_COLS) if c["id"] == "valor")
+        det_cols = (DETALHE_COLS[:ins]
+                    + [{"name": "Em Negociação", "id": "em_negociacao"}]
+                    + DETALHE_COLS[ins:])
+        det_style = [
+            {"if": {"filter_query": "{em_negociacao_dias} >= 10"},
+             "backgroundColor": "#fee2e2", "color": "#991b1b"},
+        ]
+
     donut = build_donut(vend_agg, cf)
     legend = build_donut_legend(vend_agg, cf)
     team_donut = build_team_donut(detalhe, cf)
@@ -1025,7 +1054,7 @@ def render_views(data, cf):
         txt = ""
         chip_style = {"display": "none"}
 
-    return (vend_tbl, contr_tbl, det_data, donut, legend,
+    return (vend_tbl, contr_tbl, det_data, det_cols, det_style, donut, legend,
             team_donut, team_legend, txt, chip_style)
 
 
