@@ -615,6 +615,24 @@ body {
     .ct-two-col { grid-template-columns: 1fr; }
 }
 
+/* ── Dashboard: dois cards 50/50 (Distribuição por Vendedor · Parceiros) ───── */
+.ct-dash-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--section-gap);
+    align-items: stretch;   /* os dois cards com a MESMA altura */
+}
+.ct-dash-grid .rt-card { height: 100%; min-height: 540px; display: flex; flex-direction: column; }
+.ct-dash-grid .rt-card-body { flex: 1 1 auto; display: flex; align-items: center; }
+@media (max-width: 1000px) {
+    .ct-dash-grid { grid-template-columns: 1fr; }
+}
+/* Donut da Equipe, quando sozinho na view do relatório, ocupa a largura toda
+   e centraliza o conteúdo (círculo + legenda). */
+.ct-team-solo { min-height: 380px; }
+/* display:flex vinha do wrapper .ct-donut-row (removido); recompõe aqui p/ centrar */
+.ct-team-solo .ct-team-body { display: flex; align-items: center; justify-content: center; }
+
 /* ── Linha dos dois donuts (Equipe ~34% · por vendedor ~66%) ──────────────── */
 .ct-donut-row {
     display: grid;

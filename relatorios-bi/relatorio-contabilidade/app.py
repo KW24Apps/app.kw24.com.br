@@ -85,15 +85,21 @@ def _i(v):
 
 
 # ── Abas + terminologia ───────────────────────────────────────────────────────
-ABAS = [("fechadas", "Vendas Fechadas"), ("negociacao", "Em Negociação")]
-ABA_DEFAULT = "fechadas"
+ABAS = [("dashboard", "Dashboard"), ("fechadas", "Vendas Fechadas"), ("negociacao", "Em Negociação")]
+ABA_DEFAULT = "dashboard"
+# Aba "Dashboard" não tem dataset próprio: reaproveita o de Vendas Fechadas.
+ABA_DATASET = {"dashboard": "fechadas"}
+# Parceiros a EXCLUIR do card "Parceiros Indicadores" (são vendas próprias, não
+# indicadores externos). Comparação em UPPER(TRIM(...)).
+PARCEIROS_EXCLUIR = {"FF CONTABILIDADE LTDA", "CONTAFARMA CONTABILIDADE S/S",
+                     "CAPITON CONTABILIDADE S/S"}
 TIPO_VENDA_LABEL = {"interno": "Ativo", "indicado": "Indicado"}
 # Rótulo da contabilidade (coluna Contabilidade no Detalhamento) — a partir de contab_grupo
 CONTAB_LABEL = {"contafarma": "ContaFarma", "capiton": "Capiton"}
 
-# Cross-filter vazio (3 dimensões). vendedor/tipo_venda e tipo_contrato são
-# mutuamente exclusivos (ativar um zera o outro) — ver _cf_toggle / _cf_toggle_tipo.
-CF_EMPTY = {"vendedor": None, "tipo_venda": None, "tipo_contrato": None}
+# Cross-filter vazio (4 dimensões). vendedor/tipo_venda, tipo_contrato e parceiro
+# são mutuamente exclusivos (ativar um zera os outros) — ver _cf_toggle*.
+CF_EMPTY = {"vendedor": None, "tipo_venda": None, "tipo_contrato": None, "parceiro": None}
 
 
 def mes_atual_range():
@@ -470,6 +476,55 @@ def build_team_legend(detalhe, cf):
     return [item("Ativo", COR_INTERNO, interno), item("Indicado", COR_INDICADO, indicado)]
 
 
+# ── Card "Parceiros Indicadores" (Dashboard) — barras horizontais clicáveis ──
+def build_parceiros_chart(detalhe, cf):
+    """Conta negócios por parceiro_indicacao (exclui vendas próprias e vazios),
+    barras horizontais ordenadas do maior p/ o menor. Cada barra: nome (eixo Y) +
+    qtd + % do total indicado. Cor #f6ad55 (COR_INDICADO). Clique numa barra →
+    cross-filter por parceiro. Filtra por vendedor/tipo_venda/tipo_contrato (não por
+    parceiro, que é a própria fonte) → seleção de vendedor mostra só os parceiros
+    daquele vendedor."""
+    det = _filter_detalhe(detalhe, cf, dims=("vendedor", "tipo_venda", "tipo_contrato"))
+    counts = {}
+    for d in det:
+        p = (d.get("parceiro") or "").strip()
+        if not p or p.upper() in PARCEIROS_EXCLUIR:
+            continue
+        counts[p] = counts.get(p, 0) + 1
+    if not counts:
+        return empty_fig("Sem parceiros indicadores no período")
+    items = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    total = sum(counts.values()) or 1
+    sel = (cf or {}).get("parceiro")
+
+    names = [k for k, _ in items]
+    vals  = [v for _, v in items]
+    texts = [f"{v}  ·  {v / total * 100:.0f}%" for v in vals]
+
+    def barcol(name):
+        if not sel:
+            return COR_INDICADO
+        return COR_INDICADO if name == sel else _hex_to_rgba(COR_INDICADO, 0.28)
+
+    fig = go.Figure(go.Bar(
+        x=vals, y=names, orientation="h",
+        marker=dict(color=[barcol(n) for n in names], line=dict(color="#ffffff", width=1)),
+        customdata=[[n] for n in names],
+        text=texts, textposition="outside", cliponaxis=False,
+        textfont=dict(size=11, color="#475569", family="Inter"),
+        hovertemplate="%{y}<br>%{x} negócios<extra></extra>",
+    ))
+    fig.update_layout(
+        margin=dict(t=6, b=6, l=8, r=44),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        showlegend=False, bargap=0.35,
+        xaxis=dict(visible=False, range=[0, (max(vals) or 1) * 1.20]),
+        yaxis=dict(autorange="reversed",  # maior quantidade no topo
+                   tickfont=dict(size=12, color="#334155", family="Inter")),
+    )
+    return fig
+
+
 # ── Tabela por vendedor (Bloco 2 esquerda) — HTML clicável (sem expansão) ────
 def build_vendedores_table(vendedores, cf):
     """Tabela do Bloco 2. Mostra TODOS os vendedores; a linha do vendedor do
@@ -596,7 +651,7 @@ DETALHE_STYLE_CELL_COND = [
 ]
 
 
-def _filter_detalhe(detalhe, cf, dims=("vendedor", "tipo_venda", "tipo_contrato")):
+def _filter_detalhe(detalhe, cf, dims=("vendedor", "tipo_venda", "tipo_contrato", "parceiro")):
     """Filtra `detalhe` pelas dimensões do cross-filter pedidas em `dims`.
     Cada componente aplica só as dimensões que NÃO são a sua própria fonte:
       - Detalhamento / donut equipe → todas as dimensões.
@@ -607,6 +662,7 @@ def _filter_detalhe(detalhe, cf, dims=("vendedor", "tipo_venda", "tipo_contrato"
     v = cf.get("vendedor") if "vendedor" in dims else None
     t = cf.get("tipo_venda") if "tipo_venda" in dims else None
     tc = cf.get("tipo_contrato") if "tipo_contrato" in dims else None
+    pa = cf.get("parceiro") if "parceiro" in dims else None
     out = []
     for d in detalhe or []:
         if v and d.get("vendedor") != v:
@@ -614,6 +670,8 @@ def _filter_detalhe(detalhe, cf, dims=("vendedor", "tipo_venda", "tipo_contrato"
         if t and d.get("tipo_venda") != t:
             continue
         if tc and d.get("tipo_de_contrato") != tc:
+            continue
+        if pa and d.get("parceiro") != pa:
             continue
         out.append(d)
     return out
@@ -718,39 +776,50 @@ app.layout = html.Div(className="rt-app", children=[
 
     html.Div(id="error-banner"),
 
-    # ── Bloco 1: KPIs (largura cheia, 4 colunas iguais) ──────────────────────
-    kpi_row(),
-
-    # ── Linha dos donuts: EQUIPE (esq.) + por vendedor (dir.) ────────────────
-    html.Div(className="ct-donut-row", children=[
-        # Donut 1 — por vendedor (filtra)
-        html.Div(className="rt-card ct-donut-card", children=[
-            html.Div(className="rt-card-head", children=[
-                html.I(className="fas fa-chart-pie"),
-                html.Span("Distribuição por Vendedor (Ativo × Indicado)"),
-                html.Div(id="cf-chip-wrap", className="ct-chip-wrap", style={"display": "none"}, children=[
-                    html.I(className="fas fa-filter"),
-                    html.Span(id="cf-chip-text", className="ct-chip-text"),
-                    html.Button("×", id="cf-chip-clear", className="ct-chip-x", title="Limpar filtro"),
+    # ══ Aba DASHBOARD — donut de vendedores (movido) + Parceiros Indicadores ══
+    html.Div(id="ct-dashboard-view", children=[
+        html.Div(className="ct-dash-grid", children=[
+            # Card esquerdo — Distribuição por Vendedor (donut clicável; filtra)
+            html.Div(className="rt-card ct-donut-card", children=[
+                html.Div(className="rt-card-head", children=[
+                    html.I(className="fas fa-chart-pie"),
+                    html.Span("Distribuição por Vendedor (Ativo × Indicado)"),
+                    html.Div(id="cf-chip-wrap", className="ct-chip-wrap", style={"display": "none"}, children=[
+                        html.I(className="fas fa-filter"),
+                        html.Span(id="cf-chip-text", className="ct-chip-text"),
+                        html.Button("×", id="cf-chip-clear", className="ct-chip-x", title="Limpar filtro"),
+                    ]),
+                ]),
+                html.Div(className="rt-card-body", children=[
+                    # Duas metades 50/50: esquerda = donut centrado; direita = legenda.
+                    html.Div(className="ct-donut", children=[
+                        html.Div(className="ct-donut-left", children=[
+                            html.Div(className="ct-donut-circle", children=dcc.Graph(
+                                id="ct-donut", figure=empty_fig("Carregando…"),
+                                config={"displayModeBar": False},
+                                style={"height": "360px", "width": "360px"})),
+                        ]),
+                        html.Div(className="ct-donut-right", children=[
+                            html.Div(id="ct-donut-legend", className="ct-donut-legend"),
+                        ]),
+                    ]),
                 ]),
             ]),
-            html.Div(className="rt-card-body", children=[
-                # Duas metades 50/50: esquerda = donut centrado; direita = legenda.
-                html.Div(className="ct-donut", children=[
-                    html.Div(className="ct-donut-left", children=[
-                        html.Div(className="ct-donut-circle", children=dcc.Graph(
-                            id="ct-donut", figure=empty_fig("Carregando…"),
-                            config={"displayModeBar": False},
-                            style={"height": "360px", "width": "360px"})),
-                    ]),
-                    html.Div(className="ct-donut-right", children=[
-                        html.Div(id="ct-donut-legend", className="ct-donut-legend"),
-                    ]),
-                ]),
+            # Card direito — Parceiros Indicadores (barras horizontais; filtra)
+            card("Parceiros Indicadores", icon="fa-handshake", extra_class="ct-col-parc", children=[
+                dcc.Graph(id="ct-parceiros", figure=empty_fig("Carregando…"),
+                          config={"displayModeBar": False}, style={"height": "440px"}),
             ]),
         ]),
-        # Donut 2 — EQUIPE (informativo, não filtra)
-        html.Div(className="rt-card ct-team-card", children=[
+    ]),
+
+    # ══ Abas VENDAS FECHADAS / EM NEGOCIAÇÃO — relatório completo ══
+    html.Div(id="ct-report-view", style={"display": "none"}, children=[
+        # ── Bloco 1: KPIs (largura cheia, 4 colunas iguais) ──────────────────
+        kpi_row(),
+
+        # ── Donut da EQUIPE (informativo, não filtra) — largura cheia ─────────
+        html.Div(className="rt-card ct-team-card ct-team-solo", children=[
             html.Div(className="rt-card-head", children=[
                 html.I(className="fas fa-users"),
                 html.Span("Equipe — Ativo × Indicado"),
@@ -763,38 +832,38 @@ app.layout = html.Div(className="rt-app", children=[
                 html.Div(id="ct-donut2-legend", className="ct-teamleg"),
             ]),
         ]),
-    ]),
 
-    # ── Bloco 2: duas tabelas lado a lado ────────────────────────────────────
-    html.Div(className="ct-two-col", children=[
-        card("Negócios por Vendedor", icon="fa-user-tie", extra_class="ct-col-vend", children=[
-            html.Div(id="ct-vendedores"),
+        # ── Bloco 2: duas tabelas lado a lado ────────────────────────────────
+        html.Div(className="ct-two-col", children=[
+            card("Negócios por Vendedor", icon="fa-user-tie", extra_class="ct-col-vend", children=[
+                html.Div(id="ct-vendedores"),
+            ]),
+            card("Negócios por Tipo de Contrato", icon="fa-file-signature", extra_class="ct-col-contrato", children=[
+                html.Div(id="ct-contratos"),
+            ]),
         ]),
-        card("Negócios por Tipo de Contrato", icon="fa-file-signature", extra_class="ct-col-contrato", children=[
-            html.Div(id="ct-contratos"),
-        ]),
-    ]),
 
-    # ── Bloco 3: Detalhamento (full width) ───────────────────────────────────
-    card("Detalhamento", icon="fa-table-list", extra_class="rt-col-full", children=[
-        dash_table.DataTable(
-            id="tbl-detalhamento",
-            columns=DETALHE_COLS,
-            data=[],
-            markdown_options={"link_target": "_blank"},
-            cell_selectable=False,
-            page_size=25,
-            sort_action="native",
-            style_as_list_view=True,
-            style_table={"overflowX": "auto"},
-            style_cell={"fontFamily": "Inter, sans-serif", "fontSize": "12.5px",
-                        "padding": "8px 10px", "border": "none", "textAlign": "left"},
-            style_header={"backgroundColor": "#f8fafc", "fontWeight": "600",
-                          "color": "#475569", "textTransform": "uppercase",
-                          "fontSize": "10.5px", "letterSpacing": "0.04em"},
-            style_data={"borderBottom": "1px solid #f1f5f9"},
-            style_cell_conditional=DETALHE_STYLE_CELL_COND,
-        ),
+        # ── Bloco 3: Detalhamento (full width) ───────────────────────────────
+        card("Detalhamento", icon="fa-table-list", extra_class="rt-col-full", children=[
+            dash_table.DataTable(
+                id="tbl-detalhamento",
+                columns=DETALHE_COLS,
+                data=[],
+                markdown_options={"link_target": "_blank"},
+                cell_selectable=False,
+                page_size=25,
+                sort_action="native",
+                style_as_list_view=True,
+                style_table={"overflowX": "auto"},
+                style_cell={"fontFamily": "Inter, sans-serif", "fontSize": "12.5px",
+                            "padding": "8px 10px", "border": "none", "textAlign": "left"},
+                style_header={"backgroundColor": "#f8fafc", "fontWeight": "600",
+                              "color": "#475569", "textTransform": "uppercase",
+                              "fontSize": "10.5px", "letterSpacing": "0.04em"},
+                style_data={"borderBottom": "1px solid #f1f5f9"},
+                style_cell_conditional=DETALHE_STYLE_CELL_COND,
+            ),
+        ]),
     ]),
 ])
 
@@ -819,6 +888,18 @@ def switch_tab(_n, atual):
 )
 def highlight_tab(aba):
     return ["rt-tab" + (" rt-tab-active" if chave == aba else "") for chave, _ in ABAS]
+
+
+# Mostra a view do Dashboard OU a do relatório completo conforme a aba ativa.
+@callback(
+    Output("ct-dashboard-view", "style"),
+    Output("ct-report-view", "style"),
+    Input("ct-aba", "data"),
+)
+def toggle_views(aba):
+    if (aba or ABA_DEFAULT) == "dashboard":
+        return {"display": "block"}, {"display": "none"}
+    return {"display": "none"}, {"display": "block"}
 
 
 # ── Filtro de data: abrir/fechar painel, mostrar "Limpar", limpar ────────────
@@ -903,8 +984,11 @@ def load_data(aba, data_de, data_ate, _n):
     contab_list    = [v.strip() for v in ct_contab.split(",")    if v.strip()] if ct_contab    else []
 
     cf_reset = dict(CF_EMPTY)
+    # A aba "Dashboard" reaproveita o dataset de Vendas Fechadas (ver ABA_DATASET).
+    aba = aba or ABA_DEFAULT
+    aba_dados = ABA_DATASET.get(aba, aba)
     try:
-        d = queries.get_aba(aba or ABA_DEFAULT, data_de=dd, data_ate=da,
+        d = queries.get_aba(aba_dados, data_de=dd, data_ate=da,
                             ct_completo=ct_completo,
                             ct_indicador=indicador_list,
                             ct_contab=contab_list)
@@ -952,12 +1036,13 @@ def load_data(aba, data_de, data_ate, _n):
         "etapa":            r.get("etapa"),
         "tipo_de_contrato": r.get("tipo_de_contrato"),
         "contab_grupo":     r.get("contab_grupo"),  # 'contafarma' | 'capiton' | 'outro'
+        "parceiro":         r.get("parceiro_indicacao"),  # parceiro indicador (card Dashboard); None se próprio/vazio
         "dias_negociacao":  r.get("dias_negociacao"),  # dias desde criado_em (aba Em Negociação)
         "valor":            _f(r.get("valor")),
     } for r in d["detalhe"]]
 
     store = {"vendedores": vendedores, "indicadas": indicadas_por_resp,
-             "detalhe": detalhe, "aba": aba or ABA_DEFAULT}
+             "detalhe": detalhe, "aba": aba}
 
     # ── Breakdown ContaFarma × Capiton por card ──────────────────────────────
     cf  = k.get("contafarma", {})
@@ -1002,6 +1087,7 @@ def load_data(aba, data_de, data_ate, _n):
     Output("ct-donut-legend", "children"),
     Output("ct-donut2", "figure"),
     Output("ct-donut2-legend", "children"),
+    Output("ct-parceiros", "figure"),
     Output("cf-chip-text", "children"),
     Output("cf-chip-wrap", "style"),
     Input("ct-data", "data"),
@@ -1012,10 +1098,11 @@ def render_views(data, cf):
     cf = cf or dict(CF_EMPTY)
     detalhe = data.get("detalhe", [])
 
-    # Vendedores (tabela + donut) re-derivados de `detalhe` filtrado SÓ por
-    # tipo_contrato → assim o filtro por tipo de contrato reflete na tabela e no
-    # donut; o destaque de vendedor/tipo_venda vem do próprio cf (highlight/pull).
-    det_vend = _filter_detalhe(detalhe, cf, dims=("tipo_contrato",))
+    # Vendedores (tabela + donut) re-derivados de `detalhe` filtrado por
+    # tipo_contrato + parceiro → o filtro por tipo de contrato reflete na tabela/
+    # donut, e a seleção de um parceiro (Dashboard) mostra no donut só os vendedores
+    # que atenderam aquele parceiro. O destaque de vendedor/tipo_venda vem do cf.
+    det_vend = _filter_detalhe(detalhe, cf, dims=("tipo_contrato", "parceiro"))
     vend_agg = aggregate_vendedores(det_vend)
 
     aba = data.get("aba") or ABA_DEFAULT
@@ -1042,10 +1129,14 @@ def render_views(data, cf):
     legend = build_donut_legend(vend_agg, cf)
     team_donut = build_team_donut(detalhe, cf)
     team_legend = build_team_legend(detalhe, cf)
+    parceiros = build_parceiros_chart(detalhe, cf)
 
     if cf.get("vendedor"):
         tip = cf.get("tipo_venda")
         txt = f" {cf['vendedor']}" + (f" · {TIPO_VENDA_LABEL.get(tip, '')}" if tip else "")
+        chip_style = {"display": "inline-flex"}
+    elif cf.get("parceiro"):
+        txt = f" {cf['parceiro']}"
         chip_style = {"display": "inline-flex"}
     elif cf.get("tipo_contrato"):
         txt = f" {cf['tipo_contrato']}"
@@ -1055,24 +1146,33 @@ def render_views(data, cf):
         chip_style = {"display": "none"}
 
     return (vend_tbl, contr_tbl, det_data, det_cols, det_style, donut, legend,
-            team_donut, team_legend, txt, chip_style)
+            team_donut, team_legend, parceiros, txt, chip_style)
 
 
 # ── Cross-filter: toggles centrais (vendedor e tipo_contrato são exclusivos) ──
 def _cf_toggle(cur, vendedor, tipo):
-    """Aplica filtro por vendedor (+tipo_venda). Sempre ZERA tipo_contrato."""
+    """Aplica filtro por vendedor (+tipo_venda). Sempre ZERA tipo_contrato/parceiro."""
     cur = cur or {}
     if cur.get("vendedor") == vendedor and cur.get("tipo_venda") == tipo:
         return dict(CF_EMPTY)
-    return {"vendedor": vendedor, "tipo_venda": tipo, "tipo_contrato": None}
+    return {"vendedor": vendedor, "tipo_venda": tipo, "tipo_contrato": None, "parceiro": None}
 
 
 def _cf_toggle_tipo(cur, tipo_contrato):
-    """Aplica filtro por tipo de contrato. Sempre ZERA vendedor/tipo_venda."""
+    """Aplica filtro por tipo de contrato. Sempre ZERA vendedor/tipo_venda/parceiro."""
     cur = cur or {}
     if cur.get("tipo_contrato") == tipo_contrato:
         return dict(CF_EMPTY)
-    return {"vendedor": None, "tipo_venda": None, "tipo_contrato": tipo_contrato}
+    return {"vendedor": None, "tipo_venda": None, "tipo_contrato": tipo_contrato, "parceiro": None}
+
+
+def _cf_toggle_parceiro(cur, parceiro):
+    """Aplica filtro por parceiro (card Parceiros Indicadores). Mutuamente exclusivo
+    com vendedor/tipo_venda/tipo_contrato (zera todos)."""
+    cur = cur or {}
+    if cur.get("parceiro") == parceiro:
+        return dict(CF_EMPTY)
+    return {"vendedor": None, "tipo_venda": None, "tipo_contrato": None, "parceiro": parceiro}
 
 
 # A. Clique no donut (anel interno → vendedor; anel externo → vendedor + tipo).
@@ -1133,7 +1233,26 @@ def cf_from_tipo(_n, cur):
     return _cf_toggle_tipo(cur, _dec(ctx.triggered_id["index"]))
 
 
-# E. Limpar filtro pelo "×" do chip.
+# E. Clique numa barra de "Parceiros Indicadores" (Dashboard) → parceiro.
+@callback(
+    Output("cf-store", "data", allow_duplicate=True),
+    Output("ct-parceiros", "clickData"),
+    Input("ct-parceiros", "clickData"),
+    State("cf-store", "data"),
+    prevent_initial_call=True,
+)
+def cf_from_parceiros(click, cur):
+    if not click or not click.get("points"):
+        return no_update, no_update
+    pt = click["points"][0]
+    cd = pt.get("customdata")
+    parceiro = cd[0] if isinstance(cd, list) and cd else pt.get("y")
+    if not parceiro:
+        return no_update, None
+    return _cf_toggle_parceiro(cur, parceiro), None
+
+
+# F. Limpar filtro pelo "×" do chip.
 @callback(
     Output("cf-store", "data", allow_duplicate=True),
     Input("cf-chip-clear", "n_clicks"),

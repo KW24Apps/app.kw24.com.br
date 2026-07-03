@@ -286,6 +286,8 @@ def get_detalhamento(date_from, date_to, tab, vendedor_filter=None, tipo_venda_f
             COALESCE(NULLIF(TRIM(t.etapa), ''), '—')                     AS etapa,
             COALESCE(NULLIF(TRIM(t.tipo_de_contrato), ''), '(Sem tipo)') AS tipo_de_contrato,
             {CONTAB_GRUPO_CASE}                                          AS contab_grupo,
+            -- Parceiro indicador (Dashboard → card "Parceiros Indicadores")
+            NULLIF(TRIM(t.parceiro_indicacao), '')                       AS parceiro_indicacao,
             -- Dias em negociação (só usado na aba "Em Negociação"): TODAY - criado_em
             (CURRENT_DATE - t.criado_em::date)                           AS dias_negociacao,
             COALESCE(t.valor, 0)                                         AS valor
