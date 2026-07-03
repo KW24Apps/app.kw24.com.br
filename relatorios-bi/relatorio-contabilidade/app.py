@@ -88,6 +88,8 @@ def _i(v):
 ABAS = [("fechadas", "Vendas Fechadas"), ("negociacao", "Em Negociação")]
 ABA_DEFAULT = "fechadas"
 TIPO_VENDA_LABEL = {"interno": "Ativo", "indicado": "Indicado"}
+# Rótulo da contabilidade (coluna Contabilidade no Detalhamento) — a partir de contab_grupo
+CONTAB_LABEL = {"contafarma": "ContaFarma", "capiton": "Capiton"}
 
 # Cross-filter vazio (3 dimensões). vendedor/tipo_venda e tipo_contrato são
 # mutuamente exclusivos (ativar um zera o outro) — ver _cf_toggle / _cf_toggle_tipo.
@@ -579,6 +581,7 @@ def build_contratos_table(detalhe, cf):
 DETALHE_COLS = [
     {"name": "ID", "id": "id", "presentation": "markdown"},
     {"name": "Cliente", "id": "cliente"},
+    {"name": "Contabilidade", "id": "contabilidade"},
     {"name": "Vendedor", "id": "vendedor"},
     {"name": "Tipo de Venda", "id": "tipo_venda"},
     {"name": "Etapa", "id": "etapa"},
@@ -664,6 +667,7 @@ def build_detalhamento_data(detalhe, cf):
         rows.append({
             "id": f"[{bid}]({link})" if (bid is not None and link) else (str(bid) if bid is not None else "—"),
             "cliente": d.get("cliente") or "—",
+            "contabilidade": CONTAB_LABEL.get(d.get("contab_grupo"), "—"),
             "vendedor": d.get("vendedor") or "—",
             "tipo_venda": TIPO_VENDA_LABEL.get(d.get("tipo_venda"), "—"),
             "etapa": d.get("etapa") or "—",
