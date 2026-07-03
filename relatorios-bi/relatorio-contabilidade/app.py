@@ -536,8 +536,10 @@ def build_parceiros_chart(detalhe, cf):
         marker=dict(color=[barcol(n) for n in raw_names], line=dict(color="#ffffff", width=1)),
         customdata=[[n] for n in raw_names],
         text=texts, textposition="outside", cliponaxis=False,
-        # mesmo estilo do percentual da legenda do donut (.ct-leg-pct)
-        textfont=dict(size=11, color="#64748b", family="Inter", weight=700),
+        # Valores computados REAIS de .ct-leg-pct (percentual da legenda do donut):
+        # font-family "Inter, system-ui, sans-serif" · 11px · 700 · rgb(100,116,139).
+        # A família COMPLETA (com fallback) evita o Plotly cair no serif no SVG.
+        textfont=dict(size=11, color="#64748b", family="Inter, system-ui, sans-serif", weight=700),
         hovertemplate="%{y}<br>%{x} negócios<extra></extra>",
     ))
     fig.update_layout(
@@ -545,9 +547,10 @@ def build_parceiros_chart(detalhe, cf):
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         showlegend=False, bargap=0.35,
         xaxis=dict(visible=False, range=[0, (max(vals) or 1) * 1.04]),
-        # mesmo estilo do nome do vendedor na legenda do donut (.ct-leg-name)
+        # Valores computados REAIS de .ct-leg-name (nome do vendedor na legenda):
+        # font-family "Inter, sans-serif" · 12px · 600 · rgb(31,41,55).
         yaxis=dict(autorange="reversed",  # maior quantidade no topo
-                   tickfont=dict(size=12, color="#1f2937", family="Inter", weight=600)),
+                   tickfont=dict(size=12, color="#1f2937", family="Inter, sans-serif", weight=600)),
     )
     return fig
 
