@@ -273,7 +273,15 @@ class FinanceiroSync {
     }
 
     private function buscarDemandas(array $periodo): array {
-        $inicioStr = $periodo['inicio']->format('Y-m-d\T00:00:00');
+        // Alarga 1 dia no início do filtro enviado ao Bitrix: demandas finalizadas
+        // exatamente à meia-noite do primeiro dia do período ficavam fora do
+        // filtro ">=" por um deslocamento de timezone na comparação de datetime
+        // do Bitrix. O re-filtro por data real (abaixo) garante que nada antes
+        // do período de fato entre.
+        $inicioFiltro = clone $periodo['inicio'];
+        $inicioFiltro->sub(new DateInterval('P1D'));
+
+        $inicioStr = $inicioFiltro->format('Y-m-d\T00:00:00');
         $fimStr    = $periodo['fim']->format('Y-m-d\T23:59:59');
 
         $todas = $this->bitrix->listItems(
@@ -293,9 +301,15 @@ class FinanceiroSync {
             0 // sem limite — sync precisa de todos
         );
 
-        return array_values(array_filter($todas, function ($d) {
+        $inicioReal = $periodo['inicio']->format('Y-m-d');
+        $fimReal    = $periodo['fim']->format('Y-m-d');
+
+        return array_values(array_filter($todas, function ($d) use ($inicioReal, $fimReal) {
             $tipo = (int)($d[self::F_TIPO_CHAMADO] ?? 0);
-            return in_array($tipo, self::TIPOS_FATURA, true);
+            if (!in_array($tipo, self::TIPOS_FATURA, true)) return false;
+
+            $dataFin = substr((string)($d[self::F_DATA_FIN] ?? ''), 0, 10);
+            return $dataFin >= $inicioReal && $dataFin <= $fimReal;
         }));
     }
 

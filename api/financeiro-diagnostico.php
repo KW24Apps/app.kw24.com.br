@@ -62,9 +62,15 @@ try {
         F_TIPO_CHAMADO, F_TEMPO_ATUAL, F_TEMPO_COMPUTADO, F_DATA_FIN, F_FATURA_LINK,
     ], 0);
 
-    $demandas = array_values(array_filter($rawDemandas, function ($d) {
+    $inicioReal = $periodo['inicioReal'];
+    $fimReal    = $periodo['fimReal'];
+
+    $demandas = array_values(array_filter($rawDemandas, function ($d) use ($inicioReal, $fimReal) {
         $tipo = (int)($d[F_TIPO_CHAMADO] ?? 0);
-        return in_array($tipo, TIPOS_FATURA, true);
+        if (!in_array($tipo, TIPOS_FATURA, true)) return false;
+
+        $dataFin = substr((string)($d[F_DATA_FIN] ?? ''), 0, 10);
+        return $dataFin >= $inicioReal && $dataFin <= $fimReal;
     }));
 
     $lista = [];
@@ -143,6 +149,14 @@ function calcularPeriodoDeInicio(int $inicioAno, int $inicioMes, int $diaInicio)
     $fimFinal = clone $fim;
     $fimFinal->setTime(23, 59, 59);
 
+    // Filtro Bitrix alargado em 1 dia no início: demandas finalizadas exatamente
+    // à meia-noite do primeiro dia do período ficavam fora do filtro ">=" por um
+    // deslocamento de timezone na comparação de datetime do Bitrix. O re-filtro
+    // por data real (inicioReal/fimReal, usado na query em si) garante que nada
+    // antes do período de fato entre. Ver services/FinanceiroSync.php::buscarDemandas.
+    $inicioFiltro = clone $inicio;
+    $inicioFiltro->sub(new DateInterval('P1D'));
+
     $refMes = (int)$fim->format('m');
     $refAno = (int)$fim->format('Y');
 
@@ -150,7 +164,9 @@ function calcularPeriodoDeInicio(int $inicioAno, int $inicioMes, int $diaInicio)
         'referencia' => sprintf('%02d/%04d', $refMes, $refAno),
         'inicio'     => $inicio->format('d/m/Y'),
         'fim'        => $fim->format('d/m/Y'),
-        'inicioIso'  => $inicio->format('Y-m-d\T00:00:00'),
+        'inicioReal' => $inicio->format('Y-m-d'),
+        'fimReal'    => $fim->format('Y-m-d'),
+        'inicioIso'  => $inicioFiltro->format('Y-m-d\T00:00:00'),
         'fimIso'     => $fimFinal->format('Y-m-d\TH:i:s'),
     ];
 }
