@@ -412,6 +412,21 @@ body {
     font-weight: 600;
 }
 
+/* Sublinhas por contabilidade (ContaFarma/Capiton) — subordinadas ao tipo */
+.rt-tipo-row td { border-bottom: none; font-weight: 700; }  /* tipo: linha inteira em negrito, cola nas sublinhas */
+.rt-tipo-sub td {
+    padding: 2px 10px;
+    font-size: 0.72rem;
+    color: #94a3b8;
+    font-weight: 400;   /* sublinhas SEM negrito */
+    border-bottom: none;
+}
+.rt-tipo-sub td:first-child { padding-left: 26px; }        /* recuo */
+.rt-tipo-sub-end td { border-bottom: 1px solid #e2e8f0; }  /* fecha o grupo */
+/* cor por contabilidade — linha inteira (nome + valores) */
+.rt-tipo-sub-cf  td { color: var(--contafarma); }
+.rt-tipo-sub-cap td { color: var(--capiton); }
+
 .rt-detail-empty {
     padding: 10px 16px;
     font-size: 0.82rem;

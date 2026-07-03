@@ -532,9 +532,17 @@ def build_contratos_table(detalhe, cf):
     agg = {}
     for d in filt:
         tipo = d.get("tipo_de_contrato") or "(Sem tipo)"
-        a = agg.setdefault(tipo, {"qtd": 0, "valor": 0.0})
+        a = agg.setdefault(tipo, {"qtd": 0, "valor": 0.0,
+                                  "cf_qtd": 0, "cf_valor": 0.0,
+                                  "cap_qtd": 0, "cap_valor": 0.0})
         a["qtd"] += 1
         a["valor"] += _f(d.get("valor"))
+        # Breakdown por contabilidade (sublinhas ContaFarma/Capiton)
+        grupo = d.get("contab_grupo")
+        pfx = "cf" if grupo == "contafarma" else "cap" if grupo == "capiton" else None
+        if pfx:
+            a[f"{pfx}_qtd"] += 1
+            a[f"{pfx}_valor"] += _f(d.get("valor"))
     linhas = sorted(agg.items(), key=lambda kv: (-kv[1]["valor"], kv[0]))
     sel_tc = (cf or {}).get("tipo_contrato")
     head = html.Thead(html.Tr([
@@ -542,16 +550,27 @@ def build_contratos_table(detalhe, cf):
         html.Th("Qtd", style={"textAlign": "right"}),
         html.Th("Valor Total", style={"textAlign": "right"}),
     ]))
-    body = [html.Tr(
-        id={"type": "ct-tipo-row", "index": _enc(tipo)},
-        n_clicks=0,
-        className="rt-tipo-row" + (" rt-tipo-active" if tipo == sel_tc else ""),
-        children=[
-            html.Td(tipo, style={"textAlign": "left"}),
-            html.Td(fmt_num(v["qtd"]), style={"textAlign": "right"}),
-            html.Td(fmt_brl(v["valor"]), style={"textAlign": "right"}),
-        ],
-    ) for tipo, v in linhas]
+    body = []
+    for tipo, v in linhas:
+        body.append(html.Tr(
+            id={"type": "ct-tipo-row", "index": _enc(tipo)},
+            n_clicks=0,
+            className="rt-tipo-row" + (" rt-tipo-active" if tipo == sel_tc else ""),
+            children=[
+                html.Td(tipo, style={"textAlign": "left"}),
+                html.Td(fmt_num(v["qtd"]), style={"textAlign": "right"}),
+                html.Td(fmt_brl(v["valor"]), style={"textAlign": "right"}),
+            ],
+        ))
+        # Sublinhas por contabilidade (subordinadas; não clicáveis)
+        _subs = (("ContaFarma", "cf"), ("Capiton", "cap"))
+        for i, (lbl, pfx) in enumerate(_subs):
+            cls = f"rt-tipo-sub rt-tipo-sub-{pfx}" + (" rt-tipo-sub-end" if i == len(_subs) - 1 else "")
+            body.append(html.Tr(className=cls, children=[
+                html.Td(lbl, style={"textAlign": "left"}),
+                html.Td(fmt_num(v.get(f"{pfx}_qtd", 0)),   style={"textAlign": "right"}),
+                html.Td(fmt_brl(v.get(f"{pfx}_valor", 0)), style={"textAlign": "right"}),
+            ]))
     return html.Table([head, html.Tbody(body)], className="rt-table rt-table-click")
 
 

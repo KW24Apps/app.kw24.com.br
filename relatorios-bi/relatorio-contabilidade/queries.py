@@ -229,7 +229,12 @@ def get_contratos(aba, data_de=None, data_ate=None, ct_completo=True, ct_indicad
         SELECT
             COALESCE(NULLIF(TRIM(t.tipo_de_contrato), ''), '(Sem tipo)') AS tipo_de_contrato,
             COUNT(*)                  AS qtd,
-            COALESCE(SUM(t.valor), 0) AS valor_soma
+            COALESCE(SUM(t.valor), 0) AS valor_soma,
+            -- Breakdown por contabilidade (sublinhas ContaFarma/Capiton)
+            COUNT(*) FILTER (WHERE {EH_CONTAFARMA})                  AS cf_qtd,
+            COALESCE(SUM(t.valor) FILTER (WHERE {EH_CONTAFARMA}), 0)  AS cf_valor,
+            COUNT(*) FILTER (WHERE {EH_CAPITON})                     AS cap_qtd,
+            COALESCE(SUM(t.valor) FILTER (WHERE {EH_CAPITON}), 0)     AS cap_valor
         FROM tbl_onboard t
         WHERE {where}
         GROUP BY 1
