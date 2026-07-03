@@ -838,7 +838,7 @@ app.layout = html.Div(className="rt-app", children=[
                 ]),
             ]),
             # Card direito — Parceiros Indicadores (barras horizontais; filtra)
-            card("Parceiros Indicadores", icon="fa-handshake", extra_class="ct-col-parc", children=[
+            card("Parceiros / Indicadores (Contratos Fechados)", icon="fa-handshake", extra_class="ct-col-parc", children=[
                 dcc.Graph(id="ct-parceiros", figure=empty_fig("Carregando…"),
                           config={"displayModeBar": False}, style={"height": "440px"}),
             ]),
