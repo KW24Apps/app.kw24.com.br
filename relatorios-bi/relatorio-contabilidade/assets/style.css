@@ -496,6 +496,16 @@ body {
     justify-content: center;
 }
 
+/* Deslocamento do conjunto anel+legenda no Dashboard */
+.ct-donut--dashboard {
+    justify-content: flex-end;
+}
+
+.ct-donut--dashboard .ct-donut-right {
+    justify-content: flex-end;
+    padding-right: 16px;
+}
+
 .ct-donut-circle {
     flex: 0 0 auto;
 }

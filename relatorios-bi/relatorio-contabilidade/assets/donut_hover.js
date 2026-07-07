@@ -184,7 +184,7 @@
             var x0 = cx + rEdge * ca, y0 = cy + rEdge * sa;     // início na borda externa
             var right = (Math.cos(rad) >= 0);
             // CHANGE 4B: lado direito mais curto (24px) p/ não chegar perto da legenda.
-            var len = rEdge + R * 0.10;
+            var len = rEdge + R * 0.04;
             var x1 = cx + len * ca, y1 = cy + len * sa;          // cotovelo
             // Garante que o rótulo NUNCA invada o donut: estende até clarear R+8.
             while (Math.sqrt((x1 - cx) * (x1 - cx) + (y1 - cy) * (y1 - cy)) < CLEAR) {

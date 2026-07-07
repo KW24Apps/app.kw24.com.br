@@ -381,7 +381,9 @@ def build_donut(vendedores, cf):
             # Domínio padrão (área cheia) → donut no tamanho original. O espaço p/ os
             # rótulos externos vem da metade esquerda (.ct-donut-left, 50% do card) +
             # overflow:visible do SVG (style.css), não de reduzir o donut.
-            domain=dict(x=[0.08, 1], y=[0, 1]),
+            # O deslocamento p/ a direita é feito no CSS (.ct-donut-left justify-content:
+            # flex-end + padding-right), NÃO por margin/domain — assim o raio não muda.
+            domain=dict(x=[0, 1], y=[0, 1]),
             bgcolor="rgba(0,0,0,0)",
             radialaxis=dict(range=[0, 1], visible=False),
             angularaxis=dict(visible=False, rotation=90, direction="clockwise"),
@@ -852,7 +854,7 @@ app.layout = html.Div(className="rt-app", children=[
                 ]),
                 html.Div(className="rt-card-body", children=[
                     # Duas metades 50/50: esquerda = donut centrado; direita = legenda.
-                    html.Div(className="ct-donut", children=[
+                    html.Div(className="ct-donut ct-donut--dashboard", children=[
                         html.Div(className="ct-donut-left", children=[
                             html.Div(className="ct-donut-circle", children=dcc.Graph(
                                 id="ct-donut", figure=empty_fig("Carregando…"),
