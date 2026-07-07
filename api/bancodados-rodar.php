@@ -16,7 +16,7 @@ if (!$clienteId || !$aplicacaoId) { echo json_encode(['erro'=>'Dados inválidos'
 try {
     $db  = Database::getInstance();
     $row = $db->fetchOne(
-        "SELECT ca.config_extra, ca.running_since
+        "SELECT ca.config_extra, ca.webhook_bitrix
          FROM cliente_aplicacoes ca
          JOIN aplicacoes a ON a.id = ca.aplicacao_id
          WHERE ca.cliente_id = :c AND ca.aplicacao_id = :a AND a.slug = 'BancoDados'",
@@ -25,19 +25,35 @@ try {
 
     if (!$row) { echo json_encode(['erro' => 'Configuração não encontrada']); exit; }
 
-    // Verificar se já está rodando (running_since nos últimos 4h)
-    if ($row['running_since']) {
-        $runningSince = strtotime($row['running_since']);
-        if ((time() - $runningSince) < 4 * 3600) {
-            echo json_encode(['erro' => 'Sincronização já está em andamento para este cliente.']);
-            exit;
-        }
-    }
-
     $config = json_decode($row['config_extra'] ?? '{}', true);
     $dbName = $config['db_name'] ?? null;
 
     if (!$dbName) { echo json_encode(['erro' => 'Nome do banco (db_name) não configurado']); exit; }
+
+    // getActiveClients() do BitrixDataSync exige webhook_bitrix preenchido — sem isso o main.php
+    // encerra sem processar o cliente (e sem liberar o lock reservado abaixo). Falha cedo e com
+    // mensagem clara em vez de deixar o lock travado por até 4h para nada.
+    if (empty($row['webhook_bitrix'])) {
+        echo json_encode(['erro' => 'Webhook Bitrix24 não configurado para este cliente. Configure em "Configuração da integração" antes de sincronizar.']);
+        exit;
+    }
+
+    // Reserva atômica do lock antes de disparar o processo em background — evita a corrida em que
+    // dois cliques quase simultâneos passariam pela checagem antes do main.php marcar running_since.
+    // Só reivindica se não houver sync em andamento (running_since nulo ou expirado há mais de 4h).
+    $claim = $db->execute(
+        "UPDATE cliente_aplicacoes
+         SET running_since = NOW(), last_run_started_at = NOW()
+         WHERE cliente_id = :c AND aplicacao_id = :a
+           AND (running_since IS NULL OR running_since < NOW() - INTERVAL '4 hours')",
+        ['c' => $clienteId, 'a' => $aplicacaoId]
+    );
+
+    if ($claim->rowCount() === 0) {
+        http_response_code(409);
+        echo json_encode(['erro' => 'Sincronização já está em andamento para este cliente.']);
+        exit;
+    }
 
     // PHP CLI — busca binário correto (não usa PHP_BINARY que aponta para FPM)
     $phpBin = '/usr/bin/php8.1';
