@@ -381,7 +381,7 @@ def build_donut(vendedores, cf):
             # Domínio padrão (área cheia) → donut no tamanho original. O espaço p/ os
             # rótulos externos vem da metade esquerda (.ct-donut-left, 50% do card) +
             # overflow:visible do SVG (style.css), não de reduzir o donut.
-            domain=dict(x=[0, 1], y=[0, 1]),
+            domain=dict(x=[0.08, 1], y=[0, 1]),
             bgcolor="rgba(0,0,0,0)",
             radialaxis=dict(range=[0, 1], visible=False),
             angularaxis=dict(visible=False, rotation=90, direction="clockwise"),
