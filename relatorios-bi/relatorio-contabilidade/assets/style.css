@@ -506,6 +506,11 @@ body {
     padding-right: 16px;
 }
 
+.ct-donut--dashboard .ct-donut-left {
+    justify-content: flex-end;
+    padding-right: 16px;
+}
+
 .ct-donut-circle {
     flex: 0 0 auto;
 }
