@@ -47,20 +47,22 @@ try {
 
     $config = json_encode(['dias_semana' => $dias, 'horario' => $horario]);
 
+    // Webhook: só atualiza se fornecido e não-vazio (vazio = preservar valor atual — mesma regra de cliente-app-atualizar.php)
+    $sets   = ["descricao = :desc", "config_extra = :config", "valor = :valor"];
+    $params = [
+        'desc'   => $desc,
+        'config' => $config,
+        'valor'  => $valor,
+        'id'     => $caId,
+    ];
+    if ($webhook !== '') {
+        $sets[]           = "webhook_bitrix = :webhook";
+        $params['webhook'] = $webhook;
+    }
+
     $db->execute(
-        "UPDATE cliente_aplicacoes
-         SET webhook_bitrix = :webhook,
-             descricao      = :desc,
-             config_extra   = :config,
-             valor          = :valor
-         WHERE id = :id",
-        [
-            'webhook' => $webhook ?: null,
-            'desc'    => $desc,
-            'config'  => $config,
-            'valor'   => $valor,
-            'id'      => $caId,
-        ]
+        "UPDATE cliente_aplicacoes SET " . implode(', ', $sets) . " WHERE id = :id",
+        $params
     );
 
     echo json_encode(['sucesso' => true]);
