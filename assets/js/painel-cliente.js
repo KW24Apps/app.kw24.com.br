@@ -873,6 +873,10 @@ function abrirModalApp(app) {
                             style="background:#065f46;color:#fff;border:none;border-radius:8px;padding:.6rem 1.25rem;font-size:.875rem;cursor:pointer;font-weight:600">
                             <i class="fas fa-bolt"></i> Disparar agora
                         </button>
+                        <button id="nimbus-testar-email-btn" onclick="testarEmailNimbus(${app.ca_id})"
+                            style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:.6rem 1.25rem;font-size:.875rem;cursor:pointer;font-weight:600">
+                            <i class="fas fa-paper-plane"></i> Disparar Teste de E-mail
+                        </button>
                         <span id="app-integracao-msg" style="display:inline-block;font-size:.8rem;color:#718096"></span>
                     </div>
                 </div>
@@ -1707,6 +1711,33 @@ function dispararNimbus(caId) {
     })
     .catch(() => {
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-bolt"></i> Disparar agora'; }
+        if (msg) { msg.style.color = '#c53030'; msg.textContent = 'Erro de conexão.'; }
+    });
+}
+
+function testarEmailNimbus(caId) {
+    const btn = document.getElementById('nimbus-testar-email-btn');
+    const msg = document.getElementById('app-integracao-msg');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...'; }
+    if (msg) { msg.textContent = ''; msg.style.color = '#718096'; }
+
+    fetch('/api/nimbus-testar-email.php', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ca_id: caId })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Disparar Teste de E-mail'; }
+        if (data.sucesso) {
+            if (msg) { msg.style.color = '#065f46'; msg.textContent = '✓ E-mail de teste disparado com sucesso'; }
+        } else {
+            if (msg) { msg.style.color = '#c53030'; msg.textContent = data.erro || 'Erro ao disparar e-mail de teste.'; }
+        }
+        setTimeout(() => { if (msg) { msg.textContent = ''; msg.style.color = '#718096'; } }, 5000);
+    })
+    .catch(() => {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Disparar Teste de E-mail'; }
         if (msg) { msg.style.color = '#c53030'; msg.textContent = 'Erro de conexão.'; }
     });
 }
