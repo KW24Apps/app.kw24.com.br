@@ -47,7 +47,7 @@ try {
         CURLOPT_POSTFIELDS     => $payload,
         CURLOPT_HTTPHEADER     => ['Content-Type: application/json', 'Accept: application/json'],
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 600,   // job pode levar vários minutos
+        CURLOPT_TIMEOUT        => 15,    // job roda em background no apis2, só aguardamos a confirmação de início
         CURLOPT_CONNECTTIMEOUT => 10,
         CURLOPT_SSL_VERIFYPEER => true,
     ]);
