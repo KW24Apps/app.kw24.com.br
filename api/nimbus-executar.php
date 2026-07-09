@@ -1,4 +1,5 @@
 <?php
+set_time_limit(0);
 session_start();
 require_once __DIR__ . '/../services/AuthenticationService.php';
 require_once __DIR__ . '/../helpers/Database.php';
@@ -46,7 +47,7 @@ try {
         CURLOPT_POSTFIELDS     => $payload,
         CURLOPT_HTTPHEADER     => ['Content-Type: application/json', 'Accept: application/json'],
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 300,   // job pode levar ~3 min
+        CURLOPT_TIMEOUT        => 600,   // job pode levar vários minutos
         CURLOPT_CONNECTTIMEOUT => 10,
         CURLOPT_SSL_VERIFYPEER => true,
     ]);
