@@ -347,8 +347,7 @@ function bdSalvarConfig() {
     if (!cId || !aId) return;
     msg.textContent = 'Salvando...';
 
-    // Lê webhook e valor da seção de integração (acima do config)
-    const webhook = document.getElementById('app-webhook-input')?.value.trim() || null;
+    // Lê valor da seção de integração (acima do config)
     const valor   = document.getElementById('app-valor-input')?.value || null;
     const dbName  = (document.getElementById('bd-db-name')?.value.trim() || '').toLowerCase().replace(/\s+/g, '_');
     const intervalo = Math.max(2, parseInt(document.getElementById('bd-intervalo')?.value || 6));
@@ -359,7 +358,6 @@ function bdSalvarConfig() {
         body: JSON.stringify({
             cliente_id:     parseInt(cId),
             aplicacao_id:   parseInt(aId),
-            webhook_bitrix: webhook,
             valor:          valor,
             config_extra: {
                 db_name:         dbName,
@@ -379,9 +377,8 @@ function bdSalvarConfig() {
             if (typeof appsAtivas !== 'undefined') {
                 const idx = appsAtivas.findIndex(a => String(a.id) === String(aId));
                 if (idx !== -1) {
-                    appsAtivas[idx].config_extra  = novoConfig;
-                    appsAtivas[idx].webhook_bitrix = webhook;
-                    appsAtivas[idx].valor          = valor;
+                    appsAtivas[idx].config_extra = novoConfig;
+                    appsAtivas[idx].valor        = valor;
                 }
             }
         } else { msg.textContent = data.erro || 'Erro ao salvar.'; }

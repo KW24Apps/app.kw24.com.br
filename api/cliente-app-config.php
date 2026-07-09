@@ -36,7 +36,6 @@ try {
             exit;
         }
     }
-    // Webhook: só atualiza se fornecido e não-vazio (vazio = preservar valor atual — mesma regra de cliente-app-atualizar.php)
     $sets   = ["config_extra = :config", "valor = :valor"];
     $params = [
         'config' => json_encode($config),
@@ -45,10 +44,6 @@ try {
         'c'      => $clienteId,
         'a'      => $aplicacaoId
     ];
-    if (!empty($body['webhook_bitrix'])) {
-        $sets[]            = "webhook_bitrix = :webhook";
-        $params['webhook'] = $body['webhook_bitrix'];
-    }
     $db->execute(
         "UPDATE cliente_aplicacoes SET " . implode(', ', $sets) . " WHERE cliente_id = :c AND aplicacao_id = :a",
         $params

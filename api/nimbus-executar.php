@@ -23,7 +23,7 @@ try {
     $db = Database::getInstance();
 
     $ca = $db->fetchOne(
-        "SELECT ca.chave, ca.webhook_bitrix
+        "SELECT ca.chave
          FROM cliente_aplicacoes ca
          JOIN aplicacoes a ON a.id = ca.aplicacao_id
          WHERE ca.id = :id AND a.slug = 'nimbus_parceiros' AND ca.ativo = TRUE",

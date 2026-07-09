@@ -129,14 +129,12 @@ function _formatDate(ts) {
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-// Modal de ativação com webhook + descricao
+// Modal de ativação com descricao
 function kwAtivarApp(appNome) {
     return new Promise(resolve => {
         const overlay   = document.getElementById('kw-ativar-overlay');
         const titleEl   = document.getElementById('kw-ativar-title');
         const msgEl     = document.getElementById('kw-ativar-msg');
-        const input     = document.getElementById('kw-ativar-webhook');
-        const erro      = document.getElementById('kw-ativar-erro');
         const btnOk     = document.getElementById('kw-ativar-ok');
         const btnCancel = document.getElementById('kw-ativar-cancel');
 
@@ -151,17 +149,15 @@ function kwAtivarApp(appNome) {
                     style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:.6rem .75rem;font-size:.875rem;color:#2d3748;outline:none;font-family:inherit;box-sizing:border-box"
                     onfocus="this.style.borderColor='#0DC2FF'" onblur="this.style.borderColor='#e2e8f0'">
                 <span id="kw-ativar-descricao-erro" style="display:none;color:#c53030;font-size:.78rem;margin-top:.3rem">Descrição é obrigatória.</span>`;
-            input.parentNode.insertAdjacentElement('afterend', descWrap);
+            msgEl.parentNode.insertBefore(descWrap, msgEl.nextSibling);
             descInput = document.getElementById('kw-ativar-descricao');
         }
 
         titleEl.textContent   = 'Ativar aplicação';
         msgEl.textContent     = `Adicionar "${appNome}" para este cliente?`;
-        input.value           = '';
         descInput.value       = '';
-        erro.style.display    = 'none';
         overlay.style.display = 'flex';
-        input.focus();
+        descInput.focus();
 
         const close = (result) => {
             overlay.style.display = 'none';
@@ -172,18 +168,16 @@ function kwAtivarApp(appNome) {
         };
 
         btnOk.onclick = () => {
-            const wh   = input.value.trim();
             const desc = descInput.value.trim();
             const erroDesc = document.getElementById('kw-ativar-descricao-erro');
-            erro.style.display = 'none';
             if (!desc) { if (erroDesc) erroDesc.style.display = 'block'; return; }
             if (erroDesc) erroDesc.style.display = 'none';
-            close({ webhook: wh, descricao: desc });
+            close({ descricao: desc });
         };
 
         btnCancel.onclick = () => close(null);
         overlay.onclick   = (e) => { if (e.target === overlay) close(null); };
-        input.onkeydown   = (e) => { if (e.key === 'Enter') btnOk.click(); };
+        descInput.onkeydown = (e) => { if (e.key === 'Enter') btnOk.click(); };
     });
 }
 
@@ -641,14 +635,6 @@ async function desvincularUsuarioCliente(usuarioId, nome) {
 
 function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-function _maskWebhook(url) {
-    if (!url) return '—';
-    try {
-        const u = new URL(url);
-        return _esc(u.protocol + '//' + u.hostname) + '/••••••••';
-    } catch { return '••••••••'; }
-}
-
 function _chaveDisplay(chave) {
     if (!chave) return '—';
     if (chave.length <= 5) return `<strong style="color:#0DC2FF">${_esc(chave)}</strong>`;
@@ -788,11 +774,6 @@ function abrirModalApp(app) {
                     <input id="app-descricao-input" type="text" class="form-input" value="${_esc(app.descricao || '')}" maxlength="80" placeholder="Ex: Comercial, Operacional">
                 </div>
                 <div>
-                    <label style="font-size:.72rem;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:.35rem">Webhook Bitrix24</label>
-                    ${app.webhook_bitrix ? `<div style="display:flex;align-items:center;gap:.5rem;background:#f0f4f8;border:1px solid #e2e8f0;border-radius:6px;padding:.4rem .7rem;margin-bottom:.4rem"><span style="font-family:monospace;font-size:.75rem;color:#718096;flex:1">${_maskWebhook(app.webhook_bitrix)}</span></div>` : ''}
-                    <input id="app-webhook-input" type="text" class="form-input" value="" placeholder="${app.webhook_bitrix ? 'Novo valor (deixe vazio para não alterar)' : 'https://...'}">
-                </div>
-                <div>
                     <label style="font-size:.72rem;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:.35rem">Valor (R$)</label>
                     <input id="app-valor-input" type="number" step="0.01" min="0" class="form-input" value="${app.valor || ''}" placeholder="0,00">
                 </div>
@@ -838,11 +819,6 @@ function abrirModalApp(app) {
                     <div>
                         <label style="font-size:.72rem;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:.35rem">Descrição *</label>
                         <input id="app-descricao-input" type="text" class="form-input" value="${_esc(app.descricao || '')}" maxlength="80" placeholder="Ex: Comercial, Operacional">
-                    </div>
-                    <div>
-                        <label style="font-size:.72rem;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:.35rem">Webhook Bitrix24</label>
-                        ${app.webhook_bitrix ? `<div style="display:flex;align-items:center;gap:.5rem;background:#f0f4f8;border:1px solid #e2e8f0;border-radius:6px;padding:.4rem .7rem;margin-bottom:.4rem"><span style="font-family:monospace;font-size:.75rem;color:#718096;flex:1">${_maskWebhook(app.webhook_bitrix)}</span></div>` : ''}
-                        <input id="app-webhook-input" type="text" class="form-input" value="" placeholder="${app.webhook_bitrix ? 'Novo valor (deixe vazio para não alterar)' : 'https://...'}">
                     </div>
                     <div>
                         <label style="font-size:.72rem;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:.35rem">Valor (R$)</label>
@@ -940,7 +916,6 @@ async function desativarApp(caId, appNome) {
 }
 
 function salvarDadosApp(clienteId, caId) {
-    const webhook   = document.getElementById('app-webhook-input')?.value.trim();
     const valor     = document.getElementById('app-valor-input')?.value;
     const descricao = document.getElementById('app-descricao-input')?.value.trim();
     const msg       = document.getElementById('app-integracao-msg');
@@ -957,7 +932,7 @@ function salvarDadosApp(clienteId, caId) {
     fetch('/api/cliente-app-atualizar.php', {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cliente_id: clienteId, ca_id: caId, webhook_bitrix: webhook, valor: valor || null, descricao: descricao })
+        body: JSON.stringify({ cliente_id: clienteId, ca_id: caId, valor: valor || null, descricao: descricao })
     })
     .then(r => r.json())
     .then(data => {
@@ -1343,7 +1318,6 @@ async function ativarApp(appId, appNome) {
         body: JSON.stringify({
             cliente_id:    clienteIdAtual,
             aplicacao_id:  appId,
-            webhook_bitrix: resultado.webhook,
             descricao:     resultado.descricao || null
         })
     })
@@ -1649,7 +1623,6 @@ function fecharNovoCliente() { fecharPainel(); }
 
 function salvarNimbus(caId) {
     const descricao  = document.getElementById('app-descricao-input')?.value.trim();
-    const webhook    = document.getElementById('app-webhook-input')?.value.trim();
     const valor      = document.getElementById('app-valor-input')?.value;
     const horario    = document.getElementById('nimbus-horario-input')?.value;
     const diasSemana = Array.from(document.querySelectorAll('input[name="nimbus-dia"]:checked'))
@@ -1668,7 +1641,7 @@ function salvarNimbus(caId) {
     fetch('/api/nimbus-config-salvar.php', {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ca_id: caId, webhook: webhook || null, descricao, dias_semana: diasSemana, horario: horario || null, valor: valor || null })
+        body: JSON.stringify({ ca_id: caId, descricao, dias_semana: diasSemana, horario: horario || null, valor: valor || null })
     })
     .then(r => r.json())
     .then(data => {

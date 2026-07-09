@@ -9,7 +9,6 @@ if (!$auth->validateSession()) { http_response_code(401); echo json_encode(['err
 $body        = json_decode(file_get_contents('php://input'), true);
 $clienteId   = (int)($body['cliente_id']   ?? 0);
 $aplicacaoId = (int)($body['aplicacao_id'] ?? 0);
-$webhook     = trim($body['webhook_bitrix'] ?? '');
 $descricao   = trim($body['descricao']      ?? '') ?: null;
 
 if (!$clienteId || !$aplicacaoId) { echo json_encode(['erro' => 'Dados inválidos']); exit; }
@@ -27,12 +26,11 @@ try {
     $chave  = $cliente['chave_acesso'] . $sufixo;
 
     $db->execute(
-        "INSERT INTO cliente_aplicacoes (cliente_id, aplicacao_id, ativo, webhook_bitrix, chave, descricao)
-         VALUES (:c, :a, TRUE, :w, :chave, :desc)",
+        "INSERT INTO cliente_aplicacoes (cliente_id, aplicacao_id, ativo, chave, descricao)
+         VALUES (:c, :a, TRUE, :chave, :desc)",
         [
             'c'     => $clienteId,
             'a'     => $aplicacaoId,
-            'w'     => $webhook ?: null,
             'chave' => $chave,
             'desc'  => $descricao,
         ]

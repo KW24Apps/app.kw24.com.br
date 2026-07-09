@@ -38,7 +38,6 @@ $aplicacoes = $db->fetchAll("
            a.nome,
            a.descricao   AS app_descricao,
            ca.id         AS ca_id,
-           ca.webhook_bitrix,
            ca.ativo,
            ca.config_extra,
            ca.valor,

@@ -16,7 +16,7 @@ if (!$clienteId || !$aplicacaoId) { echo json_encode(['erro'=>'Dados inválidos'
 try {
     $db  = Database::getInstance();
     $row = $db->fetchOne(
-        "SELECT ca.config_extra, ca.webhook_bitrix
+        "SELECT ca.config_extra
          FROM cliente_aplicacoes ca
          JOIN aplicacoes a ON a.id = ca.aplicacao_id
          WHERE ca.cliente_id = :c AND ca.aplicacao_id = :a AND a.slug = 'BancoDados'",
@@ -29,14 +29,6 @@ try {
     $dbName = $config['db_name'] ?? null;
 
     if (!$dbName) { echo json_encode(['erro' => 'Nome do banco (db_name) não configurado']); exit; }
-
-    // getActiveClients() do BitrixDataSync exige webhook_bitrix preenchido — sem isso o main.php
-    // encerra sem processar o cliente (e sem liberar o lock reservado abaixo). Falha cedo e com
-    // mensagem clara em vez de deixar o lock travado por até 4h para nada.
-    if (empty($row['webhook_bitrix'])) {
-        echo json_encode(['erro' => 'Webhook Bitrix24 não configurado para este cliente. Configure em "Configuração da integração" antes de sincronizar.']);
-        exit;
-    }
 
     // Reserva atômica do lock antes de disparar o processo em background — evita a corrida em que
     // dois cliques quase simultâneos passariam pela checagem antes do main.php marcar running_since.

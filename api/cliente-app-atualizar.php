@@ -15,7 +15,6 @@ if (!$caId || !$clienteId) { echo json_encode(['erro'=>'Dados inválidos']); exi
 
 try {
     $db = Database::getInstance();
-    // Webhook: só atualiza se fornecido e não-vazio (vazio = preservar valor atual)
     $sets   = ["valor = :v"];
     $params = [
         'ca_id' => $caId,
@@ -23,10 +22,6 @@ try {
         'v'     => (isset($body['valor']) && $body['valor'] !== '' && $body['valor'] !== null)
                     ? (float)$body['valor'] : null,
     ];
-    if (!empty($body['webhook_bitrix'])) {
-        $sets[]       = "webhook_bitrix = :w";
-        $params['w']  = $body['webhook_bitrix'];
-    }
     if (isset($body['descricao']) && trim($body['descricao']) !== '') {
         $sets[]          = "descricao = :desc";
         $params['desc']  = trim($body['descricao']);
