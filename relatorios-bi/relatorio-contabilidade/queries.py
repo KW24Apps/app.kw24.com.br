@@ -43,6 +43,9 @@ ETAPAS = {
     ],
 }
 
+# Tipos de contrato excluídos de todas as visões (não são vendas).
+TIPOS_EXCLUIDOS = ("Distrato",)
+
 # ── Classificação de origem (própria x indicada) ─────────────────────────────
 # Regra de negócio:
 #   'FF CONTABILIDADE LTDA'      → própria
@@ -116,7 +119,11 @@ def _base(aba, data_de, data_ate, ct_completo=True, ct_indicador=None, ct_contab
     ec, ep = _etapa_clause(aba)
     dw, dp = _data_clause(data_de, data_ate)
     cw, cp = _ct_clause(ct_completo, ct_indicador, ct_contab)
-    return f"{ec}{dw}{cw}", {**ep, **dp, **cp}
+    excl = " AND COALESCE(NULLIF(TRIM(t.tipo_de_contrato), ''), '(Sem tipo)') NOT IN ({})".format(
+        ", ".join(f"%(excl_{i})s" for i in range(len(TIPOS_EXCLUIDOS)))
+    )
+    excl_params = {f"excl_{i}": v for i, v in enumerate(TIPOS_EXCLUIDOS)}
+    return f"{ec}{dw}{cw}{excl}", {**ep, **dp, **cp, **excl_params}
 
 
 # ── Bloco 1: KPIs (Total / Internas / Indicadas) ─────────────────────────────

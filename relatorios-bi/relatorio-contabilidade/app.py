@@ -1146,7 +1146,7 @@ def load_data(aba, data_de, data_ate, _n):
 def render_kpis(data, cf):
     cf = cf or dict(CF_EMPTY)
     detalhe = (data or {}).get("detalhe", [])
-    k = compute_kpis(_filter_detalhe(detalhe, cf, dims=("contab",)))
+    k = compute_kpis(_filter_detalhe(detalhe, cf))
     total_qtd = _i(k.get("total_qtd"))
     ticket = (_f(k.get("total_valor")) / total_qtd) if total_qtd else 0.0
     cfk = k["contafarma"]; capk = k["capiton"]
