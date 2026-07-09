@@ -19,15 +19,19 @@ if (!$clienteId || !$aplicacaoId) { echo json_encode(['erro'=>'Dados inválidos'
 try {
     $db      = Database::getInstance();
     $row     = $db->fetchOne(
-        "SELECT webhook_bitrix FROM cliente_aplicacoes WHERE cliente_id = :c AND aplicacao_id = :a",
-        ['c' => $clienteId, 'a' => $aplicacaoId]
+        "SELECT o.webhook_motor
+         FROM clientes c
+         LEFT JOIN organizacoes o ON o.id = c.org_id
+         WHERE c.id = :c",
+        ['c' => $clienteId]
     );
 
-    if (!$row || empty($row['webhook_bitrix'])) {
+    if (!$row || empty($row['webhook_motor'])) {
+        error_log("bitrix-entidades: webhook_motor ausente para cliente_id={$clienteId} (sem org_id ou organização sem webhook_motor)");
         echo json_encode(['erro' => 'Webhook não configurado para esta aplicação']); exit;
     }
 
-    $webhook = rtrim($row['webhook_bitrix'], '/') . '/';
+    $webhook = rtrim($row['webhook_motor'], '/') . '/';
 
     // Entidades padrão fixas do Bitrix24
     $entidades = [

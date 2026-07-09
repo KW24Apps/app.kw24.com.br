@@ -28,7 +28,7 @@ if (!isset($user_data) || ($user_data['perfil'] ?? '') !== 'admin_interno') {
                 <tr>
                     <th>Nome</th>
                     <th>Status</th>
-                    <th>Webhook Motor</th>
+                    <th>Webhook Bitrix24</th>
                     <th>Criada em</th>
                 </tr>
             </thead>
@@ -68,7 +68,7 @@ if (!isset($user_data) || ($user_data['perfil'] ?? '') !== 'admin_interno') {
                     <input type="text" id="org-novo-nome" class="form-input" placeholder="Nome da organização">
                 </div>
                 <div class="panel-field no-edit">
-                    <label>Webhook Motor <small style="color:#a0aec0;font-weight:400">— webhook para sync de metadados via api_kw24</small></label>
+                    <label>Webhook Bitrix24 <small style="color:#a0aec0;font-weight:400">— webhook para sync de metadados via api_kw24</small></label>
                     <input type="text" id="org-novo-webhook" class="form-input" placeholder="https://...">
                 </div>
                 <div class="org-toggle-row">
@@ -101,7 +101,7 @@ if (!isset($user_data) || ($user_data['perfil'] ?? '') !== 'admin_interno') {
             </div>
             <div class="panel-field no-edit"><label>Criada em</label><span id="org-pf-criada"></span></div>
             <div class="panel-divider"></div>
-            <div class="panel-section-title">Webhook Motor</div>
+            <div class="panel-section-title">Webhook Bitrix24</div>
             <div id="org-pf-webhook-wrap" style="margin-bottom:1.25rem"></div>
         </div>
     </div>

@@ -175,7 +175,6 @@ function kwAtivarApp(appNome) {
             const wh   = input.value.trim();
             const desc = descInput.value.trim();
             const erroDesc = document.getElementById('kw-ativar-descricao-erro');
-            if (!wh)   { erro.style.display = 'block'; return; }
             erro.style.display = 'none';
             if (!desc) { if (erroDesc) erroDesc.style.display = 'block'; return; }
             if (erroDesc) erroDesc.style.display = 'none';

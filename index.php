@@ -159,7 +159,7 @@ $content_file = __DIR__ . "/public/{$page}.php";
             <h3 id="kw-ativar-title" style="text-align:center;font-family:'Rubik',sans-serif;font-size:1.05rem;font-weight:700;color:#1a202c;margin:0 0 .4rem"></h3>
             <p id="kw-ativar-msg" style="text-align:center;font-size:.875rem;color:#718096;margin:0 0 1.25rem;line-height:1.5"></p>
             <div style="margin-bottom:1.25rem">
-                <label style="display:block;font-size:.75rem;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">Webhook Bitrix24 *</label>
+                <label style="display:block;font-size:.75rem;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">Webhook Bitrix24 <small style="font-weight:400;color:#a0aec0;text-transform:none">— opcional, o webhook agora é definido por organização</small></label>
                 <input id="kw-ativar-webhook" type="url" placeholder="https://suaempresa.bitrix24.com.br/rest/..."
                     style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:.6rem .75rem;font-size:.875rem;color:#2d3748;outline:none;font-family:inherit;box-sizing:border-box;transition:border-color .15s"
                     onfocus="this.style.borderColor='#0DC2FF'" onblur="this.style.borderColor='#e2e8f0'">
