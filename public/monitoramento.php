@@ -570,6 +570,55 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .tsk-chat-msg-autor { color: #b794f4; font-weight: 600; }
 .tsk-chat-msg-data { color: rgba(255,255,255,.35); }
 .tsk-chat-msg-texto { color: rgba(255,255,255,.7); font-size: .8rem; line-height: 1.45; white-space: pre-wrap; }
+
+/* ===== MONITORAMENTO KW24 — Funil (volume: criados / finalizados, SPA 1054 / Funil 208) ===== */
+.fun-section {
+    display: flex;
+    gap: 1.25rem;
+    margin-top: 1.25rem;
+    flex-shrink: 0;
+}
+.fun-card {
+    background: rgba(255,255,255,0.05);
+    border: 1.5px solid rgba(255,255,255,0.10);
+    border-radius: 12px;
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+}
+.fun-card-header {
+    padding: .9rem 1.25rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-family: 'Rubik', sans-serif;
+    font-size: .95rem;
+    font-weight: 600;
+    color: #fff;
+}
+.fun-card-header i { margin-right: .5rem; }
+.fun-card-header.criados i { color: #0DC2FF; }
+.fun-card-header.finalizados i { color: #48bb78; }
+.fun-card-body {
+    padding: 1.1rem 1.25rem;
+    display: flex;
+    gap: 2rem;
+}
+.fun-stat { display: flex; flex-direction: column; gap: .25rem; }
+.fun-stat-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #fff;
+    font-family: 'Inter', monospace;
+}
+.fun-stat-label {
+    font-size: .67rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: rgba(255,255,255,.4);
+}
+@media (max-width: 1024px) {
+    .fun-section { flex-direction: column; }
+}
 </style>
 
 <div class="page-header">
@@ -614,6 +663,21 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             <div class="tsk-list" id="tsk-list">
                 <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="fun-section" id="fun-section">
+    <div class="fun-card">
+        <div class="fun-card-header criados"><i class="fas fa-inbox"></i>Chamados criados</div>
+        <div class="fun-card-body" id="fun-criados-body">
+            <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+        </div>
+    </div>
+    <div class="fun-card">
+        <div class="fun-card-header finalizados"><i class="fas fa-check-circle"></i>Chamados finalizados</div>
+        <div class="fun-card-body" id="fun-finalizados-body">
+            <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
         </div>
     </div>
 </div>
@@ -1081,7 +1145,53 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             });
     }
 
-    // ── Carregamento geral (Equipe + Chamados abertos + Tarefas) ──────────────────
+    // ── Painel Funil (SPA 1054 / Funil 208 — volume de criados/finalizados; sem Tarefas) ──
+    function funStatHtml(valor, label) {
+        return '<div class="fun-stat"><span class="fun-stat-value">' + (valor != null ? valor : '—') + '</span><span class="fun-stat-label">' + escHtml(label) + '</span></div>';
+    }
+
+    function renderFunil(data) {
+        var criadosBody     = document.getElementById('fun-criados-body');
+        var finalizadosBody = document.getElementById('fun-finalizados-body');
+        if (!criadosBody || !finalizadosBody) return;
+
+        if (data.aviso) {
+            var avisoHtml = '<div class="mon-empty"><i class="fas fa-plug"></i><div>' + escHtml(data.aviso) + '</div></div>';
+            criadosBody.innerHTML     = avisoHtml;
+            finalizadosBody.innerHTML = avisoHtml;
+            return;
+        }
+
+        var criados     = data.chamadosCriados     || {};
+        var finalizados = data.chamadosFinalizados || {};
+
+        criadosBody.innerHTML =
+            funStatHtml(criados.semana, 'Nesta semana') + funStatHtml(criados.periodo, 'No período');
+        finalizadosBody.innerHTML =
+            funStatHtml(finalizados.semana, 'Nesta semana') + funStatHtml(finalizados.periodo, 'No período');
+    }
+
+    function carregarFunil() {
+        return fetch('/api/monitoramento-funil-cards.php', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.erro) {
+                    var erroHtml = '<div class="mon-empty" style="color:#fc8181"><i class="fas fa-exclamation-circle"></i><div>'
+                        + escHtml(data.erro) + '</div></div>';
+                    document.getElementById('fun-criados-body').innerHTML     = erroHtml;
+                    document.getElementById('fun-finalizados-body').innerHTML = erroHtml;
+                    return;
+                }
+                renderFunil(data);
+            })
+            .catch(function () {
+                var erroHtml = '<div class="mon-empty" style="color:#fc8181"><i class="fas fa-exclamation-circle"></i><div>Erro de comunicação.</div></div>';
+                document.getElementById('fun-criados-body').innerHTML     = erroHtml;
+                document.getElementById('fun-finalizados-body').innerHTML = erroHtml;
+            });
+    }
+
+    // ── Carregamento geral (Equipe + Chamados abertos + Tarefas + Funil) ──────────
     function carregar() {
         var icon = document.getElementById('mon-refresh-icon');
         if (icon) icon.classList.add('fa-spin');
@@ -1103,7 +1213,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                     '<div class="mon-empty" style="color:#fc8181"><i class="fas fa-exclamation-circle"></i><div>Erro de comunicação.</div></div>';
             });
 
-        Promise.all([pEquipe, carregarChamados(), carregarTarefas()]).then(function () {
+        Promise.all([pEquipe, carregarChamados(), carregarTarefas(), carregarFunil()]).then(function () {
             if (icon) icon.classList.remove('fa-spin');
             var upd = document.getElementById('mon-updated');
             if (upd) upd.textContent = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR');
