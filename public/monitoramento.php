@@ -2,6 +2,11 @@
 if (!defined('SYSTEM_ACCESS') && !isset($user_data)) {
     header('Location: /public/login.php'); exit;
 }
+// Defesa em profundidade: garante admin_interno mesmo no caminho AJAX do index.php
+// (o guard genérico de lá não bloqueia usuário sem profile_id atribuído).
+if (($user_data['perfil'] ?? '') !== 'admin_interno') {
+    header('Location: ?page=dashboard'); exit;
+}
 ?>
 <style>
 /* ===== MONITORAMENTO KW24 — Equipe ===== */
