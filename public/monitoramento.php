@@ -275,6 +275,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     border-bottom: 1px solid rgba(255,255,255,0.08);
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: .6rem;
     flex-shrink: 0;
 }
@@ -283,19 +284,19 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     font-size: .95rem;
     font-weight: 600;
     color: #fff;
+    white-space: nowrap;
 }
 .tsk-section-title i { color: #b794f4; margin-right: .5rem; }
 .tsk-section-count {
     font-size: .75rem;
     color: rgba(255,255,255,.45);
+    white-space: nowrap;
 }
-.tsk-filter-row {
+.tsk-header-filters {
     display: flex;
     flex-wrap: wrap;
-    gap: .5rem;
-    padding: .7rem 1.25rem;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-    flex-shrink: 0;
+    gap: .4rem;
+    margin-left: auto;
 }
 .tsk-filter-pill {
     font-size: .72rem;
@@ -314,32 +315,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     background: linear-gradient(90deg,#b794f4,#805ad5);
     color: #fff;
     border-color: transparent;
-}
-.tsk-kpi-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.5rem;
-    padding: .6rem 1.25rem;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-    flex-shrink: 0;
-}
-.tsk-kpi-item {
-    display: flex;
-    flex-direction: column;
-    gap: .1rem;
-}
-.tsk-kpi-value {
-    font-size: .95rem;
-    font-weight: 700;
-    color: #fff;
-    font-family: 'Inter', monospace;
-}
-.tsk-kpi-label {
-    font-size: .62rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    color: rgba(255,255,255,.4);
 }
 .tsk-list {
     display: flex;
@@ -470,9 +445,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         <div class="tsk-section-header">
             <span class="tsk-section-title"><i class="fas fa-list-check"></i>Tarefas</span>
             <span class="tsk-section-count" id="tsk-count">Carregando…</span>
+            <div class="tsk-header-filters" id="tsk-filter-row"></div>
         </div>
-        <div class="tsk-filter-row" id="tsk-filter-row"></div>
-        <div class="tsk-kpi-row" id="tsk-kpi-row"></div>
         <div class="tsk-list" id="tsk-list">
             <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
         </div>
@@ -754,31 +728,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         return (t.badges || []).some(function (b) { return tskSelectedUids.has(b.bitrixUserId); });
     }
 
-    // Recalcula os KPIs considerando só as pessoas selecionadas no filtro — sem nova requisição
-    // (usa as badges das tarefas finalizadas já carregadas, ver MonitoramentoTarefasService::getDados()).
-    // Tarefas não tem conceito de ciclo/período — "Total"/"Finalizadas" são sobre todo o histórico.
-    function calcularKpiFiltrado(kpi, emAbertoFiltrado) {
-        if (!kpi) return null;
-        var finalizadasTarefas = kpi.finalizadasTarefas || [];
-        var finalizadasFiltrado = (tskSelectedUids && tskSelectedUids.size)
-            ? finalizadasTarefas.filter(function (f) { return (f.badges || []).some(function (b) { return tskSelectedUids.has(b.bitrixUserId); }); }).length
-            : finalizadasTarefas.length;
-        return {
-            total:       emAbertoFiltrado + finalizadasFiltrado,
-            finalizadas: finalizadasFiltrado,
-        };
-    }
-
-    function renderKpiRow(kpi) {
-        var kpiEl = document.getElementById('tsk-kpi-row');
-        if (!kpiEl) return;
-        if (!kpi) { kpiEl.innerHTML = ''; return; }
-
-        kpiEl.innerHTML =
-            '<div class="tsk-kpi-item"><span class="tsk-kpi-value">' + kpi.total + '</span><span class="tsk-kpi-label">Total</span></div>'
-            + '<div class="tsk-kpi-item"><span class="tsk-kpi-value">' + kpi.finalizadas + '</span><span class="tsk-kpi-label">Finalizadas</span></div>';
-    }
-
     function renderTarefas(data) {
         var listEl  = document.getElementById('tsk-list');
         var countEl = document.getElementById('tsk-count');
@@ -788,7 +737,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         if (data.aviso) {
             listEl.innerHTML = '<div class="mon-empty"><i class="fas fa-plug"></i><div>' + escHtml(data.aviso) + '</div></div>';
             countEl.textContent = '';
-            renderKpiRow(null);
             return;
         }
 
@@ -798,7 +746,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             : todasTarefas;
 
         countEl.textContent = tarefas.length + ' em aberto';
-        renderKpiRow(calcularKpiFiltrado(data.kpi, tarefas.length));
 
         if (!tarefas.length) {
             listEl.innerHTML = '<div class="mon-empty"><i class="fas fa-check-circle"></i><div>Nenhuma tarefa em aberto.</div></div>';

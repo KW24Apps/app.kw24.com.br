@@ -84,9 +84,6 @@ class MonitoramentoTarefasService {
             return $da <=> $db;
         });
 
-        $emAberto    = count($tarefas);
-        $finalizadas = $this->buscarFinalizadas();
-
         $equipe = [];
         foreach (self::EQUIPE as $uid => $nome) {
             $equipe[] = ['bitrixUserId' => $uid, 'nome' => $nome];
@@ -94,21 +91,9 @@ class MonitoramentoTarefasService {
 
         return [
             'bitrixBase' => $this->bitrix->getPortalBaseUrl(),
-            'total'      => $emAberto,
+            'total'      => count($tarefas),
             'tarefas'    => $tarefas,
             'equipe'     => $equipe, // roster fixo, usado pelo filtro por pessoa da tela
-            'kpi'        => [
-                // Sem recorte de data — Tarefas não tem conceito de ciclo/período (isso só se
-                // aplica a Chamados/Equipe e, futuramente, Atendimento). "Total" = todas as
-                // tarefas da equipe, abertas + fechadas, desde sempre; "Finalizadas" = só as
-                // fechadas, também sem recorte de data.
-                'emAberto'    => $emAberto,
-                'finalizadas' => count($finalizadas),
-                'total'       => $emAberto + count($finalizadas),
-                // Badges por tarefa finalizada — permite recalcular os KPIs no cliente quando o
-                // filtro por pessoa da tela muda, sem precisar de nova requisição.
-                'finalizadasTarefas' => $finalizadas,
-            ],
         ];
     }
 
@@ -130,36 +115,6 @@ class MonitoramentoTarefasService {
             $porId[$t['id']] = $t;
         }
         return $porId;
-    }
-
-    /**
-     * Tarefas da equipe (qualquer papel) já finalizadas — SEM recorte de data (todo o histórico).
-     * Retorna id + badges (não a tarefa completa — não é exibida em lista, só usada para os KPIs
-     * e para o filtro por pessoa recalcular os números no cliente). Usa paginação em lote
-     * (listTasksBatched) porque o histórico completo pode ter milhares de tarefas por papel —
-     * paginar uma página por requisição seria lento.
-     */
-    private function buscarFinalizadas(): array {
-        $uids   = array_keys(self::EQUIPE);
-        $select = ['ID', 'RESPONSIBLE_ID', 'CREATED_BY', 'ACCOMPLICES', 'AUDITORS'];
-
-        $porResponsavel  = $this->bitrix->listTasksBatched(['RESPONSIBLE_ID' => $uids, '!CLOSED_DATE' => ''], $select);
-        $porCriador      = $this->bitrix->listTasksBatched(['CREATED_BY'     => $uids, '!CLOSED_DATE' => ''], $select);
-        $porParticipante = $this->bitrix->listTasksBatched(['ACCOMPLICE'     => $uids, '!CLOSED_DATE' => ''], $select);
-        $porObservador   = $this->bitrix->listTasksBatched(['AUDITOR'        => $uids, '!CLOSED_DATE' => ''], $select);
-
-        $porId = [];
-        foreach (array_merge($porResponsavel, $porCriador, $porParticipante, $porObservador) as $t) {
-            $porId[$t['id']] = $t;
-        }
-
-        $out = [];
-        foreach ($porId as $t) {
-            $badges = $this->montarBadges($t);
-            if (!$badges) continue; // defensivo
-            $out[] = ['id' => (int)$t['id'], 'badges' => $badges];
-        }
-        return $out;
     }
 
     /**
