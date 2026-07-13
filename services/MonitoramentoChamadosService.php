@@ -18,9 +18,11 @@ class MonitoramentoChamadosService {
     private const ENTITY_TYPE  = 1054;
     private const CAT_DEMANDAS = 208;
 
-    private const F_NOME = 'ufCrm41_1737476071'; // Nome do Chamado
-    private const F_TIPO = 'ufCrm41_1737476320'; // Tipo de Chamado
-    private const F_RESP = 'ufCrm41_1727877194'; // Responsável pelo Chamado (array de user IDs)
+    private const F_NOME        = 'ufCrm41_1737476071'; // Nome do Chamado
+    private const F_TIPO        = 'ufCrm41_1737476320'; // Tipo de Chamado
+    private const F_RESP        = 'ufCrm41_1727877194'; // Responsável pelo Chamado (array de user IDs)
+    private const F_SOLICITANTE = 'ufCrm41_1737477724'; // Solicitante (texto livre, não é usuário Bitrix)
+    private const F_RESUMO      = 'ufCrm41_1727788277'; // Comentário Resumo (texto longo, exibido só ao expandir)
 
     private const ETAPAS = [
         'DT1054_208:NEW'         => 'Fila - Desenvolvimento',
@@ -85,7 +87,7 @@ class MonitoramentoChamadosService {
                 'stageId'    => array_keys(self::ETAPAS),
                 self::F_TIPO => $tiposTodos,
             ],
-            ['id', self::F_NOME, 'title', self::F_TIPO, 'stageId', self::F_RESP, 'createdTime'],
+            ['id', self::F_NOME, 'title', self::F_TIPO, 'stageId', self::F_RESP, 'createdTime', self::F_SOLICITANTE, self::F_RESUMO],
             0
         );
 
@@ -149,6 +151,8 @@ class MonitoramentoChamadosService {
                 'tipoPadrao'   => in_array($tipo, self::TIPOS_PADRAO, true),
                 'etapaLabel'   => self::ETAPAS[$stageId] ?? $stageId, // defensivo — não deveria faltar (ver nota da classe)
                 'responsaveis' => $responsaveis,
+                'solicitante'  => trim((string)($it[self::F_SOLICITANTE] ?? '')),
+                'resumo'       => trim((string)($it[self::F_RESUMO] ?? '')),
                 'createdTime'  => $it['createdTime'] ?? null,
                 'temChat'      => $chatId !== null,
                 'chatErro'     => $chatErro,

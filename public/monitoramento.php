@@ -328,6 +328,23 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     gap: .4rem;
     margin-left: auto;
 }
+.cha-thead {
+    display: grid;
+    grid-template-columns: 26px minmax(160px,1fr) 150px 140px 130px 84px 56px;
+    gap: .6rem;
+    align-items: center;
+    padding: .5rem 1.25rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0;
+}
+.cha-th {
+    font-size: .64rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: rgba(255,255,255,.35);
+    white-space: nowrap;
+}
 .cha-list {
     display: flex;
     flex-direction: column;
@@ -338,27 +355,44 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .cha-list::-webkit-scrollbar { width: 5px; }
 .cha-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
 .cha-list::-webkit-scrollbar-thumb { background: rgba(13,194,255,0.25); border-radius: 3px; }
-.cha-row {
-    display: flex;
-    align-items: center;
-    gap: .6rem;
-    padding: .6rem 1.25rem;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-}
+.cha-row { border-bottom: 1px solid rgba(255,255,255,0.06); }
 .cha-row:last-child { border-bottom: none; }
+.cha-row-main {
+    display: grid;
+    grid-template-columns: 26px minmax(160px,1fr) 150px 140px 130px 84px 56px;
+    gap: .6rem;
+    align-items: center;
+    padding: .6rem 1.25rem;
+    cursor: pointer;
+}
+.cha-row-main:hover { background: rgba(255,255,255,0.03); }
+.cha-chevron-btn {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,.28);
+    cursor: pointer;
+    padding: .3rem;
+    flex-shrink: 0;
+    transition: color .15s, transform .2s;
+    line-height: 1;
+}
+.cha-chevron-btn.open { color: #0DC2FF; transform: rotate(90deg); }
+.cha-row-chamado { display: flex; align-items: center; gap: .5rem; min-width: 0; }
 .cha-row-id {
     font-family: 'Inter', monospace;
-    font-size: .72rem;
+    font-size: .78rem;
     font-weight: 700;
-    color: rgba(255,255,255,.4);
+    color: #0DC2FF;
+    text-decoration: none;
     flex-shrink: 0;
 }
+.cha-row-id:hover { color: #26d4ff; }
 .cha-row-title {
     color: #fff;
     font-size: .83rem;
     font-weight: 500;
-    flex: 1;
-    min-width: 100px;
+    flex: 1 1 0;
+    min-width: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -369,18 +403,23 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     padding: .15rem .5rem;
     border-radius: 20px;
     white-space: nowrap;
-    flex-shrink: 0;
+    justify-self: start;
 }
 .cha-etapa {
     font-size: .72rem;
     color: rgba(255,255,255,.5);
-    flex-shrink: 0;
     white-space: nowrap;
-    max-width: 140px;
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.cha-avatares { display: flex; gap: .25rem; flex-shrink: 0; }
+.cha-solicitante {
+    font-size: .78rem;
+    color: rgba(255,255,255,.65);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cha-avatares { display: flex; gap: .25rem; }
 .cha-avatar {
     width: 22px;
     height: 22px;
@@ -394,18 +433,28 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     justify-content: center;
     flex-shrink: 0;
 }
-.cha-sem-resp { font-size: .68rem; color: rgba(255,255,255,.3); flex-shrink: 0; white-space: nowrap; }
-.cha-idade {
-    font-size: .72rem;
-    color: rgba(255,255,255,.4);
-    flex-shrink: 0;
-    white-space: nowrap;
-    font-family: 'Inter', monospace;
-}
+.cha-sem-resp { font-size: .68rem; color: rgba(255,255,255,.3); white-space: nowrap; }
+.cha-acoes { display: flex; gap: .5rem; align-items: center; justify-content: flex-end; }
 .cha-chat-icon { color: rgba(255,255,255,.35); flex-shrink: 0; font-size: .78rem; cursor: pointer; }
 .cha-chat-icon:hover { color: #b794f4; }
 .cha-link-icon { color: rgba(255,255,255,.35); flex-shrink: 0; font-size: .78rem; text-decoration: none; }
 .cha-link-icon:hover { color: #0DC2FF; }
+.cha-row-detail { display: none; }
+.cha-row-detail.open { display: block; }
+.cha-detail-inner {
+    padding: 1rem 1.25rem 1.25rem 3rem;
+    background: rgba(13,194,255,.03);
+    border-top: 1px solid rgba(13,194,255,.10);
+}
+.cha-detail-label {
+    font-size: .67rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #0DC2FF;
+    margin-bottom: .35rem;
+}
+.cha-detail-text { color: rgba(255,255,255,.75); font-size: .82rem; line-height: 1.5; }
 
 /* ===== MONITORAMENTO KW24 — Tarefas ===== */
 .tsk-section {
@@ -663,6 +712,15 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                 <div class="cha-header-filters">
                     <span class="tsk-filter-pill" id="cha-toggle-tipos" onclick="chaToggleTipos()">Mostrar todos os tipos</span>
                 </div>
+            </div>
+            <div class="cha-thead">
+                <span></span>
+                <span class="cha-th">Chamado</span>
+                <span class="cha-th">Tipo</span>
+                <span class="cha-th">Etapa</span>
+                <span class="cha-th">Solicitante</span>
+                <span class="cha-th">Resp.</span>
+                <span></span>
             </div>
             <div class="cha-list" id="cha-list">
                 <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
@@ -1055,17 +1113,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
     }
 
-    function fmtIdade(iso) {
-        if (!iso) return '';
-        var d = new Date(iso);
-        if (isNaN(d.getTime())) return '';
-        var diffMs = Date.now() - d.getTime();
-        var dias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        if (dias >= 1) return 'há ' + dias + 'd';
-        var horas = Math.floor(diffMs / (1000 * 60 * 60));
-        return horas >= 1 ? ('há ' + horas + 'h') : 'há poucos min';
-    }
-
     function chaAvatarHtml(r) {
         return '<span class="cha-avatar" title="' + escHtml(r.nome) + '">' + escHtml(iniciais(r.nome)) + '</span>';
     }
@@ -1074,27 +1121,50 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         var url = (lastChamados && lastChamados.bitrixBase)
             ? lastChamados.bitrixBase + '/crm/type/1054/details/' + c.id + '/'
             : '';
+        var idHtml = url
+            ? '<a class="cha-row-id" href="' + escHtml(url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">#' + c.id + '</a>'
+            : '<span class="cha-row-id">#' + c.id + '</span>';
         var linkIcon = url
             ? '<a href="' + escHtml(url) + '" target="_blank" rel="noopener" class="cha-link-icon" onclick="event.stopPropagation()" title="Abrir no Bitrix24"><i class="fas fa-external-link-alt"></i></a>'
             : '';
         var chatIcon = c.temChat
-            ? '<i class="fas fa-comment-dots cha-chat-icon" title="Ver mensagens" onclick="chaAbrirChat(' + c.id + ')"></i>'
+            ? '<i class="fas fa-comment-dots cha-chat-icon" title="Ver mensagens" onclick="event.stopPropagation();chaAbrirChat(' + c.id + ')"></i>'
             : '';
         var avatares = (c.responsaveis && c.responsaveis.length)
             ? c.responsaveis.map(chaAvatarHtml).join('')
-            : '<span class="cha-sem-resp">Sem responsável</span>';
+            : '<span class="cha-sem-resp">—</span>';
+
+        var resumoHtml = c.resumo
+            ? escHtml(c.resumo)
+            : '<span style="color:rgba(255,255,255,.35)">Sem resumo</span>';
 
         return '<div class="cha-row">'
-            + '<span class="cha-row-id">#' + c.id + '</span>'
-            + '<span class="cha-row-title">' + escHtml(c.titulo) + '</span>'
-            + '<span class="cha-badge" style="background:' + c.tipoCor + '22;color:' + c.tipoCor + ';border:1px solid ' + c.tipoCor + '55">' + escHtml(c.tipoLabel) + '</span>'
-            + '<span class="cha-etapa">' + escHtml(c.etapaLabel) + '</span>'
-            + '<span class="cha-avatares">' + avatares + '</span>'
-            + '<span class="cha-idade">' + fmtIdade(c.createdTime) + '</span>'
-            + chatIcon
-            + linkIcon
+            + '<div class="cha-row-main" onclick="chaToggle(' + c.id + ')">'
+                + '<button class="cha-chevron-btn" id="cha-btn-' + c.id + '"><i class="fas fa-chevron-right" style="font-size:.7rem"></i></button>'
+                + '<div class="cha-row-chamado">' + idHtml + '<span class="cha-row-title">' + escHtml(c.titulo) + '</span></div>'
+                + '<span class="cha-badge" style="background:' + c.tipoCor + '22;color:' + c.tipoCor + ';border:1px solid ' + c.tipoCor + '55">' + escHtml(c.tipoLabel) + '</span>'
+                + '<span class="cha-etapa">' + escHtml(c.etapaLabel) + '</span>'
+                + '<span class="cha-solicitante">' + escHtml(c.solicitante || '—') + '</span>'
+                + '<span class="cha-avatares">' + avatares + '</span>'
+                + '<span class="cha-acoes">' + chatIcon + linkIcon + '</span>'
+            + '</div>'
+            + '<div class="cha-row-detail" id="cha-detail-' + c.id + '">'
+                + '<div class="cha-detail-inner">'
+                    + '<div class="cha-detail-label">Resumo</div><div class="cha-detail-text">' + resumoHtml + '</div>'
+                + '</div>'
+            + '</div>'
             + '</div>';
     }
+
+    window.chaToggle = function (id) {
+        var detail = document.getElementById('cha-detail-' + id);
+        var btn    = document.getElementById('cha-btn-' + id);
+        if (!detail) return;
+
+        var isOpen = detail.classList.contains('open');
+        detail.classList.toggle('open', !isOpen);
+        if (btn) btn.classList.toggle('open', !isOpen);
+    };
 
     function renderChamados(data) {
         var listEl  = document.getElementById('cha-list');
