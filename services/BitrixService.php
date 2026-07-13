@@ -171,6 +171,92 @@ class BitrixService {
         return $this->post('crm.company.get', ['id' => $companyId]);
     }
 
+    /** Resolve IDs de usuário Bitrix24 para nome completo. Retorna [id => "Nome Sobrenome"]. */
+    public function getUserNames(array $userIds): array {
+        $ids = array_values(array_unique(array_map('intval', $userIds)));
+        if (!$ids) return [];
+
+        $result = $this->post('user.get', ['filter' => ['ID' => $ids]]);
+        $out = [];
+        foreach ((array)$result as $u) {
+            $nome = trim(($u['NAME'] ?? '') . ' ' . ($u['LAST_NAME'] ?? ''));
+            $out[(int)$u['ID']] = $nome !== '' ? $nome : ('Usuário #' . $u['ID']);
+        }
+        return $out;
+    }
+
+    /**
+     * Resolve o chat vinculado (im.chat) de vários itens CRM (SPA) de uma vez, via batch.
+     * Retorna [itemId => chatId] — itens sem chat vinculado não aparecem no retorno.
+     * Padrão descoberto em apis2.kw24.com.br/TRANSICAO.md ("Localizar chat vinculado a um card
+     * CRM"): ENTITY_TYPE fixo "CRM", ENTITY_ID = "DYNAMIC_{entityTypeId}|{itemId}".
+     */
+    public function getCrmChatIds(int $entityTypeId, array $itemIds): array {
+        $out = [];
+        foreach (array_chunk($itemIds, 50) as $chunk) {
+            $cmd = [];
+            foreach ($chunk as $i => $itemId) {
+                $cmd["c{$i}"] = 'im.chat.get?' . http_build_query([
+                    'ENTITY_TYPE' => 'CRM',
+                    'ENTITY_ID'   => "DYNAMIC_{$entityTypeId}|{$itemId}",
+                ], '', '&', PHP_QUERY_RFC3986);
+            }
+
+            $resp = $this->post('batch', ['halt' => 0, 'cmd' => $cmd]);
+            if ($resp === null) continue;
+
+            $results = $resp['result'] ?? [];
+            foreach ($chunk as $i => $itemId) {
+                $chatId = $results["c{$i}"]['ID'] ?? null;
+                if ($chatId) $out[(int)$itemId] = (int)$chatId;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Mensagens recentes de vários chats de uma vez, via batch de im.dialog.messages.get.
+     * Retorna [chatId => ['mensagens' => [...], 'usuarios' => [id => dadosDoUsuario]]] em caso de
+     * sucesso, ou [chatId => ['erro' => 'ACCESS_ERROR']] quando o usuário do webhook não é membro
+     * do chat (comum para chats de card CRM — só quem participou da conversa tem acesso; ver nota
+     * em MonitoramentoChamadosService). $limit corta as mensagens mais recentes (a API já retorna
+     * as últimas ~20 por padrão, sem paginação padrão).
+     */
+    public function getCrmChatMessages(array $chatIds, int $limit = 5): array {
+        $out = [];
+        foreach (array_chunk(array_values(array_unique($chatIds)), 50) as $chunk) {
+            $cmd = [];
+            foreach ($chunk as $i => $chatId) {
+                $cmd["d{$i}"] = 'im.dialog.messages.get?' . http_build_query([
+                    'DIALOG_ID' => 'chat' . $chatId,
+                ], '', '&', PHP_QUERY_RFC3986);
+            }
+
+            $resp = $this->post('batch', ['halt' => 0, 'cmd' => $cmd]);
+            if ($resp === null) continue;
+
+            $results = $resp['result']       ?? [];
+            $errors  = $resp['result_error'] ?? [];
+
+            foreach ($chunk as $i => $chatId) {
+                $key = "d{$i}";
+                if (!empty($errors[$key])) {
+                    $out[$chatId] = ['erro' => $errors[$key]['error'] ?? 'erro'];
+                    continue;
+                }
+                $usuarios = [];
+                foreach (($results[$key]['users'] ?? []) as $u) {
+                    $usuarios[(int)$u['id']] = $u['name'] ?? ('Usuário #' . $u['id']);
+                }
+                $out[$chatId] = [
+                    'mensagens' => array_slice($results[$key]['messages'] ?? [], 0, $limit),
+                    'usuarios'  => $usuarios,
+                ];
+            }
+        }
+        return $out;
+    }
+
     /**
      * Lista tarefas do Bitrix24 Tasks (tasks.task.list) com paginação automática.
      * Atenção: a resposta usa chaves camelCase (id, title, responsibleId, closedDate, ...),

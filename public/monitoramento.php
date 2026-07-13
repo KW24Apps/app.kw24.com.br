@@ -21,10 +21,20 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     flex: 1;
     min-height: 0;
 }
+.mon-right-col {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    flex: 1 1 auto;
+    min-width: 320px;
+    min-height: 0;
+}
 @media (max-width: 1024px) {
     .mon-panels-row { flex-direction: column; }
     .mon-equipe-card { flex: 0 0 auto !important; max-height: 45vh; }
-    .tsk-section { flex: 1 1 auto !important; min-height: 320px; }
+    .mon-right-col { flex: 1 1 auto; min-height: 560px; }
+    .cha-section { flex: 0 0 260px !important; }
+    .tsk-section { flex: 1 1 auto !important; min-height: 280px; }
 }
 
 /* ===== Painel Equipe — card único, membros empilhados ===== */
@@ -258,6 +268,124 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     min-height: 0;
 }
 
+/* ===== MONITORAMENTO KW24 — Chamados abertos ===== */
+.cha-section {
+    background: rgba(255,255,255,0.05);
+    border: 1.5px solid rgba(255,255,255,0.10);
+    border-radius: 12px;
+    flex: 0 0 42%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.cha-section-header {
+    padding: .9rem 1.25rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .6rem;
+    flex-shrink: 0;
+}
+.cha-section-title {
+    font-family: 'Rubik', sans-serif;
+    font-size: .95rem;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+}
+.cha-section-title i { color: #0DC2FF; margin-right: .5rem; }
+.cha-section-count {
+    font-size: .75rem;
+    color: rgba(255,255,255,.45);
+    white-space: nowrap;
+}
+.cha-header-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+    margin-left: auto;
+}
+.cha-list {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+.cha-list::-webkit-scrollbar { width: 5px; }
+.cha-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
+.cha-list::-webkit-scrollbar-thumb { background: rgba(13,194,255,0.25); border-radius: 3px; }
+.cha-row {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .6rem 1.25rem;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.cha-row:last-child { border-bottom: none; }
+.cha-row-id {
+    font-family: 'Inter', monospace;
+    font-size: .72rem;
+    font-weight: 700;
+    color: rgba(255,255,255,.4);
+    flex-shrink: 0;
+}
+.cha-row-title {
+    color: #fff;
+    font-size: .83rem;
+    font-weight: 500;
+    flex: 1;
+    min-width: 100px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cha-badge {
+    font-size: .64rem;
+    font-weight: 700;
+    padding: .15rem .5rem;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.cha-etapa {
+    font-size: .72rem;
+    color: rgba(255,255,255,.5);
+    flex-shrink: 0;
+    white-space: nowrap;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cha-avatares { display: flex; gap: .25rem; flex-shrink: 0; }
+.cha-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg,#0DC2FF,#086B8D);
+    color: #061920;
+    font-size: .6rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.cha-sem-resp { font-size: .68rem; color: rgba(255,255,255,.3); flex-shrink: 0; white-space: nowrap; }
+.cha-idade {
+    font-size: .72rem;
+    color: rgba(255,255,255,.4);
+    flex-shrink: 0;
+    white-space: nowrap;
+    font-family: 'Inter', monospace;
+}
+.cha-chat-icon { color: rgba(255,255,255,.35); flex-shrink: 0; font-size: .78rem; cursor: pointer; }
+.cha-chat-icon:hover { color: #b794f4; }
+.cha-link-icon { color: rgba(255,255,255,.35); flex-shrink: 0; font-size: .78rem; text-decoration: none; }
+.cha-link-icon:hover { color: #0DC2FF; }
+
 /* ===== MONITORAMENTO KW24 — Tarefas ===== */
 .tsk-section {
     background: rgba(255,255,255,0.05);
@@ -441,14 +569,29 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         </div>
     </div>
 
-    <div class="tsk-section">
-        <div class="tsk-section-header">
-            <span class="tsk-section-title"><i class="fas fa-list-check"></i>Tarefas</span>
-            <span class="tsk-section-count" id="tsk-count">Carregando…</span>
-            <div class="tsk-header-filters" id="tsk-filter-row"></div>
+    <div class="mon-right-col">
+        <div class="cha-section">
+            <div class="cha-section-header">
+                <span class="cha-section-title"><i class="fas fa-inbox"></i>Chamados abertos</span>
+                <span class="cha-section-count" id="cha-count">Carregando…</span>
+                <div class="cha-header-filters">
+                    <span class="tsk-filter-pill" id="cha-toggle-tipos" onclick="chaToggleTipos()">Mostrar todos os tipos</span>
+                </div>
+            </div>
+            <div class="cha-list" id="cha-list">
+                <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+            </div>
         </div>
-        <div class="tsk-list" id="tsk-list">
-            <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+
+        <div class="tsk-section">
+            <div class="tsk-section-header">
+                <span class="tsk-section-title"><i class="fas fa-list-check"></i>Tarefas</span>
+                <span class="tsk-section-count" id="tsk-count">Carregando…</span>
+                <div class="tsk-header-filters" id="tsk-filter-row"></div>
+            </div>
+            <div class="tsk-list" id="tsk-list">
+                <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+            </div>
         </div>
     </div>
 </div>
@@ -670,19 +813,34 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             + '</div>';
     }
 
-    // ── Modal de chat da tarefa (clique no ícone) ─────────────────────────────────
+    // ── Modal de chat — componente compartilhado entre Tarefas e Chamados abertos ────
+    function abrirChatModal(titulo, comentarios, chatErro) {
+        document.getElementById('tsk-chat-title').textContent = titulo;
+        var listEl = document.getElementById('tsk-chat-list');
+
+        if (chatErro) {
+            listEl.innerHTML = '<div style="color:rgba(255,255,255,.35);font-size:.82rem;padding:.5rem 0">Sem permissão para acessar este chat.</div>';
+        } else if (comentarios && comentarios.length) {
+            listEl.innerHTML = comentarios.map(tskChatMsgHtml).join('');
+        } else {
+            listEl.innerHTML = '<div style="color:rgba(255,255,255,.35);font-size:.82rem;padding:.5rem 0">Nenhuma mensagem.</div>';
+        }
+
+        document.getElementById('tsk-chat-overlay').style.display = 'flex';
+    }
+
     window.tskAbrirChat = function (id) {
         if (!lastTarefas || !lastTarefas.tarefas) return;
         var tarefa = lastTarefas.tarefas.filter(function (t) { return t.id === id; })[0];
         if (!tarefa) return;
+        abrirChatModal(tarefa.titulo, tarefa.comentarios, null); // chat de tarefa não tem chatErro — sempre acessível
+    };
 
-        document.getElementById('tsk-chat-title').textContent = tarefa.titulo;
-        var listEl = document.getElementById('tsk-chat-list');
-        listEl.innerHTML = (tarefa.comentarios || []).length
-            ? tarefa.comentarios.map(tskChatMsgHtml).join('')
-            : '<div style="color:rgba(255,255,255,.35);font-size:.82rem;padding:.5rem 0">Nenhuma mensagem.</div>';
-
-        document.getElementById('tsk-chat-overlay').style.display = 'flex';
+    window.chaAbrirChat = function (id) {
+        if (!lastChamados || !lastChamados.chamados) return;
+        var chamado = lastChamados.chamados.filter(function (c) { return c.id === id; })[0];
+        if (!chamado) return;
+        abrirChatModal(chamado.titulo, chamado.comentarios, chamado.chatErro);
     };
 
     window.tskFecharChat = function () {
@@ -784,7 +942,108 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             });
     }
 
-    // ── Carregamento geral (Equipe + Tarefas) ─────────────────────────────────────
+    // ── Painel Chamados abertos (SPA 1054 / Funil 208 — fila inteira, sem escopo de equipe) ──
+    var lastChamados     = null;
+    var chaMostrarTodos  = false;
+
+    function iniciais(nome) {
+        var partes = (nome || '').trim().split(/\s+/).filter(Boolean);
+        if (!partes.length) return '?';
+        if (partes.length === 1) return partes[0].substring(0, 2).toUpperCase();
+        return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+    }
+
+    function fmtIdade(iso) {
+        if (!iso) return '';
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        var diffMs = Date.now() - d.getTime();
+        var dias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        if (dias >= 1) return 'há ' + dias + 'd';
+        var horas = Math.floor(diffMs / (1000 * 60 * 60));
+        return horas >= 1 ? ('há ' + horas + 'h') : 'há poucos min';
+    }
+
+    function chaAvatarHtml(r) {
+        return '<span class="cha-avatar" title="' + escHtml(r.nome) + '">' + escHtml(iniciais(r.nome)) + '</span>';
+    }
+
+    function chaRowHtml(c) {
+        var url = (lastChamados && lastChamados.bitrixBase)
+            ? lastChamados.bitrixBase + '/crm/type/1054/details/' + c.id + '/'
+            : '';
+        var linkIcon = url
+            ? '<a href="' + escHtml(url) + '" target="_blank" rel="noopener" class="cha-link-icon" onclick="event.stopPropagation()" title="Abrir no Bitrix24"><i class="fas fa-external-link-alt"></i></a>'
+            : '';
+        var chatIcon = c.temChat
+            ? '<i class="fas fa-comment-dots cha-chat-icon" title="Ver mensagens" onclick="chaAbrirChat(' + c.id + ')"></i>'
+            : '';
+        var avatares = (c.responsaveis && c.responsaveis.length)
+            ? c.responsaveis.map(chaAvatarHtml).join('')
+            : '<span class="cha-sem-resp">Sem responsável</span>';
+
+        return '<div class="cha-row">'
+            + '<span class="cha-row-id">#' + c.id + '</span>'
+            + '<span class="cha-row-title">' + escHtml(c.titulo) + '</span>'
+            + '<span class="cha-badge" style="background:' + c.tipoCor + '22;color:' + c.tipoCor + ';border:1px solid ' + c.tipoCor + '55">' + escHtml(c.tipoLabel) + '</span>'
+            + '<span class="cha-etapa">' + escHtml(c.etapaLabel) + '</span>'
+            + '<span class="cha-avatares">' + avatares + '</span>'
+            + '<span class="cha-idade">' + fmtIdade(c.createdTime) + '</span>'
+            + chatIcon
+            + linkIcon
+            + '</div>';
+    }
+
+    function renderChamados(data) {
+        var listEl  = document.getElementById('cha-list');
+        var countEl = document.getElementById('cha-count');
+
+        if (data.aviso) {
+            listEl.innerHTML = '<div class="mon-empty"><i class="fas fa-plug"></i><div>' + escHtml(data.aviso) + '</div></div>';
+            countEl.textContent = '';
+            return;
+        }
+
+        var todos    = data.chamados || [];
+        var visiveis = chaMostrarTodos ? todos : todos.filter(function (c) { return c.tipoPadrao; });
+
+        countEl.textContent = visiveis.length + ' em aberto';
+
+        if (!visiveis.length) {
+            listEl.innerHTML = '<div class="mon-empty"><i class="fas fa-check-circle"></i><div>Nenhum chamado em aberto.</div></div>';
+            return;
+        }
+
+        listEl.innerHTML = visiveis.map(chaRowHtml).join('');
+    }
+
+    window.chaToggleTipos = function () {
+        chaMostrarTodos = !chaMostrarTodos;
+        var btn = document.getElementById('cha-toggle-tipos');
+        if (btn) btn.classList.toggle('active', chaMostrarTodos);
+        if (lastChamados) renderChamados(lastChamados);
+    };
+
+    function carregarChamados() {
+        return fetch('/api/monitoramento-chamados-cards.php', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.erro) {
+                    document.getElementById('cha-list').innerHTML =
+                        '<div class="mon-empty" style="color:#fc8181"><i class="fas fa-exclamation-circle"></i><div>'
+                        + escHtml(data.erro) + '</div></div>';
+                    return;
+                }
+                lastChamados = data;
+                renderChamados(data);
+            })
+            .catch(function () {
+                document.getElementById('cha-list').innerHTML =
+                    '<div class="mon-empty" style="color:#fc8181"><i class="fas fa-exclamation-circle"></i><div>Erro de comunicação.</div></div>';
+            });
+    }
+
+    // ── Carregamento geral (Equipe + Chamados abertos + Tarefas) ──────────────────
     function carregar() {
         var icon = document.getElementById('mon-refresh-icon');
         if (icon) icon.classList.add('fa-spin');
@@ -806,7 +1065,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                     '<div class="mon-empty" style="color:#fc8181"><i class="fas fa-exclamation-circle"></i><div>Erro de comunicação.</div></div>';
             });
 
-        Promise.all([pEquipe, carregarTarefas()]).then(function () {
+        Promise.all([pEquipe, carregarChamados(), carregarTarefas()]).then(function () {
             if (icon) icon.classList.remove('fa-spin');
             var upd = document.getElementById('mon-updated');
             if (upd) upd.textContent = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR');
