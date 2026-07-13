@@ -575,7 +575,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .fun-section {
     display: flex;
     gap: 1.25rem;
-    margin-top: 1.25rem;
+    margin-bottom: 1.25rem;
     flex-shrink: 0;
 }
 .fun-card {
@@ -631,6 +631,21 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     </div>
 </div>
 
+<div class="fun-section" id="fun-section">
+    <div class="fun-card">
+        <div class="fun-card-header criados"><i class="fas fa-inbox"></i>Chamados criados</div>
+        <div class="fun-card-body" id="fun-criados-body">
+            <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+        </div>
+    </div>
+    <div class="fun-card">
+        <div class="fun-card-header finalizados"><i class="fas fa-check-circle"></i>Chamados finalizados</div>
+        <div class="fun-card-body" id="fun-finalizados-body">
+            <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+        </div>
+    </div>
+</div>
+
 <div class="mon-panels-row">
     <div class="mon-equipe-card">
         <div class="mon-equipe-header"><i class="fas fa-users"></i>Equipe</div>
@@ -663,21 +678,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             <div class="tsk-list" id="tsk-list">
                 <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
             </div>
-        </div>
-    </div>
-</div>
-
-<div class="fun-section" id="fun-section">
-    <div class="fun-card">
-        <div class="fun-card-header criados"><i class="fas fa-inbox"></i>Chamados criados</div>
-        <div class="fun-card-body" id="fun-criados-body">
-            <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
-        </div>
-    </div>
-    <div class="fun-card">
-        <div class="fun-card-header finalizados"><i class="fas fa-check-circle"></i>Chamados finalizados</div>
-        <div class="fun-card-body" id="fun-finalizados-body">
-            <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
         </div>
     </div>
 </div>
