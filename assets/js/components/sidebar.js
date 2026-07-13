@@ -155,7 +155,8 @@ class SidebarManager {
             'dashboard': [
                 { id: 'dash-overview', text: 'Visão Geral', icon: 'fas fa-chart-line', url: '?page=dashboard&view=overview' },
                 { id: 'dash-analytics', text: 'Analytics', icon: 'fas fa-chart-bar', url: '?page=dashboard&view=analytics' },
-                { id: 'dash-kpi', text: 'KPIs', icon: 'fas fa-tachometer-alt', url: '?page=dashboard&view=kpi' }
+                { id: 'dash-kpi', text: 'KPIs', icon: 'fas fa-tachometer-alt', url: '?page=dashboard&view=kpi' },
+                { id: 'dash-monitoramento', text: 'Monitoramento KW24', icon: 'fas fa-satellite-dish', url: '?page=monitoramento' }
             ],
             'cadastro': [
                 { id: 'cad-organizacoes', text: 'Organizações', icon: 'fas fa-sitemap',    url: '?page=organizacoes' },
@@ -299,7 +300,7 @@ class SidebarManager {
         const params  = new URLSearchParams(window.location.search);
         const rawPage = params.get('page') || 'dashboard';
         // Sub-páginas do cadastro ativam o link "Cadastro" na sidebar
-        const subpageMap = { 'organizacoes': 'cadastro', 'usuarios': 'cadastro', 'aplicacoes': 'cadastro', 'permissoes': 'cadastro', 'financeiro-relatorios': 'financeiro', 'portais': 'financeiro', 'portais-bi': 'relatorios-bi' };
+        const subpageMap = { 'organizacoes': 'cadastro', 'usuarios': 'cadastro', 'aplicacoes': 'cadastro', 'permissoes': 'cadastro', 'financeiro-relatorios': 'financeiro', 'portais': 'financeiro', 'portais-bi': 'relatorios-bi', 'monitoramento': 'dashboard' };
         const curPage = subpageMap[rawPage] || rawPage;
 
         const links = this.sidebar.querySelectorAll('.sidebar-link');

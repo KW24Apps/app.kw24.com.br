@@ -9,24 +9,57 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 }
 ?>
 <style>
-/* ===== MONITORAMENTO KW24 — Equipe ===== */
+/* ===== MONITORAMENTO KW24 — layout geral ===== */
 .mon-updated {
     font-size: .72rem;
     color: rgba(255,255,255,.35);
 }
-.mon-equipe-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
+.mon-panels-row {
+    display: flex;
+    gap: 1.25rem;
+    align-items: stretch;
+    flex: 1;
+    min-height: 0;
 }
-@media (max-width: 900px) { .mon-equipe-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1024px) {
+    .mon-panels-row { flex-direction: column; }
+    .mon-equipe-card { flex: 0 0 auto !important; max-height: 45vh; }
+    .tsk-section { flex: 1 1 auto !important; min-height: 320px; }
+}
 
-.mon-membro-card {
+/* ===== Painel Equipe — card único, membros empilhados ===== */
+.mon-equipe-card {
     background: rgba(255,255,255,0.05);
     border: 1.5px solid rgba(255,255,255,0.10);
     border-radius: 12px;
-    padding: 1.25rem 1.4rem;
+    flex: 0 0 400px;
+    min-width: 320px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
+.mon-equipe-header {
+    padding: .9rem 1.25rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-family: 'Rubik', sans-serif;
+    font-size: .95rem;
+    font-weight: 600;
+    color: #fff;
+    flex-shrink: 0;
+}
+.mon-equipe-header i { color: #0DC2FF; margin-right: .5rem; }
+.mon-equipe-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 1.1rem 1.25rem;
+}
+.mon-membro-row {
+    padding-bottom: 1.1rem;
+    margin-bottom: 1.1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.mon-membro-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
 .mon-membro-nome {
     font-family: 'Rubik', sans-serif;
     font-size: 1rem;
@@ -75,7 +108,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .mon-seg.dev      { background: linear-gradient(90deg,#b794f4,#805ad5); color: #fff; }
 
 .mon-empty {
-    grid-column: 1 / -1;
     text-align: center;
     padding: 3rem 1rem;
     color: rgba(255,255,255,.3);
@@ -176,7 +208,11 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     background: rgba(255,255,255,0.05);
     border: 1.5px solid rgba(255,255,255,0.10);
     border-radius: 12px;
-    margin-top: 1.25rem;
+    flex: 1 1 auto;
+    min-width: 320px;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
 }
 .tsk-section-header {
@@ -185,6 +221,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     display: flex;
     align-items: center;
     gap: .6rem;
+    flex-shrink: 0;
 }
 .tsk-section-title {
     font-family: 'Rubik', sans-serif;
@@ -197,7 +234,42 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     font-size: .75rem;
     color: rgba(255,255,255,.45);
 }
-.tsk-list { display: flex; flex-direction: column; }
+.tsk-kpi-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    padding: .6rem 1.25rem;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+}
+.tsk-kpi-item {
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
+}
+.tsk-kpi-value {
+    font-size: .95rem;
+    font-weight: 700;
+    color: #fff;
+    font-family: 'Inter', monospace;
+}
+.tsk-kpi-label {
+    font-size: .62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: rgba(255,255,255,.4);
+}
+.tsk-list {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+.tsk-list::-webkit-scrollbar { width: 5px; }
+.tsk-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
+.tsk-list::-webkit-scrollbar-thumb { background: rgba(183,148,244,0.25); border-radius: 3px; }
 .tsk-row {
     border-bottom: 1px solid rgba(255,255,255,0.06);
 }
@@ -305,17 +377,23 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     </div>
 </div>
 
-<div class="mon-equipe-grid" id="mon-equipe-grid">
-    <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
-</div>
-
-<div class="tsk-section">
-    <div class="tsk-section-header">
-        <span class="tsk-section-title"><i class="fas fa-list-check"></i>Tarefas</span>
-        <span class="tsk-section-count" id="tsk-count">Carregando…</span>
+<div class="mon-panels-row">
+    <div class="mon-equipe-card">
+        <div class="mon-equipe-header"><i class="fas fa-users"></i>Equipe</div>
+        <div class="mon-equipe-body" id="mon-equipe-grid">
+            <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+        </div>
     </div>
-    <div class="tsk-list" id="tsk-list">
-        <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+
+    <div class="tsk-section">
+        <div class="tsk-section-header">
+            <span class="tsk-section-title"><i class="fas fa-list-check"></i>Tarefas</span>
+            <span class="tsk-section-count" id="tsk-count">Carregando…</span>
+        </div>
+        <div class="tsk-kpi-row" id="tsk-kpi-row"></div>
+        <div class="tsk-list" id="tsk-list">
+            <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+        </div>
     </div>
 </div>
 
@@ -376,7 +454,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         var finDevCnt = (fin.desenvolvimento && fin.desenvolvimento.count) || 0;
         var pctFin    = calcPct(finSupMin, finDevMin);
 
-        return '<div class="mon-membro-card">'
+        return '<div class="mon-membro-row">'
             + '<div class="mon-membro-nome"><i class="fas fa-user-circle"></i>' + escHtml(m.nome) + '</div>'
             + '<div class="mon-row">'
                 + '<div class="mon-row-label">Em andamento</div>'
@@ -540,6 +618,29 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             + '</div>';
     }
 
+    function fmtDataCurta(isoDate) {
+        var partes = (isoDate || '').split('-');
+        return partes.length === 3 ? (partes[2] + '/' + partes[1]) : '';
+    }
+
+    function renderKpiRow(kpi) {
+        var kpiEl = document.getElementById('tsk-kpi-row');
+        if (!kpiEl) return;
+        if (!kpi) { kpiEl.innerHTML = ''; return; }
+
+        var periodo    = kpi.periodo || {};
+        var periodoStr = (periodo.inicio && periodo.fim)
+            ? fmtDataCurta(periodo.inicio) + '–' + fmtDataCurta(periodo.fim)
+            : '';
+
+        kpiEl.innerHTML =
+            '<div class="tsk-kpi-item"><span class="tsk-kpi-value">' + kpi.totalNoCiclo + '</span><span class="tsk-kpi-label">Total no ciclo</span></div>'
+            + '<div class="tsk-kpi-item"><span class="tsk-kpi-value">' + kpi.finalizadasNoCiclo + '</span><span class="tsk-kpi-label">Finalizadas no ciclo</span></div>'
+            + (periodoStr
+                ? '<div class="tsk-kpi-item"><span class="tsk-kpi-value" style="font-size:.78rem">' + escHtml(periodoStr) + '</span><span class="tsk-kpi-label">Período</span></div>'
+                : '');
+    }
+
     function renderTarefas(data) {
         var listEl  = document.getElementById('tsk-list');
         var countEl = document.getElementById('tsk-count');
@@ -547,11 +648,13 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         if (data.aviso) {
             listEl.innerHTML = '<div class="mon-empty"><i class="fas fa-plug"></i><div>' + escHtml(data.aviso) + '</div></div>';
             countEl.textContent = '';
+            renderKpiRow(null);
             return;
         }
 
         var tarefas = data.tarefas || [];
         countEl.textContent = tarefas.length + ' em aberto';
+        renderKpiRow(data.kpi);
 
         if (!tarefas.length) {
             listEl.innerHTML = '<div class="mon-empty"><i class="fas fa-check-circle"></i><div>Nenhuma tarefa em aberto.</div></div>';

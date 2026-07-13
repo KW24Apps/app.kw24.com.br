@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../helpers/Database.php';
+require_once __DIR__ . '/../dao/ConfiguracaoDAO.php';
 require_once __DIR__ . '/../services/BitrixService.php';
 
 /**
@@ -42,19 +43,7 @@ class MonitoramentoTarefasService {
     }
 
     public function getDados(int $comentariosPorTarefa = 5): array {
-        $uids = array_keys(self::EQUIPE);
-
-        $porResponsavel  = $this->bitrix->listTasks(['RESPONSIBLE_ID' => $uids, 'CLOSED_DATE' => ''], self::SELECT, 0);
-        $porCriador      = $this->bitrix->listTasks(['CREATED_BY'     => $uids, 'CLOSED_DATE' => ''], self::SELECT, 0);
-        $porParticipante = $this->bitrix->listTasks(['ACCOMPLICE'     => $uids, 'CLOSED_DATE' => ''], self::SELECT, 0);
-        $porObservador   = $this->bitrix->listTasks(['AUDITOR'        => $uids, 'CLOSED_DATE' => ''], self::SELECT, 0);
-
-        // Dedup por ID — a mesma tarefa pode casar em mais de uma busca (ex.: uma pessoa da
-        // equipe é responsável e outra é observadora na mesma tarefa).
-        $porId = [];
-        foreach (array_merge($porResponsavel, $porCriador, $porParticipante, $porObservador) as $t) {
-            $porId[$t['id']] = $t;
-        }
+        $porId = $this->buscarPorPapeis(['CLOSED_DATE' => ''], self::SELECT);
 
         $taskIds     = array_map('intval', array_keys($porId));
         $comentarios = $taskIds ? $this->bitrix->getCommentsForTasks($taskIds, $comentariosPorTarefa) : [];
@@ -96,11 +85,87 @@ class MonitoramentoTarefasService {
             return $da <=> $db;
         });
 
+        $ciclo              = $this->calcularCicloAtual();
+        $emAberto           = count($tarefas);
+        $finalizadasNoCiclo = $this->contarFinalizadasNoCiclo($ciclo);
+
         return [
             'bitrixBase' => $this->bitrix->getPortalBaseUrl(),
-            'total'      => count($tarefas),
+            'total'      => $emAberto,
             'tarefas'    => $tarefas,
+            'kpi'        => [
+                'periodo' => [
+                    'inicio' => $ciclo['inicio']->format('Y-m-d'),
+                    'fim'    => $ciclo['fim']->format('Y-m-d'),
+                ],
+                // "Total no ciclo" = backlog aberto agora (independente de quando foi criado) +
+                // o que foi finalizado dentro do ciclo — representa o volume de trabalho tocado
+                // no período, não só o que foi criado nele.
+                'emAberto'           => $emAberto,
+                'finalizadasNoCiclo' => $finalizadasNoCiclo,
+                'totalNoCiclo'       => $emAberto + $finalizadasNoCiclo,
+            ],
         ];
+    }
+
+    /**
+     * Busca tarefas envolvendo a equipe (qualquer um dos 4 papéis), com um filtro extra em comum
+     * (ex.: CLOSED_DATE vazio para abertas, ou intervalo de datas para finalizadas no ciclo).
+     * Retorna deduplicado por ID — a mesma tarefa pode casar em mais de um papel.
+     */
+    private function buscarPorPapeis(array $filtroExtra, array $select): array {
+        $uids = array_keys(self::EQUIPE);
+
+        $porResponsavel  = $this->bitrix->listTasks(array_merge(['RESPONSIBLE_ID' => $uids], $filtroExtra), $select, 0);
+        $porCriador      = $this->bitrix->listTasks(array_merge(['CREATED_BY'     => $uids], $filtroExtra), $select, 0);
+        $porParticipante = $this->bitrix->listTasks(array_merge(['ACCOMPLICE'     => $uids], $filtroExtra), $select, 0);
+        $porObservador   = $this->bitrix->listTasks(array_merge(['AUDITOR'        => $uids], $filtroExtra), $select, 0);
+
+        $porId = [];
+        foreach (array_merge($porResponsavel, $porCriador, $porParticipante, $porObservador) as $t) {
+            $porId[$t['id']] = $t;
+        }
+        return $porId;
+    }
+
+    /** Tarefas da equipe (qualquer papel) finalizadas dentro do ciclo de faturamento atual. */
+    private function contarFinalizadasNoCiclo(array $ciclo): int {
+        $inicioStr = $ciclo['inicio']->format('Y-m-d\TH:i:s');
+        $fimStr    = $ciclo['fim']->format('Y-m-d\TH:i:s');
+
+        $porId = $this->buscarPorPapeis(
+            ['>=CLOSED_DATE' => $inicioStr, '<=CLOSED_DATE' => $fimStr],
+            ['ID'],
+        );
+        return count($porId);
+    }
+
+    /** Ciclo de faturamento atual — mesma regra/config do painel Equipe (dia 27 → dia 26). */
+    private function calcularCicloAtual(): array {
+        $dao       = new ConfiguracaoDAO();
+        $diaInicio = max(1, min(28, (int)($dao->get('financeiro_dia_inicio') ?? 27)));
+
+        $hoje = new DateTime();
+        $dia  = (int)$hoje->format('d');
+        $mes  = (int)$hoje->format('m');
+        $ano  = (int)$hoje->format('Y');
+
+        if ($dia >= $diaInicio) {
+            $inicioMes = $mes;
+            $inicioAno = $ano;
+        } else {
+            $inicioMes = $mes - 1;
+            $inicioAno = $ano;
+            if ($inicioMes < 1) { $inicioMes = 12; $inicioAno--; }
+        }
+
+        $inicio = new DateTime(sprintf('%04d-%02d-%02d', $inicioAno, $inicioMes, $diaInicio));
+        $fim    = clone $inicio;
+        $fim->add(new DateInterval('P1M'));
+        $fim->sub(new DateInterval('P1D'));
+        $fim->setTime(23, 59, 59);
+
+        return ['inicio' => $inicio, 'fim' => $fim];
     }
 
     /**

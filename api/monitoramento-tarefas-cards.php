@@ -33,7 +33,7 @@ try {
         exit;
     }
 
-    echo json_encode(array_merge(['sucesso' => true], $service->getDados()));
+    echo json_encode(array_merge(['sucesso' => true], $service->getDados(5)));
 
 } catch (Exception $e) {
     http_response_code(500);

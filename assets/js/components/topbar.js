@@ -140,7 +140,8 @@ class TopbarManager {
         }
         const submenusMap = {
             'dashboard': [
-                { id: 'dash-overview', text: 'Visão Geral', icon: 'fas fa-chart-line',    url: '?page=dashboard' }
+                { id: 'dash-overview', text: 'Visão Geral', icon: 'fas fa-chart-line',    url: '?page=dashboard' },
+                { id: 'dash-monitoramento', text: 'Monitoramento KW24', icon: 'fas fa-satellite-dish', url: '?page=monitoramento' }
             ],
             'cadastro': [
                 { id: 'cad-organizacoes', text: 'Organizações', icon: 'fas fa-sitemap',    url: '?page=organizacoes' },
@@ -173,7 +174,7 @@ class TopbarManager {
         const action    = curParams.get('action') || '';
 
         // Sub-páginas agrupadas sob o menu pai para exibir os mesmos submenus
-        const subpageMap = { 'usuarios': 'cadastro', 'aplicacoes': 'cadastro', 'permissoes': 'cadastro', 'organizacoes': 'cadastro', 'financeiro-relatorios': 'financeiro', 'portais-bi': 'relatorios-bi' };
+        const subpageMap = { 'usuarios': 'cadastro', 'aplicacoes': 'cadastro', 'permissoes': 'cadastro', 'organizacoes': 'cadastro', 'financeiro-relatorios': 'financeiro', 'portais-bi': 'relatorios-bi', 'monitoramento': 'dashboard' };
         const parentPage = subpageMap[page] || page;
         const submenus  = submenusMap[parentPage] || [];
 

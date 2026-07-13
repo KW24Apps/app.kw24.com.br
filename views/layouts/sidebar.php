@@ -102,14 +102,6 @@ $_sidebarMostraRelatoriosBi = ($user_data['perfil'] ?? '') === 'admin_interno'
     <div class="sidebar-footer">
         <ul class="sidebar-admin-menu">
             <li>
-                <a href="?page=monitoramento" class="sidebar-link sidebar-admin-item">
-                    <div class="sidebar-link-inner">
-                        <span class="sidebar-link-icon"><i class="fas fa-satellite-dish"></i></span>
-                        <span class="sidebar-link-text">Monitoramento KW24</span>
-                    </div>
-                </a>
-            </li>
-            <li>
                 <a href="?page=configuracoes" class="sidebar-link sidebar-admin-item">
                     <div class="sidebar-link-inner">
                         <span class="sidebar-link-icon"><i class="fas fa-cog"></i></span>
