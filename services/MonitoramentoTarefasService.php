@@ -7,14 +7,11 @@ require_once __DIR__ . '/../services/BitrixService.php';
  * Fonte: módulo nativo de Tarefas do Bitrix24 (tasks.task.list) — completamente separado do
  * funil SPA 1054/Funil 208 usado pelo painel Equipe.
  *
- * Limitação conhecida: ACCOMPLICES (Participante) e AUDITORS (Observador) NÃO são filtráveis
- * via tasks.task.list nesta conta — confirmado por teste real (o filtro é silenciosamente
- * ignorado e o método retorna o total do portal inteiro, ~4462 tarefas abertas de todas as
- * empresas do Grupo Nimbus, não só KW24). Varrer todo esse volume para filtrar no PHP seria
- * lento (dezenas de segundos por carregamento) e tocaria dados de tarefas de outras empresas
- * do grupo sem necessidade. Decisão (Usuário, 2026-07-13): cobrir por ora somente Responsável
- * (RESPONSIBLE_ID) e Criador (CREATED_BY) — ambos filtráveis normalmente. Participante e
- * Observador ficam como limitação conhecida para decisão futura.
+ * Nota técnica sobre nomes de campo: para SELECT, os campos são ACCOMPLICES/AUDITORS (plural,
+ * arrays — nomes do schema real, ver tasks.task.getFields). Para FILTER, os nomes corretos são
+ * ACCOMPLICE/AUDITOR (singular) — usar o nome plural no filtro é silenciosamente ignorado pelo
+ * Bitrix24 (retorna o total do portal inteiro sem aplicar o filtro). Confirmado por teste real
+ * (Gabriel, 2026-07-13) após um teste anterior errado ter usado o nome plural no filtro.
  */
 class MonitoramentoTarefasService {
     private const EQUIPE = [
@@ -24,10 +21,15 @@ class MonitoramentoTarefasService {
         12126 => 'Michael Botelho',
     ];
 
-    private const ROLE_RESPONSAVEL = 'Responsável';
-    private const ROLE_CRIADOR     = 'Criador';
+    private const ROLE_RESPONSAVEL  = 'Responsável';
+    private const ROLE_CRIADOR      = 'Criador';
+    private const ROLE_PARTICIPANTE = 'Participante';
+    private const ROLE_OBSERVADOR   = 'Observador';
 
-    private const SELECT = ['ID', 'TITLE', 'RESPONSIBLE_ID', 'CREATED_BY', 'DEADLINE', 'CLOSED_DATE', 'DESCRIPTION'];
+    private const SELECT = [
+        'ID', 'TITLE', 'RESPONSIBLE_ID', 'CREATED_BY', 'ACCOMPLICES', 'AUDITORS',
+        'DEADLINE', 'CLOSED_DATE', 'DESCRIPTION',
+    ];
 
     private BitrixService $bitrix;
 
@@ -42,21 +44,15 @@ class MonitoramentoTarefasService {
     public function getDados(int $comentariosPorTarefa = 5): array {
         $uids = array_keys(self::EQUIPE);
 
-        $porResponsavel = $this->bitrix->listTasks(
-            ['RESPONSIBLE_ID' => $uids, 'CLOSED_DATE' => ''],
-            self::SELECT,
-            0
-        );
-        $porCriador = $this->bitrix->listTasks(
-            ['CREATED_BY' => $uids, 'CLOSED_DATE' => ''],
-            self::SELECT,
-            0
-        );
+        $porResponsavel  = $this->bitrix->listTasks(['RESPONSIBLE_ID' => $uids, 'CLOSED_DATE' => ''], self::SELECT, 0);
+        $porCriador      = $this->bitrix->listTasks(['CREATED_BY'     => $uids, 'CLOSED_DATE' => ''], self::SELECT, 0);
+        $porParticipante = $this->bitrix->listTasks(['ACCOMPLICE'     => $uids, 'CLOSED_DATE' => ''], self::SELECT, 0);
+        $porObservador   = $this->bitrix->listTasks(['AUDITOR'        => $uids, 'CLOSED_DATE' => ''], self::SELECT, 0);
 
-        // Dedup por ID — a mesma tarefa pode casar nas duas buscas (ex.: responsável e criador
-        // são pessoas diferentes da equipe, ou a mesma pessoa em ambos os papéis).
+        // Dedup por ID — a mesma tarefa pode casar em mais de uma busca (ex.: uma pessoa da
+        // equipe é responsável e outra é observadora na mesma tarefa).
         $porId = [];
-        foreach (array_merge($porResponsavel, $porCriador) as $t) {
+        foreach (array_merge($porResponsavel, $porCriador, $porParticipante, $porObservador) as $t) {
             $porId[$t['id']] = $t;
         }
 
@@ -88,8 +84,8 @@ class MonitoramentoTarefasService {
                 'deadline'      => $deadline,
                 'atrasada'      => $atrasada,
                 'badges'        => $badges,
-                'temChat'     => count($coments) > 0,
-                'comentarios' => $coments,
+                'temChat'       => count($coments) > 0,
+                'comentarios'   => $coments,
             ];
         }
 
@@ -107,34 +103,46 @@ class MonitoramentoTarefasService {
         ];
     }
 
-    /** Um badge por pessoa da equipe envolvida, combinando todos os papéis dela na mesma tarefa. */
+    /**
+     * Um badge por pessoa da equipe envolvida, combinando todos os papéis dela na mesma tarefa.
+     * Intensidade: Responsável/Criador = forte; Participante (sem Resp./Criador) = média;
+     * só Observador = fraca.
+     */
     private function montarBadges(array $t): array {
         $porPessoa = [];
 
-        $resp    = (int)($t['responsibleId'] ?? 0);
-        $criador = (int)($t['createdBy'] ?? 0);
+        $add = function (int $uid, string $papel) use (&$porPessoa) {
+            if (!isset(self::EQUIPE[$uid])) return;
+            $porPessoa[$uid]['nome'] ??= self::EQUIPE[$uid];
+            $porPessoa[$uid]['papeis'][] = $papel;
+        };
 
-        if (isset(self::EQUIPE[$resp])) {
-            $porPessoa[$resp]['nome']     = self::EQUIPE[$resp];
-            $porPessoa[$resp]['papeis'][] = self::ROLE_RESPONSAVEL;
-        }
-        if (isset(self::EQUIPE[$criador])) {
-            $porPessoa[$criador]['nome']   ??= self::EQUIPE[$criador];
-            $porPessoa[$criador]['papeis'][] = self::ROLE_CRIADOR;
-        }
+        $add((int)($t['responsibleId'] ?? 0), self::ROLE_RESPONSAVEL);
+        $add((int)($t['createdBy'] ?? 0), self::ROLE_CRIADOR);
+        foreach ((array)($t['accomplices'] ?? []) as $uid) $add((int)$uid, self::ROLE_PARTICIPANTE);
+        foreach ((array)($t['auditors'] ?? []) as $uid) $add((int)$uid, self::ROLE_OBSERVADOR);
 
         $badges = [];
         foreach ($porPessoa as $uid => $info) {
+            $papeis = array_values(array_unique($info['papeis']));
             $badges[] = [
                 'bitrixUserId' => $uid,
                 'nome'         => $info['nome'],
-                'papeis'       => $info['papeis'],
-                // Responsável/Criador = intensidade forte (só o que existe nesta versão).
-                // Participante/Observador seriam média/fraca — ver limitação de escopo no topo do arquivo.
-                'intensidade'  => 'forte',
+                'papeis'       => $papeis,
+                'intensidade'  => $this->intensidadeDosPapeis($papeis),
             ];
         }
         return $badges;
+    }
+
+    private function intensidadeDosPapeis(array $papeis): string {
+        if (in_array(self::ROLE_RESPONSAVEL, $papeis, true) || in_array(self::ROLE_CRIADOR, $papeis, true)) {
+            return 'forte';
+        }
+        if (in_array(self::ROLE_PARTICIPANTE, $papeis, true)) {
+            return 'media';
+        }
+        return 'fraca'; // só Observador
     }
 
     /** Remove marcação BBCode do Bitrix nas mensagens de comentário (ex.: "[USER=21]Nome[/USER]" -> "Nome"). */
