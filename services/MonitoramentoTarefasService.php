@@ -80,7 +80,7 @@ class MonitoramentoTarefasService {
                 'id'            => $id,
                 'responsibleId' => (int)($t['responsibleId'] ?? 0), // usado p/ montar o deep link /company/personal/user/{id}/tasks/task/view/{id}/
                 'titulo'        => $t['title'] ?? '',
-                'descricao'     => $t['description'] ?? '',
+                'descricao'     => $this->limparBBCode((string)($t['description'] ?? '')),
                 'deadline'      => $deadline,
                 'atrasada'      => $atrasada,
                 'badges'        => $badges,
@@ -145,8 +145,13 @@ class MonitoramentoTarefasService {
         return 'fraca'; // só Observador
     }
 
-    /** Remove marcação BBCode do Bitrix nas mensagens de comentário (ex.: "[USER=21]Nome[/USER]" -> "Nome"). */
+    /**
+     * Remove marcação BBCode do Bitrix em descrição/comentários (ex.: "[USER=21]Nome[/USER]" ->
+     * "Nome", "[b]texto[/b]" -> "texto", "[*]item" -> "• item"). Usado tanto na descrição da
+     * tarefa quanto nas mensagens de comentário — ambas vêm com a mesma marcação do Bitrix.
+     */
     private function limparBBCode(string $msg): string {
+        $msg = str_replace('[*]', '• ', $msg);
         $msg = preg_replace('/\[(\w+)(=[^\]]*)?\](.*?)\[\/\1\]/s', '$3', $msg);
         $msg = preg_replace('/\[\/?\w+(=[^\]]*)?\]/', '', $msg);
         return trim($msg);
