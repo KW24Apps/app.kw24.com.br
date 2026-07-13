@@ -43,10 +43,13 @@ class MonitoramentoEquipeService {
         $agg = [];
         foreach (self::EQUIPE as $m) {
             $agg[$m['bitrixUserId']] = [
-                'andamento'  => ['suporte' => 0, 'desenvolvimento' => 0],
+                'andamento'  => [
+                    'suporte'         => ['count' => 0, 'cards' => []],
+                    'desenvolvimento' => ['count' => 0, 'cards' => []],
+                ],
                 'finalizado' => [
-                    'suporte'         => ['count' => 0, 'minutos' => 0],
-                    'desenvolvimento' => ['count' => 0, 'minutos' => 0],
+                    'suporte'         => ['count' => 0, 'minutos' => 0, 'cards' => []],
+                    'desenvolvimento' => ['count' => 0, 'minutos' => 0, 'cards' => []],
                 ],
             ];
         }
@@ -60,20 +63,18 @@ class MonitoramentoEquipeService {
             $equipe[] = [
                 'nome'         => $m['nome'],
                 'bitrixUserId' => $uid,
-                'andamento'    => [
-                    'suporte'         => ['count' => $agg[$uid]['andamento']['suporte']],
-                    'desenvolvimento' => ['count' => $agg[$uid]['andamento']['desenvolvimento']],
-                ],
+                'andamento'    => $agg[$uid]['andamento'],
                 'finalizado'   => $agg[$uid]['finalizado'],
             ];
         }
 
         return [
-            'periodo' => [
+            'periodo'    => [
                 'inicio' => $ciclo['inicio']->format('Y-m-d'),
                 'fim'    => $ciclo['fim']->format('Y-m-d'),
             ],
-            'equipe' => $equipe,
+            'bitrixBase' => $this->bitrix->getPortalBaseUrl(),
+            'equipe'     => $equipe,
         ];
     }
 
@@ -94,7 +95,7 @@ class MonitoramentoEquipeService {
                 'categoryId' => self::BX_CAT_DEMANDAS,
                 'stageId'    => array_keys($stageToUid),
             ],
-            ['id', 'stageId', self::F_TIPO_CHAMADO],
+            ['id', 'title', 'stageId', self::F_TIPO_CHAMADO],
             0
         );
 
@@ -105,7 +106,11 @@ class MonitoramentoEquipeService {
             $uid = $stageToUid[$c['stageId'] ?? ''] ?? null;
             if ($uid === null) continue;
 
-            $agg[$uid]['andamento'][$bucket]++;
+            $agg[$uid]['andamento'][$bucket]['count']++;
+            $agg[$uid]['andamento'][$bucket]['cards'][] = [
+                'id'    => (int)$c['id'],
+                'title' => $c['title'] ?? '',
+            ];
         }
     }
 
@@ -129,7 +134,7 @@ class MonitoramentoEquipeService {
                 '>=' . self::F_DATA_FIN => $inicioStr,
                 '<=' . self::F_DATA_FIN => $fimStr,
             ],
-            ['id', self::F_TIPO_CHAMADO, self::F_RESPONSAVEL, self::F_TEMPO_FINAL, self::F_DATA_FIN],
+            ['id', 'title', self::F_TIPO_CHAMADO, self::F_RESPONSAVEL, self::F_TEMPO_FINAL, self::F_DATA_FIN],
             0
         );
 
@@ -157,6 +162,11 @@ class MonitoramentoEquipeService {
                 if (!in_array($ruid, $uidsValidos, true)) continue; // não é membro rastreado nesta tela
                 $agg[$ruid]['finalizado'][$bucket]['count']++;
                 $agg[$ruid]['finalizado'][$bucket]['minutos'] += $mins;
+                $agg[$ruid]['finalizado'][$bucket]['cards'][] = [
+                    'id'      => (int)$c['id'],
+                    'title'   => $c['title'] ?? '',
+                    'minutos' => $mins,
+                ];
             }
         }
     }

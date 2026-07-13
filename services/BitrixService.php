@@ -15,6 +15,12 @@ class BitrixService {
         return strlen($this->webhookUrl) > 15;
     }
 
+    /** Domínio base do portal Bitrix24 (ex: https://gnapp.bitrix24.com.br), extraído da URL do webhook. */
+    public function getPortalBaseUrl(): string {
+        preg_match('#^(https?://[^/]+)#', $this->webhookUrl, $m);
+        return $m[1] ?? '';
+    }
+
     private function post(string $method, array $params = []): ?array {
         if (!$this->isConfigured()) {
             error_log("[BitrixService] Webhook URL não configurada");
