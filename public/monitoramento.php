@@ -58,6 +58,27 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     flex-shrink: 0;
 }
 .mon-equipe-header i { color: #0DC2FF; margin-right: .5rem; }
+.mon-equipe-total {
+    padding: .8rem 1.25rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    gap: 1.5rem;
+    flex-shrink: 0;
+}
+.mon-equipe-total-item { display: flex; flex-direction: column; gap: .15rem; }
+.mon-equipe-total-value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fff;
+    font-family: 'Inter', monospace;
+}
+.mon-equipe-total-label {
+    font-size: .62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: rgba(255,255,255,.4);
+}
 .mon-equipe-body {
     flex: 1;
     min-height: 0;
@@ -564,6 +585,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 <div class="mon-panels-row">
     <div class="mon-equipe-card">
         <div class="mon-equipe-header"><i class="fas fa-users"></i>Equipe</div>
+        <div class="mon-equipe-total" id="mon-equipe-total"></div>
         <div class="mon-equipe-body" id="mon-equipe-grid">
             <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
         </div>
@@ -669,13 +691,29 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             + '</div>';
     }
 
+    function renderEquipeTotal(totalMinutos) {
+        var el = document.getElementById('mon-equipe-total');
+        if (!el) return;
+        if (!totalMinutos) { el.innerHTML = ''; return; }
+
+        var supHoras = Math.round((totalMinutos.suporte || 0) / 60);
+        var devHoras = Math.round((totalMinutos.desenvolvimento || 0) / 60);
+
+        el.innerHTML =
+            '<div class="mon-equipe-total-item"><span class="mon-equipe-total-value">' + supHoras + 'h</span><span class="mon-equipe-total-label">Suporte no período</span></div>'
+            + '<div class="mon-equipe-total-item"><span class="mon-equipe-total-value">' + devHoras + 'h</span><span class="mon-equipe-total-label">Dev no período</span></div>';
+    }
+
     function render(data) {
         var grid = document.getElementById('mon-equipe-grid');
 
         if (data.aviso) {
             grid.innerHTML = '<div class="mon-empty"><i class="fas fa-plug"></i><div>' + escHtml(data.aviso) + '</div></div>';
+            renderEquipeTotal(null);
             return;
         }
+
+        renderEquipeTotal(data.totalFinalizadoMinutos);
 
         var equipe = data.equipe || [];
         if (!equipe.length) {

@@ -71,13 +71,23 @@ class MonitoramentoEquipeService {
             ];
         }
 
+        // Total finalizado no período — soma pura dos "finalizado no ciclo" por pessoa já
+        // calculados acima (sem nova consulta ao Bitrix24). Minutos, mesma unidade usada por
+        // pessoa; o cliente converte para horas ao exibir.
+        $totalFinalizadoMinutos = ['suporte' => 0, 'desenvolvimento' => 0];
+        foreach ($agg as $uidAgg) {
+            $totalFinalizadoMinutos['suporte']         += $uidAgg['finalizado']['suporte']['minutos'];
+            $totalFinalizadoMinutos['desenvolvimento'] += $uidAgg['finalizado']['desenvolvimento']['minutos'];
+        }
+
         return [
-            'periodo'    => [
+            'periodo'                => [
                 'inicio' => $ciclo['inicio']->format('Y-m-d'),
                 'fim'    => $ciclo['fim']->format('Y-m-d'),
             ],
-            'bitrixBase' => $this->bitrix->getPortalBaseUrl(),
-            'equipe'     => $equipe,
+            'bitrixBase'              => $this->bitrix->getPortalBaseUrl(),
+            'equipe'                  => $equipe,
+            'totalFinalizadoMinutos'  => $totalFinalizadoMinutos,
         ];
     }
 
