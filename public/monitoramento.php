@@ -85,23 +85,24 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .mon-bar {
     display: flex;
     width: 100%;
-    height: 34px;
-    border-radius: 8px;
+    height: 24px;
+    border-radius: 6px;
     overflow: hidden;
     background: rgba(255,255,255,.04);
 }
 .mon-seg {
+    flex: 1 1 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: .72rem;
+    font-size: .62rem;
     font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding: 0 .5rem;
+    padding: 0 .4rem;
     cursor: pointer;
-    transition: flex-grow .3s ease, filter .15s ease;
+    transition: filter .15s ease;
 }
 .mon-seg:hover { filter: brightness(1.12); }
 .mon-seg.suporte { background: linear-gradient(90deg,#0DC2FF,#0080aa); color: #061920; }
@@ -203,6 +204,60 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     font-family: 'Inter', monospace;
 }
 
+/* Modal de chat de uma tarefa */
+#tsk-chat-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(6,25,32,.7);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+#tsk-chat-box {
+    background: #0d1e2d;
+    border: 1.5px solid rgba(255,255,255,.12);
+    border-radius: 14px;
+    padding: 1.5rem;
+    width: 480px;
+    max-width: 92vw;
+    max-height: 72vh;
+    display: flex;
+    flex-direction: column;
+    animation: monDrillPop .18s ease;
+}
+#tsk-chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-shrink: 0;
+}
+#tsk-chat-title {
+    margin: 0;
+    color: #fff;
+    font-family: 'Rubik', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+}
+#tsk-chat-close {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,.5);
+    font-size: 1.2rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 .25rem;
+}
+#tsk-chat-close:hover { color: #fff; }
+#tsk-chat-list {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
 /* ===== MONITORAMENTO KW24 — Tarefas ===== */
 .tsk-section {
     background: rgba(255,255,255,0.05);
@@ -233,6 +288,32 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .tsk-section-count {
     font-size: .75rem;
     color: rgba(255,255,255,.45);
+}
+.tsk-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    padding: .7rem 1.25rem;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+}
+.tsk-filter-pill {
+    font-size: .72rem;
+    font-weight: 600;
+    padding: .3rem .75rem;
+    border-radius: 20px;
+    cursor: pointer;
+    border: 1px solid rgba(183,148,244,.35);
+    color: rgba(255,255,255,.5);
+    background: transparent;
+    transition: background .15s, color .15s, border-color .15s;
+    user-select: none;
+}
+.tsk-filter-pill:hover { border-color: rgba(183,148,244,.6); color: rgba(255,255,255,.8); }
+.tsk-filter-pill.active {
+    background: linear-gradient(90deg,#b794f4,#805ad5);
+    color: #fff;
+    border-color: transparent;
 }
 .tsk-kpi-row {
     display: flex;
@@ -390,6 +471,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             <span class="tsk-section-title"><i class="fas fa-list-check"></i>Tarefas</span>
             <span class="tsk-section-count" id="tsk-count">Carregando…</span>
         </div>
+        <div class="tsk-filter-row" id="tsk-filter-row"></div>
         <div class="tsk-kpi-row" id="tsk-kpi-row"></div>
         <div class="tsk-list" id="tsk-list">
             <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
@@ -411,11 +493,21 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     </div>
 </div>
 
+<!-- Modal de chat de uma tarefa (clique no ícone de chat) -->
+<div id="tsk-chat-overlay" onclick="if(event.target===this) tskFecharChat()">
+    <div id="tsk-chat-box">
+        <div id="tsk-chat-header">
+            <h3 id="tsk-chat-title"></h3>
+            <button id="tsk-chat-close" onclick="tskFecharChat()" aria-label="Fechar">&times;</button>
+        </div>
+        <div id="tsk-chat-list"></div>
+    </div>
+</div>
+
 <script>
 (function () {
 
     var AUTO_REFRESH_MS = 30 * 60 * 1000; // 30 minutos
-    var MIN_PCT = 8; // largura mínima visível de cada segmento, em %
     var lastData = null;
 
     function escHtml(s) {
@@ -424,20 +516,12 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
-    // Proporção entre dois valores, com piso mínimo para nunca omitir um segmento.
-    function calcPct(a, b) {
-        var total = a + b;
-        var pctA  = total > 0 ? Math.round((a / total) * 100) : 50;
-        var pctB  = 100 - pctA;
-        if (pctA < MIN_PCT) { pctA = MIN_PCT; pctB = 100 - MIN_PCT; }
-        if (pctB < MIN_PCT) { pctB = MIN_PCT; pctA = 100 - MIN_PCT; }
-        return [pctA, pctB];
-    }
-
-    function barHtml(pctA, pctB, labelA, labelB, personIdx, rowKey) {
+    // Segmentos sempre 50/50 (largura fixa) — não proporcional ao valor, pra nunca cortar o
+    // texto do label quando um dos dois lados é baixo ou zero.
+    function barHtml(labelA, labelB, personIdx, rowKey) {
         return '<div class="mon-bar">'
-            + '<div class="mon-seg suporte" style="flex:' + pctA + ' 1 0" onclick="monAbrirDrill(' + personIdx + ',\'' + rowKey + '\',\'suporte\')">' + escHtml(labelA) + '</div>'
-            + '<div class="mon-seg dev" style="flex:' + pctB + ' 1 0" onclick="monAbrirDrill(' + personIdx + ',\'' + rowKey + '\',\'desenvolvimento\')">' + escHtml(labelB) + '</div>'
+            + '<div class="mon-seg suporte" onclick="monAbrirDrill(' + personIdx + ',\'' + rowKey + '\',\'suporte\')">' + escHtml(labelA) + '</div>'
+            + '<div class="mon-seg dev" onclick="monAbrirDrill(' + personIdx + ',\'' + rowKey + '\',\'desenvolvimento\')">' + escHtml(labelB) + '</div>'
             + '</div>';
     }
 
@@ -445,24 +529,22 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         var and    = m.andamento  || {};
         var andSup = (and.suporte && and.suporte.count) || 0;
         var andDev = (and.desenvolvimento && and.desenvolvimento.count) || 0;
-        var pctAnd = calcPct(andSup, andDev);
 
         var fin       = m.finalizado || {};
         var finSupMin = (fin.suporte && fin.suporte.minutos) || 0;
         var finDevMin = (fin.desenvolvimento && fin.desenvolvimento.minutos) || 0;
         var finSupCnt = (fin.suporte && fin.suporte.count) || 0;
         var finDevCnt = (fin.desenvolvimento && fin.desenvolvimento.count) || 0;
-        var pctFin    = calcPct(finSupMin, finDevMin);
 
         return '<div class="mon-membro-row">'
             + '<div class="mon-membro-nome"><i class="fas fa-user-circle"></i>' + escHtml(m.nome) + '</div>'
             + '<div class="mon-row">'
                 + '<div class="mon-row-label">Em andamento</div>'
-                + barHtml(pctAnd[0], pctAnd[1], 'Suporte · ' + andSup, 'Desenvolvimento · ' + andDev, idx, 'andamento')
+                + barHtml('Suporte · ' + andSup, 'Desenvolvimento · ' + andDev, idx, 'andamento')
             + '</div>'
             + '<div class="mon-row">'
                 + '<div class="mon-row-label">Finalizado no ciclo</div>'
-                + barHtml(pctFin[0], pctFin[1],
+                + barHtml(
                     'Suporte · ' + finSupCnt + ' · ' + Math.round(finSupMin / 60) + 'h',
                     'Desenvolvimento · ' + finDevCnt + ' · ' + Math.round(finDevMin / 60) + 'h',
                     idx, 'finalizado')
@@ -542,7 +624,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     });
 
     // ── Painel Tarefas (Bitrix24 Tasks — fonte separada do SPA 1054) ──────────────
-    var lastTarefas = null;
+    var lastTarefas     = null;
+    var tskSelectedUids = null; // Set — inicializado no primeiro carregamento (todos selecionados)
 
     function fmtDataHora(iso) {
         if (!iso) return '';
@@ -561,18 +644,14 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             + escHtml(primeiroNome(b.nome)) + ' · ' + escHtml(papeis) + '</span>';
     }
 
-    function tskChatSectionHtml(comentarios) {
-        var html = '<div class="tsk-detail-label">Últimas mensagens</div>';
-        comentarios.forEach(function (c) {
-            html += '<div class="tsk-chat-msg">'
-                + '<div class="tsk-chat-msg-head">'
-                    + '<span class="tsk-chat-msg-autor">' + escHtml(c.autor) + '</span>'
-                    + '<span class="tsk-chat-msg-data">' + escHtml(fmtDataHora(c.data)) + '</span>'
-                + '</div>'
-                + '<div class="tsk-chat-msg-texto">' + escHtml(c.mensagem) + '</div>'
-                + '</div>';
-        });
-        return html;
+    function tskChatMsgHtml(c) {
+        return '<div class="tsk-chat-msg">'
+            + '<div class="tsk-chat-msg-head">'
+                + '<span class="tsk-chat-msg-autor">' + escHtml(c.autor) + '</span>'
+                + '<span class="tsk-chat-msg-data">' + escHtml(fmtDataHora(c.data)) + '</span>'
+            + '</div>'
+            + '<div class="tsk-chat-msg-texto">' + escHtml(c.mensagem) + '</div>'
+            + '</div>';
     }
 
     function tskRowHtml(t) {
@@ -583,21 +662,21 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             ? '<a class="tsk-row-id" href="' + escHtml(url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">#' + t.id + '</a>'
             : '<span class="tsk-row-id">#' + t.id + '</span>';
 
+        // Cor de alerta já comunica atraso — sem rótulo de texto redundante.
         var deadlineHtml = t.deadline
-            ? '<span class="tsk-deadline' + (t.atrasada ? ' atrasada' : '') + '">'
-                + escHtml(fmtDataHora(t.deadline)) + (t.atrasada ? ' (atrasada)' : '') + '</span>'
+            ? '<span class="tsk-deadline' + (t.atrasada ? ' atrasada' : '') + '">' + escHtml(fmtDataHora(t.deadline)) + '</span>'
             : '<span class="tsk-deadline">Sem prazo</span>';
 
-        var chatIcon = t.temChat ? '<i class="fas fa-comment-dots tsk-chat-icon" title="Tem mensagens"></i>' : '';
-        var badges   = (t.badges || []).map(tskBadgeHtml).join('');
+        var chatIcon = t.temChat
+            ? '<i class="fas fa-comment-dots tsk-chat-icon" title="Ver mensagens" onclick="event.stopPropagation();tskAbrirChat(' + t.id + ')"></i>'
+            : '';
+        var badges = (t.badges || []).map(tskBadgeHtml).join('');
 
         var descricaoHtml = t.descricao
             ? '<div class="tsk-detail-label">Descrição</div><div class="tsk-detail-text">' + escHtml(t.descricao) + '</div>'
             : '<div class="tsk-detail-text" style="color:rgba(255,255,255,.35)">Sem descrição.</div>';
 
-        var prazoDetalheHtml = t.deadline
-            ? escHtml(fmtDataHora(t.deadline)) + (t.atrasada ? ' <span style="color:#fc8181;font-weight:600">(atrasada)</span>' : '')
-            : 'Sem prazo definido';
+        var prazoDetalheHtml = t.deadline ? escHtml(fmtDataHora(t.deadline)) : 'Sem prazo definido';
 
         return '<div class="tsk-row">'
             + '<div class="tsk-row-main" onclick="tskToggle(' + t.id + ')">'
@@ -612,15 +691,87 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                 + '<div class="tsk-detail-inner">'
                     + descricaoHtml
                     + '<div class="tsk-detail-label">Prazo</div><div class="tsk-detail-text">' + prazoDetalheHtml + '</div>'
-                    + ((t.comentarios && t.comentarios.length) ? tskChatSectionHtml(t.comentarios) : '')
                 + '</div>'
             + '</div>'
             + '</div>';
     }
 
+    // ── Modal de chat da tarefa (clique no ícone) ─────────────────────────────────
+    window.tskAbrirChat = function (id) {
+        if (!lastTarefas || !lastTarefas.tarefas) return;
+        var tarefa = lastTarefas.tarefas.filter(function (t) { return t.id === id; })[0];
+        if (!tarefa) return;
+
+        document.getElementById('tsk-chat-title').textContent = tarefa.titulo;
+        var listEl = document.getElementById('tsk-chat-list');
+        listEl.innerHTML = (tarefa.comentarios || []).length
+            ? tarefa.comentarios.map(tskChatMsgHtml).join('')
+            : '<div style="color:rgba(255,255,255,.35);font-size:.82rem;padding:.5rem 0">Nenhuma mensagem.</div>';
+
+        document.getElementById('tsk-chat-overlay').style.display = 'flex';
+    };
+
+    window.tskFecharChat = function () {
+        document.getElementById('tsk-chat-overlay').style.display = 'none';
+    };
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') tskFecharChat();
+    });
+
+    // ── Filtro por pessoa (pills multi-select, 1 a 4 ativos) ──────────────────────
+    function renderFiltroPessoas(equipe) {
+        var el = document.getElementById('tsk-filter-row');
+        if (!el) return;
+        if (!equipe || !equipe.length) { el.innerHTML = ''; return; }
+
+        if (tskSelectedUids === null) {
+            tskSelectedUids = new Set(equipe.map(function (p) { return p.bitrixUserId; }));
+        }
+
+        el.innerHTML = equipe.map(function (p) {
+            var ativo = tskSelectedUids.has(p.bitrixUserId);
+            return '<span class="tsk-filter-pill' + (ativo ? ' active' : '') + '" onclick="tskToggleFiltro(' + p.bitrixUserId + ')">'
+                + escHtml(primeiroNome(p.nome)) + '</span>';
+        }).join('');
+    }
+
+    window.tskToggleFiltro = function (uid) {
+        if (!tskSelectedUids) return;
+        if (tskSelectedUids.has(uid)) {
+            if (tskSelectedUids.size <= 1) return; // nunca deixa ficar com 0 selecionados
+            tskSelectedUids.delete(uid);
+        } else {
+            tskSelectedUids.add(uid);
+        }
+        if (lastTarefas) {
+            renderFiltroPessoas(lastTarefas.equipe);
+            renderTarefas(lastTarefas);
+        }
+    };
+
+    function tskEnvolveSelecionados(t) {
+        return (t.badges || []).some(function (b) { return tskSelectedUids.has(b.bitrixUserId); });
+    }
+
     function fmtDataCurta(isoDate) {
         var partes = (isoDate || '').split('-');
         return partes.length === 3 ? (partes[2] + '/' + partes[1]) : '';
+    }
+
+    // Recalcula os KPIs considerando só as pessoas selecionadas no filtro — sem nova requisição
+    // (usa as badges das tarefas finalizadas já carregadas, ver MonitoramentoTarefasService::getDados()).
+    function calcularKpiFiltrado(kpi, emAbertoFiltrado) {
+        if (!kpi) return null;
+        var finalizadas = kpi.finalizadas || [];
+        var finalizadasFiltrado = (tskSelectedUids && tskSelectedUids.size)
+            ? finalizadas.filter(function (f) { return (f.badges || []).some(function (b) { return tskSelectedUids.has(b.bitrixUserId); }); }).length
+            : finalizadas.length;
+        return {
+            periodo:             kpi.periodo,
+            totalNoCiclo:        emAbertoFiltrado + finalizadasFiltrado,
+            finalizadasNoCiclo:  finalizadasFiltrado,
+        };
     }
 
     function renderKpiRow(kpi) {
@@ -645,6 +796,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         var listEl  = document.getElementById('tsk-list');
         var countEl = document.getElementById('tsk-count');
 
+        renderFiltroPessoas(data.equipe);
+
         if (data.aviso) {
             listEl.innerHTML = '<div class="mon-empty"><i class="fas fa-plug"></i><div>' + escHtml(data.aviso) + '</div></div>';
             countEl.textContent = '';
@@ -652,9 +805,13 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             return;
         }
 
-        var tarefas = data.tarefas || [];
+        var todasTarefas = data.tarefas || [];
+        var tarefas = (tskSelectedUids && tskSelectedUids.size)
+            ? todasTarefas.filter(tskEnvolveSelecionados)
+            : todasTarefas;
+
         countEl.textContent = tarefas.length + ' em aberto';
-        renderKpiRow(data.kpi);
+        renderKpiRow(calcularKpiFiltrado(data.kpi, tarefas.length));
 
         if (!tarefas.length) {
             listEl.innerHTML = '<div class="mon-empty"><i class="fas fa-check-circle"></i><div>Nenhuma tarefa em aberto.</div></div>';

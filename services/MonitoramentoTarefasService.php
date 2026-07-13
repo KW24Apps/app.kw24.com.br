@@ -85,14 +85,20 @@ class MonitoramentoTarefasService {
             return $da <=> $db;
         });
 
-        $ciclo              = $this->calcularCicloAtual();
-        $emAberto           = count($tarefas);
-        $finalizadasNoCiclo = $this->contarFinalizadasNoCiclo($ciclo);
+        $ciclo       = $this->calcularCicloAtual();
+        $emAberto    = count($tarefas);
+        $finalizadas = $this->buscarFinalizadasNoCiclo($ciclo);
+
+        $equipe = [];
+        foreach (self::EQUIPE as $uid => $nome) {
+            $equipe[] = ['bitrixUserId' => $uid, 'nome' => $nome];
+        }
 
         return [
             'bitrixBase' => $this->bitrix->getPortalBaseUrl(),
             'total'      => $emAberto,
             'tarefas'    => $tarefas,
+            'equipe'     => $equipe, // roster fixo, usado pelo filtro por pessoa da tela
             'kpi'        => [
                 'periodo' => [
                     'inicio' => $ciclo['inicio']->format('Y-m-d'),
@@ -102,8 +108,11 @@ class MonitoramentoTarefasService {
                 // o que foi finalizado dentro do ciclo — representa o volume de trabalho tocado
                 // no período, não só o que foi criado nele.
                 'emAberto'           => $emAberto,
-                'finalizadasNoCiclo' => $finalizadasNoCiclo,
-                'totalNoCiclo'       => $emAberto + $finalizadasNoCiclo,
+                'finalizadasNoCiclo' => count($finalizadas),
+                'totalNoCiclo'       => $emAberto + count($finalizadas),
+                // Badges por tarefa finalizada — permite recalcular os KPIs no cliente quando o
+                // filtro por pessoa da tela muda, sem precisar de nova requisição.
+                'finalizadas'        => $finalizadas,
             ],
         ];
     }
@@ -128,16 +137,27 @@ class MonitoramentoTarefasService {
         return $porId;
     }
 
-    /** Tarefas da equipe (qualquer papel) finalizadas dentro do ciclo de faturamento atual. */
-    private function contarFinalizadasNoCiclo(array $ciclo): int {
+    /**
+     * Tarefas da equipe (qualquer papel) finalizadas dentro do ciclo de faturamento atual.
+     * Retorna id + badges (não a tarefa completa — não é exibida em lista, só usada para os KPIs
+     * e para o filtro por pessoa recalcular os números no cliente).
+     */
+    private function buscarFinalizadasNoCiclo(array $ciclo): array {
         $inicioStr = $ciclo['inicio']->format('Y-m-d\TH:i:s');
         $fimStr    = $ciclo['fim']->format('Y-m-d\TH:i:s');
 
         $porId = $this->buscarPorPapeis(
             ['>=CLOSED_DATE' => $inicioStr, '<=CLOSED_DATE' => $fimStr],
-            ['ID'],
+            ['ID', 'RESPONSIBLE_ID', 'CREATED_BY', 'ACCOMPLICES', 'AUDITORS'],
         );
-        return count($porId);
+
+        $out = [];
+        foreach ($porId as $t) {
+            $badges = $this->montarBadges($t);
+            if (!$badges) continue; // defensivo
+            $out[] = ['id' => (int)$t['id'], 'badges' => $badges];
+        }
+        return $out;
     }
 
     /** Ciclo de faturamento atual — mesma regra/config do painel Equipe (dia 27 → dia 26). */
