@@ -3,12 +3,37 @@ require_once __DIR__ . '/../helpers/Database.php';
 require_once __DIR__ . '/../dao/ConfiguracaoDAO.php';
 
 class BitrixService {
+    /** organizacoes.id do "Grupo Nimbus" — portal Bitrix24 (gnapp.bitrix24.com.br) compartilhado
+     *  por várias empresas do grupo, incluindo a KW24. Usado por telas internas (dashboards) que
+     *  não são uma "aplicação" registrada em cliente_aplicacoes. */
+    public const ORG_GRUPO_NIMBUS = 1;
+
     private string $webhookUrl;
 
-    public function __construct() {
+    /**
+     * Sem argumento: usa o webhook interno padrão (configuracoes_sistema.financeiro_webhook_bitrix),
+     * mesmo comportamento de sempre (usado por FinanceiroSync).
+     * Com argumento: usa a URL de webhook informada diretamente — ver getWebhookForOrganizacao().
+     */
+    public function __construct(?string $webhookUrl = null) {
+        if ($webhookUrl !== null) {
+            $this->webhookUrl = rtrim($webhookUrl, '/') . '/';
+            return;
+        }
         $dao = new ConfiguracaoDAO();
         $wh  = $dao->get('financeiro_webhook_bitrix') ?? '';
         $this->webhookUrl = rtrim($wh, '/') . '/';
+    }
+
+    /**
+     * Busca a URL de webhook de uma organização (organizacoes.webhook_motor) — para telas
+     * internas que precisam de um webhook Bitrix24 diferente do padrão financeiro (ex.: escopos
+     * adicionais como "task"). Reutilizável por qualquer dashboard interno futuro.
+     */
+    public static function getWebhookForOrganizacao(int $organizacaoId): ?string {
+        $db  = Database::getInstance();
+        $row = $db->fetchOne('SELECT webhook_motor FROM organizacoes WHERE id = :id', ['id' => $organizacaoId]);
+        return $row['webhook_motor'] ?? null;
     }
 
     public function isConfigured(): bool {
@@ -138,5 +163,75 @@ class BitrixService {
 
     public function getCompany(int $companyId): ?array {
         return $this->post('crm.company.get', ['id' => $companyId]);
+    }
+
+    /**
+     * Lista tarefas do Bitrix24 Tasks (tasks.task.list) com paginação automática.
+     * Atenção: a resposta usa chaves camelCase (id, title, responsibleId, closedDate, ...),
+     * diferente das chaves UPPER_SNAKE_CASE usadas em filter/select — confirmado por teste real.
+     * $maxItems = 0 → sem limite.
+     */
+    public function listTasks(array $filter = [], array $select = [], int $maxItems = 200): array {
+        $params = ['filter' => $filter];
+        if ($select) {
+            $params['select'] = $select;
+        }
+
+        $all   = [];
+        $start = 0;
+
+        do {
+            $params['start'] = $start;
+            $result = $this->post('tasks.task.list', $params);
+            if ($result === null) break;
+
+            $items = $result['tasks'] ?? [];
+            $all   = array_merge($all, $items);
+
+            if (count($items) === 50) {
+                $start += 50; // tasks.task.list não retorna cursor 'next' confiável — mesma lógica de listItems()
+            } else {
+                break;
+            }
+        } while ($maxItems === 0 || count($all) < $maxItems);
+
+        return $all;
+    }
+
+    /**
+     * Comentários de várias tarefas de uma vez, via batch de task.commentItem.getList — é o que
+     * funciona como "chat" da tarefa no Bitrix24 Tasks (não é im.chat). Retorna
+     * [taskId => array dos $limit comentários mais recentes, mais novo primeiro].
+     *
+     * Cada campo do comentário: ID, AUTHOR_ID, AUTHOR_NAME (já resolvido pelo Bitrix, sem
+     * necessidade de user.get), POST_DATE, POST_MESSAGE.
+     *
+     * Nota técnica: task.commentItem.getList exige filter/order NÃO vazios (ex.: order=[ID=>desc],
+     * filter=['>ID'=>0] para "sem filtro real") — confirmado por teste real. Um corpo POST simples
+     * application/x-www-form-urlencoded com esses params falha com erro de tipo neste endpoint
+     * específico; o mesmo formato de query string funciona normalmente dentro de um comando batch.
+     */
+    public function getCommentsForTasks(array $taskIds, int $limit = 5): array {
+        $out = [];
+        foreach (array_chunk($taskIds, 50) as $chunk) {
+            $cmd = [];
+            foreach ($chunk as $i => $taskId) {
+                $cmd["c{$i}"] = 'task.commentItem.getList?' . http_build_query([
+                    'taskId' => (int)$taskId,
+                    'order'  => ['ID' => 'desc'],
+                    'filter' => ['>ID' => 0],
+                ], '', '&', PHP_QUERY_RFC3986);
+            }
+
+            $resp = $this->post('batch', ['halt' => 0, 'cmd' => $cmd]);
+            if ($resp === null) continue;
+
+            $results = $resp['result'] ?? [];
+            foreach ($chunk as $i => $taskId) {
+                $comments = $results["c{$i}"] ?? [];
+                $out[(int)$taskId] = array_slice($comments, 0, $limit);
+            }
+        }
+        return $out;
     }
 }

@@ -170,6 +170,129 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     font-size: .75rem;
     font-family: 'Inter', monospace;
 }
+
+/* ===== MONITORAMENTO KW24 — Tarefas ===== */
+.tsk-section {
+    background: rgba(255,255,255,0.05);
+    border: 1.5px solid rgba(255,255,255,0.10);
+    border-radius: 12px;
+    margin-top: 1.25rem;
+    overflow: hidden;
+}
+.tsk-section-header {
+    padding: .9rem 1.25rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+}
+.tsk-section-title {
+    font-family: 'Rubik', sans-serif;
+    font-size: .95rem;
+    font-weight: 600;
+    color: #fff;
+}
+.tsk-section-title i { color: #b794f4; margin-right: .5rem; }
+.tsk-section-count {
+    font-size: .75rem;
+    color: rgba(255,255,255,.45);
+}
+.tsk-list { display: flex; flex-direction: column; }
+.tsk-row {
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.tsk-row:last-child { border-bottom: none; }
+.tsk-row-main {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .8rem 1.25rem;
+    cursor: pointer;
+}
+.tsk-row-main:hover { background: rgba(255,255,255,0.03); }
+.tsk-chevron-btn {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,.28);
+    cursor: pointer;
+    padding: .3rem;
+    flex-shrink: 0;
+    transition: color .15s, transform .2s;
+    line-height: 1;
+}
+.tsk-chevron-btn.open { color: #b794f4; transform: rotate(90deg); }
+.tsk-row-id {
+    font-family: 'Inter', monospace;
+    font-size: .78rem;
+    font-weight: 700;
+    color: #0DC2FF;
+    text-decoration: none;
+    flex-shrink: 0;
+}
+.tsk-row-id:hover { color: #26d4ff; }
+.tsk-row-title {
+    color: #fff;
+    font-size: .85rem;
+    font-weight: 500;
+    flex: 1;
+    min-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.tsk-badges { display: flex; flex-wrap: wrap; gap: .35rem; flex-shrink: 0; }
+.tsk-badge {
+    font-size: .68rem;
+    font-weight: 600;
+    padding: .18rem .55rem;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+.tsk-badge.forte  { background: linear-gradient(90deg,#b794f4,#805ad5); color: #fff; }
+.tsk-badge.media  { background: rgba(183,148,244,.35); color: #fff; }
+.tsk-badge.fraca  { background: transparent; border: 1px solid rgba(183,148,244,.45); color: #b794f4; }
+.tsk-deadline {
+    font-size: .78rem;
+    color: rgba(255,255,255,.5);
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+.tsk-deadline.atrasada { color: #fc8181; font-weight: 600; }
+.tsk-chat-icon { color: rgba(255,255,255,.35); flex-shrink: 0; font-size: .8rem; }
+.tsk-row-detail { display: none; }
+.tsk-row-detail.open { display: block; }
+.tsk-detail-inner {
+    padding: 1rem 1.25rem 1.25rem 3rem;
+    background: rgba(183,148,244,.03);
+    border-top: 1px solid rgba(183,148,244,.10);
+}
+.tsk-detail-label {
+    font-size: .67rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #b794f4;
+    margin-bottom: .35rem;
+    margin-top: .85rem;
+}
+.tsk-detail-label:first-child { margin-top: 0; }
+.tsk-detail-text { color: rgba(255,255,255,.75); font-size: .82rem; line-height: 1.5; }
+.tsk-chat-msg {
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+    padding: .5rem 0;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+}
+.tsk-chat-msg:last-child { border-bottom: none; }
+.tsk-chat-msg-head {
+    display: flex;
+    justify-content: space-between;
+    font-size: .72rem;
+}
+.tsk-chat-msg-autor { color: #b794f4; font-weight: 600; }
+.tsk-chat-msg-data { color: rgba(255,255,255,.35); }
+.tsk-chat-msg-texto { color: rgba(255,255,255,.7); font-size: .8rem; line-height: 1.45; white-space: pre-wrap; }
 </style>
 
 <div class="page-header">
@@ -184,6 +307,16 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 
 <div class="mon-equipe-grid" id="mon-equipe-grid">
     <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+</div>
+
+<div class="tsk-section">
+    <div class="tsk-section-header">
+        <span class="tsk-section-title"><i class="fas fa-list-check"></i>Tarefas</span>
+        <span class="tsk-section-count" id="tsk-count">Carregando…</span>
+    </div>
+    <div class="tsk-list" id="tsk-list">
+        <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+    </div>
 </div>
 
 <!-- Drill-down: chamados por trás de um segmento da barra -->
@@ -330,33 +463,160 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         if (e.key === 'Escape') monFecharDrill();
     });
 
+    // ── Painel Tarefas (Bitrix24 Tasks — fonte separada do SPA 1054) ──────────────
+    var lastTarefas = null;
+
+    function fmtDataHora(iso) {
+        if (!iso) return '';
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function primeiroNome(nome) {
+        return (nome || '').split(' ')[0];
+    }
+
+    function tskBadgeHtml(b) {
+        var papeis = (b.papeis || []).join(', ');
+        return '<span class="tsk-badge ' + (b.intensidade || 'forte') + '">'
+            + escHtml(primeiroNome(b.nome)) + ' · ' + escHtml(papeis) + '</span>';
+    }
+
+    function tskChatSectionHtml(comentarios) {
+        var html = '<div class="tsk-detail-label">Últimas mensagens</div>';
+        comentarios.forEach(function (c) {
+            html += '<div class="tsk-chat-msg">'
+                + '<div class="tsk-chat-msg-head">'
+                    + '<span class="tsk-chat-msg-autor">' + escHtml(c.autor) + '</span>'
+                    + '<span class="tsk-chat-msg-data">' + escHtml(fmtDataHora(c.data)) + '</span>'
+                + '</div>'
+                + '<div class="tsk-chat-msg-texto">' + escHtml(c.mensagem) + '</div>'
+                + '</div>';
+        });
+        return html;
+    }
+
+    function tskRowHtml(t) {
+        var url = (lastTarefas && lastTarefas.bitrixBase && t.responsibleId)
+            ? lastTarefas.bitrixBase + '/company/personal/user/' + t.responsibleId + '/tasks/task/view/' + t.id + '/'
+            : '';
+        var idHtml = url
+            ? '<a class="tsk-row-id" href="' + escHtml(url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">#' + t.id + '</a>'
+            : '<span class="tsk-row-id">#' + t.id + '</span>';
+
+        var deadlineHtml = t.deadline
+            ? '<span class="tsk-deadline' + (t.atrasada ? ' atrasada' : '') + '">'
+                + escHtml(fmtDataHora(t.deadline)) + (t.atrasada ? ' (atrasada)' : '') + '</span>'
+            : '<span class="tsk-deadline">Sem prazo</span>';
+
+        var chatIcon = t.temChat ? '<i class="fas fa-comment-dots tsk-chat-icon" title="Tem mensagens"></i>' : '';
+        var badges   = (t.badges || []).map(tskBadgeHtml).join('');
+
+        var descricaoHtml = t.descricao
+            ? '<div class="tsk-detail-label">Descrição</div><div class="tsk-detail-text">' + escHtml(t.descricao) + '</div>'
+            : '<div class="tsk-detail-text" style="color:rgba(255,255,255,.35)">Sem descrição.</div>';
+
+        var prazoDetalheHtml = t.deadline
+            ? escHtml(fmtDataHora(t.deadline)) + (t.atrasada ? ' <span style="color:#fc8181;font-weight:600">(atrasada)</span>' : '')
+            : 'Sem prazo definido';
+
+        return '<div class="tsk-row">'
+            + '<div class="tsk-row-main" onclick="tskToggle(' + t.id + ')">'
+                + '<button class="tsk-chevron-btn" id="tsk-btn-' + t.id + '"><i class="fas fa-chevron-right" style="font-size:.7rem"></i></button>'
+                + idHtml
+                + '<span class="tsk-row-title">' + escHtml(t.titulo) + '</span>'
+                + '<span class="tsk-badges">' + badges + '</span>'
+                + deadlineHtml
+                + chatIcon
+            + '</div>'
+            + '<div class="tsk-row-detail" id="tsk-detail-' + t.id + '">'
+                + '<div class="tsk-detail-inner">'
+                    + descricaoHtml
+                    + '<div class="tsk-detail-label">Prazo</div><div class="tsk-detail-text">' + prazoDetalheHtml + '</div>'
+                    + ((t.comentarios && t.comentarios.length) ? tskChatSectionHtml(t.comentarios) : '')
+                + '</div>'
+            + '</div>'
+            + '</div>';
+    }
+
+    function renderTarefas(data) {
+        var listEl  = document.getElementById('tsk-list');
+        var countEl = document.getElementById('tsk-count');
+
+        if (data.aviso) {
+            listEl.innerHTML = '<div class="mon-empty"><i class="fas fa-plug"></i><div>' + escHtml(data.aviso) + '</div></div>';
+            countEl.textContent = '';
+            return;
+        }
+
+        var tarefas = data.tarefas || [];
+        countEl.textContent = tarefas.length + ' em aberto';
+
+        if (!tarefas.length) {
+            listEl.innerHTML = '<div class="mon-empty"><i class="fas fa-check-circle"></i><div>Nenhuma tarefa em aberto.</div></div>';
+            return;
+        }
+
+        listEl.innerHTML = tarefas.map(tskRowHtml).join('');
+    }
+
+    window.tskToggle = function (id) {
+        var detail = document.getElementById('tsk-detail-' + id);
+        var btn    = document.getElementById('tsk-btn-' + id);
+        if (!detail) return;
+
+        var isOpen = detail.classList.contains('open');
+        detail.classList.toggle('open', !isOpen);
+        if (btn) btn.classList.toggle('open', !isOpen);
+    };
+
+    function carregarTarefas() {
+        return fetch('/api/monitoramento-tarefas-cards.php', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.erro) {
+                    document.getElementById('tsk-list').innerHTML =
+                        '<div class="mon-empty" style="color:#fc8181"><i class="fas fa-exclamation-circle"></i><div>'
+                        + escHtml(data.erro) + '</div></div>';
+                    return;
+                }
+                lastTarefas = data;
+                renderTarefas(data);
+            })
+            .catch(function () {
+                document.getElementById('tsk-list').innerHTML =
+                    '<div class="mon-empty" style="color:#fc8181"><i class="fas fa-exclamation-circle"></i><div>Erro de comunicação.</div></div>';
+            });
+    }
+
+    // ── Carregamento geral (Equipe + Tarefas) ─────────────────────────────────────
     function carregar() {
         var icon = document.getElementById('mon-refresh-icon');
         if (icon) icon.classList.add('fa-spin');
 
-        fetch('/api/monitoramento-cards.php', { credentials: 'same-origin' })
+        var pEquipe = fetch('/api/monitoramento-cards.php', { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (data) {
-                if (icon) icon.classList.remove('fa-spin');
-
                 if (data.erro) {
                     document.getElementById('mon-equipe-grid').innerHTML =
                         '<div class="mon-empty" style="color:#fc8181"><i class="fas fa-exclamation-circle"></i><div>'
                         + escHtml(data.erro) + '</div></div>';
                     return;
                 }
-
                 lastData = data;
                 render(data);
-
-                var upd = document.getElementById('mon-updated');
-                if (upd) upd.textContent = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR');
             })
             .catch(function () {
-                if (icon) icon.classList.remove('fa-spin');
                 document.getElementById('mon-equipe-grid').innerHTML =
                     '<div class="mon-empty" style="color:#fc8181"><i class="fas fa-exclamation-circle"></i><div>Erro de comunicação.</div></div>';
             });
+
+        Promise.all([pEquipe, carregarTarefas()]).then(function () {
+            if (icon) icon.classList.remove('fa-spin');
+            var upd = document.getElementById('mon-updated');
+            if (upd) upd.textContent = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR');
+        });
     }
 
     window.monAtualizar = carregar;

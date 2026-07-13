@@ -30,7 +30,10 @@ class MonitoramentoEquipeService {
     private BitrixService $bitrix;
 
     public function __construct() {
-        $this->bitrix = new BitrixService();
+        // Webhook do "Grupo Nimbus" (organizacoes.id=1), não o financeiro_webhook_bitrix padrão —
+        // este último não tem escopo "task" (necessário pelo painel Tarefas, que reusa este client
+        // Bitrix). Confirmado por teste real que o webhook do Grupo Nimbus tem escopos crm + task.
+        $this->bitrix = new BitrixService(BitrixService::getWebhookForOrganizacao(BitrixService::ORG_GRUPO_NIMBUS));
     }
 
     public function isConfigured(): bool {
