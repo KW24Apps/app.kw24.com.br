@@ -1,6 +1,5 @@
 <?php
 require_once __DIR__ . '/../helpers/Database.php';
-require_once __DIR__ . '/../dao/ConfiguracaoDAO.php';
 require_once __DIR__ . '/../services/BitrixService.php';
 
 /**
@@ -85,9 +84,8 @@ class MonitoramentoTarefasService {
             return $da <=> $db;
         });
 
-        $ciclo       = $this->calcularCicloAtual();
         $emAberto    = count($tarefas);
-        $finalizadas = $this->buscarFinalizadasNoCiclo($ciclo);
+        $finalizadas = $this->buscarFinalizadas();
 
         $equipe = [];
         foreach (self::EQUIPE as $uid => $nome) {
@@ -100,19 +98,16 @@ class MonitoramentoTarefasService {
             'tarefas'    => $tarefas,
             'equipe'     => $equipe, // roster fixo, usado pelo filtro por pessoa da tela
             'kpi'        => [
-                'periodo' => [
-                    'inicio' => $ciclo['inicio']->format('Y-m-d'),
-                    'fim'    => $ciclo['fim']->format('Y-m-d'),
-                ],
-                // "Total no ciclo" = backlog aberto agora (independente de quando foi criado) +
-                // o que foi finalizado dentro do ciclo — representa o volume de trabalho tocado
-                // no período, não só o que foi criado nele.
-                'emAberto'           => $emAberto,
-                'finalizadasNoCiclo' => count($finalizadas),
-                'totalNoCiclo'       => $emAberto + count($finalizadas),
+                // Sem recorte de data — Tarefas não tem conceito de ciclo/período (isso só se
+                // aplica a Chamados/Equipe e, futuramente, Atendimento). "Total" = todas as
+                // tarefas da equipe, abertas + fechadas, desde sempre; "Finalizadas" = só as
+                // fechadas, também sem recorte de data.
+                'emAberto'    => $emAberto,
+                'finalizadas' => count($finalizadas),
+                'total'       => $emAberto + count($finalizadas),
                 // Badges por tarefa finalizada — permite recalcular os KPIs no cliente quando o
                 // filtro por pessoa da tela muda, sem precisar de nova requisição.
-                'finalizadas'        => $finalizadas,
+                'finalizadasTarefas' => $finalizadas,
             ],
         ];
     }
@@ -138,18 +133,25 @@ class MonitoramentoTarefasService {
     }
 
     /**
-     * Tarefas da equipe (qualquer papel) finalizadas dentro do ciclo de faturamento atual.
+     * Tarefas da equipe (qualquer papel) já finalizadas — SEM recorte de data (todo o histórico).
      * Retorna id + badges (não a tarefa completa — não é exibida em lista, só usada para os KPIs
-     * e para o filtro por pessoa recalcular os números no cliente).
+     * e para o filtro por pessoa recalcular os números no cliente). Usa paginação em lote
+     * (listTasksBatched) porque o histórico completo pode ter milhares de tarefas por papel —
+     * paginar uma página por requisição seria lento.
      */
-    private function buscarFinalizadasNoCiclo(array $ciclo): array {
-        $inicioStr = $ciclo['inicio']->format('Y-m-d\TH:i:s');
-        $fimStr    = $ciclo['fim']->format('Y-m-d\TH:i:s');
+    private function buscarFinalizadas(): array {
+        $uids   = array_keys(self::EQUIPE);
+        $select = ['ID', 'RESPONSIBLE_ID', 'CREATED_BY', 'ACCOMPLICES', 'AUDITORS'];
 
-        $porId = $this->buscarPorPapeis(
-            ['>=CLOSED_DATE' => $inicioStr, '<=CLOSED_DATE' => $fimStr],
-            ['ID', 'RESPONSIBLE_ID', 'CREATED_BY', 'ACCOMPLICES', 'AUDITORS'],
-        );
+        $porResponsavel  = $this->bitrix->listTasksBatched(['RESPONSIBLE_ID' => $uids, '!CLOSED_DATE' => ''], $select);
+        $porCriador      = $this->bitrix->listTasksBatched(['CREATED_BY'     => $uids, '!CLOSED_DATE' => ''], $select);
+        $porParticipante = $this->bitrix->listTasksBatched(['ACCOMPLICE'     => $uids, '!CLOSED_DATE' => ''], $select);
+        $porObservador   = $this->bitrix->listTasksBatched(['AUDITOR'        => $uids, '!CLOSED_DATE' => ''], $select);
+
+        $porId = [];
+        foreach (array_merge($porResponsavel, $porCriador, $porParticipante, $porObservador) as $t) {
+            $porId[$t['id']] = $t;
+        }
 
         $out = [];
         foreach ($porId as $t) {
@@ -158,34 +160,6 @@ class MonitoramentoTarefasService {
             $out[] = ['id' => (int)$t['id'], 'badges' => $badges];
         }
         return $out;
-    }
-
-    /** Ciclo de faturamento atual — mesma regra/config do painel Equipe (dia 27 → dia 26). */
-    private function calcularCicloAtual(): array {
-        $dao       = new ConfiguracaoDAO();
-        $diaInicio = max(1, min(28, (int)($dao->get('financeiro_dia_inicio') ?? 27)));
-
-        $hoje = new DateTime();
-        $dia  = (int)$hoje->format('d');
-        $mes  = (int)$hoje->format('m');
-        $ano  = (int)$hoje->format('Y');
-
-        if ($dia >= $diaInicio) {
-            $inicioMes = $mes;
-            $inicioAno = $ano;
-        } else {
-            $inicioMes = $mes - 1;
-            $inicioAno = $ano;
-            if ($inicioMes < 1) { $inicioMes = 12; $inicioAno--; }
-        }
-
-        $inicio = new DateTime(sprintf('%04d-%02d-%02d', $inicioAno, $inicioMes, $diaInicio));
-        $fim    = clone $inicio;
-        $fim->add(new DateInterval('P1M'));
-        $fim->sub(new DateInterval('P1D'));
-        $fim->setTime(23, 59, 59);
-
-        return ['inicio' => $inicio, 'fim' => $fim];
     }
 
     /**

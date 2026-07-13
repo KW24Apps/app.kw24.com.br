@@ -754,23 +754,18 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         return (t.badges || []).some(function (b) { return tskSelectedUids.has(b.bitrixUserId); });
     }
 
-    function fmtDataCurta(isoDate) {
-        var partes = (isoDate || '').split('-');
-        return partes.length === 3 ? (partes[2] + '/' + partes[1]) : '';
-    }
-
     // Recalcula os KPIs considerando só as pessoas selecionadas no filtro — sem nova requisição
     // (usa as badges das tarefas finalizadas já carregadas, ver MonitoramentoTarefasService::getDados()).
+    // Tarefas não tem conceito de ciclo/período — "Total"/"Finalizadas" são sobre todo o histórico.
     function calcularKpiFiltrado(kpi, emAbertoFiltrado) {
         if (!kpi) return null;
-        var finalizadas = kpi.finalizadas || [];
+        var finalizadasTarefas = kpi.finalizadasTarefas || [];
         var finalizadasFiltrado = (tskSelectedUids && tskSelectedUids.size)
-            ? finalizadas.filter(function (f) { return (f.badges || []).some(function (b) { return tskSelectedUids.has(b.bitrixUserId); }); }).length
-            : finalizadas.length;
+            ? finalizadasTarefas.filter(function (f) { return (f.badges || []).some(function (b) { return tskSelectedUids.has(b.bitrixUserId); }); }).length
+            : finalizadasTarefas.length;
         return {
-            periodo:             kpi.periodo,
-            totalNoCiclo:        emAbertoFiltrado + finalizadasFiltrado,
-            finalizadasNoCiclo:  finalizadasFiltrado,
+            total:       emAbertoFiltrado + finalizadasFiltrado,
+            finalizadas: finalizadasFiltrado,
         };
     }
 
@@ -779,17 +774,9 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         if (!kpiEl) return;
         if (!kpi) { kpiEl.innerHTML = ''; return; }
 
-        var periodo    = kpi.periodo || {};
-        var periodoStr = (periodo.inicio && periodo.fim)
-            ? fmtDataCurta(periodo.inicio) + '–' + fmtDataCurta(periodo.fim)
-            : '';
-
         kpiEl.innerHTML =
-            '<div class="tsk-kpi-item"><span class="tsk-kpi-value">' + kpi.totalNoCiclo + '</span><span class="tsk-kpi-label">Total no ciclo</span></div>'
-            + '<div class="tsk-kpi-item"><span class="tsk-kpi-value">' + kpi.finalizadasNoCiclo + '</span><span class="tsk-kpi-label">Finalizadas no ciclo</span></div>'
-            + (periodoStr
-                ? '<div class="tsk-kpi-item"><span class="tsk-kpi-value" style="font-size:.78rem">' + escHtml(periodoStr) + '</span><span class="tsk-kpi-label">Período</span></div>'
-                : '');
+            '<div class="tsk-kpi-item"><span class="tsk-kpi-value">' + kpi.total + '</span><span class="tsk-kpi-label">Total</span></div>'
+            + '<div class="tsk-kpi-item"><span class="tsk-kpi-value">' + kpi.finalizadas + '</span><span class="tsk-kpi-label">Finalizadas</span></div>';
     }
 
     function renderTarefas(data) {

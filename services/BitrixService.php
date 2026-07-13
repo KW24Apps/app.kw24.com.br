@@ -46,7 +46,8 @@ class BitrixService {
         return $m[1] ?? '';
     }
 
-    private function post(string $method, array $params = []): ?array {
+    /** Chamada crua — retorna a resposta completa (result + total + next), não só 'result'. */
+    private function callRaw(string $method, array $params = []): ?array {
         if (!$this->isConfigured()) {
             error_log("[BitrixService] Webhook URL não configurada");
             return null;
@@ -79,6 +80,11 @@ class BitrixService {
             return null;
         }
 
+        return $data;
+    }
+
+    private function post(string $method, array $params = []): ?array {
+        $data = $this->callRaw($method, $params);
         return $data['result'] ?? null;
     }
 
@@ -194,6 +200,48 @@ class BitrixService {
                 break;
             }
         } while ($maxItems === 0 || count($all) < $maxItems);
+
+        return $all;
+    }
+
+    /**
+     * Lista tarefas com paginação em lote (via batch) — usar quando o resultado pode ter muitas
+     * páginas (ex.: histórico completo, sem filtro de data). A primeira página é buscada
+     * normalmente (pra descobrir 'total'); o resto é buscado em comandos batch (até 50 páginas —
+     * 2500 tarefas — por chamada HTTP), bem mais rápido que listTasks() paginando uma página por
+     * requisição. Mesma ressalva de chaves camelCase na resposta que listTasks().
+     */
+    public function listTasksBatched(array $filter = [], array $select = []): array {
+        $params = ['filter' => $filter];
+        if ($select) {
+            $params['select'] = $select;
+        }
+
+        $first = $this->callRaw('tasks.task.list', array_merge($params, ['start' => 0]));
+        if ($first === null) return [];
+
+        $all   = $first['result']['tasks'] ?? [];
+        $total = (int)($first['total'] ?? count($all));
+
+        $starts = [];
+        for ($s = 50; $s < $total; $s += 50) $starts[] = $s;
+
+        foreach (array_chunk($starts, 50) as $chunk) {
+            $cmd = [];
+            foreach ($chunk as $i => $start) {
+                $cmd["p{$i}"] = 'tasks.task.list?' . http_build_query(
+                    array_merge($params, ['start' => $start]), '', '&', PHP_QUERY_RFC3986
+                );
+            }
+
+            $resp = $this->post('batch', ['halt' => 0, 'cmd' => $cmd]);
+            if ($resp === null) continue;
+
+            $results = $resp['result'] ?? [];
+            foreach ($chunk as $i => $start) {
+                $all = array_merge($all, $results["p{$i}"]['tasks'] ?? []);
+            }
+        }
 
         return $all;
     }
