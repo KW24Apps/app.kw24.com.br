@@ -134,7 +134,7 @@ class MonitoramentoChamadosService {
                         $mensagens[] = [
                             'autor'    => $usuarios[(int)($m['author_id'] ?? 0)] ?? ('Usuário #' . ($m['author_id'] ?? '?')),
                             'data'     => $m['date'] ?? null,
-                            'mensagem' => (string)($m['text'] ?? ''),
+                            'mensagem' => $this->limparBBCode((string)($m['text'] ?? '')),
                         ];
                     }
                 }
@@ -169,5 +169,17 @@ class MonitoramentoChamadosService {
             'tiposPadrao' => self::TIPOS_PADRAO,
             'tiposExtra'  => self::TIPOS_EXTRA,
         ];
+    }
+
+    /**
+     * Remove marcação BBCode do Bitrix nas mensagens de chat (ex.: "[USER=21]Nome[/USER]" ->
+     * "Nome"). Mesma lógica de MonitoramentoTarefasService::limparBBCode() — duplicada aqui
+     * porque as duas classes não têm uma base comum.
+     */
+    private function limparBBCode(string $msg): string {
+        $msg = str_replace('[*]', '• ', $msg);
+        $msg = preg_replace('/\[(\w+)(=[^\]]*)?\](.*?)\[\/\1\]/s', '$3', $msg);
+        $msg = preg_replace('/\[\/?\w+(=[^\]]*)?\]/', '', $msg);
+        return trim($msg);
     }
 }
