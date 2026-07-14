@@ -554,7 +554,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 }
 .tsk-thead {
     display: grid;
-    grid-template-columns: 26px 70px minmax(110px,1fr) minmax(78px,120px) minmax(78px,120px) minmax(55px,105px) minmax(55px,105px) 88px 20px;
+    grid-template-columns: 26px 70px minmax(110px,1.6fr) minmax(70px,0.8fr) minmax(70px,0.8fr) minmax(60px,0.7fr) minmax(60px,0.7fr) minmax(80px,0.7fr) 20px;
     gap: .5rem;
     align-items: center;
     padding: .5rem 1.25rem;
@@ -621,7 +621,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .tsk-row:last-child { border-bottom: none; }
 .tsk-row-main {
     display: grid;
-    grid-template-columns: 26px 70px minmax(110px,1fr) minmax(78px,120px) minmax(78px,120px) minmax(55px,105px) minmax(55px,105px) 88px 20px;
+    grid-template-columns: 26px 70px minmax(110px,1.6fr) minmax(70px,0.8fr) minmax(70px,0.8fr) minmax(60px,0.7fr) minmax(60px,0.7fr) minmax(80px,0.7fr) 20px;
     gap: .5rem;
     align-items: center;
     padding: .8rem 1.25rem;
