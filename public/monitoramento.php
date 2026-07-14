@@ -54,6 +54,15 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     font-size: var(--mon-fs-sm);
     color: rgba(255,255,255,.35);
 }
+/* Cabeçalho mais compacto só nesta tela — .page-header/.page-title são globais
+ * (clientes.css, usados em toda a aplicação), então a sobrescrita é escopada via
+ * :has(.mon-updated) em vez de editar o arquivo compartilhado. */
+.page-header:has(.mon-updated) {
+    margin-bottom: var(--mon-sp-md);
+}
+.page-header:has(.mon-updated) .page-title {
+    font-size: var(--mon-fs-icon);
+}
 .mon-config-btn {
     width: 34px;
     height: 34px;
@@ -71,7 +80,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .mon-config-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
 .mon-panels-row {
     display: flex;
-    gap: var(--mon-sp-xl);
+    gap: var(--mon-sp-lg);
     align-items: stretch;
     flex: 1;
     min-height: 0;
@@ -79,7 +88,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .mon-right-col {
     display: flex;
     flex-direction: column;
-    gap: var(--mon-sp-xl);
+    gap: var(--mon-sp-lg);
     flex: 1 1 auto;
     min-width: 320px;
     min-height: 0;
@@ -102,97 +111,71 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     overflow: hidden;
 }
 .mon-equipe-header {
-    padding: var(--mon-sp-lg) var(--mon-sp-xl);
+    padding: var(--mon-sp-base) var(--mon-sp-lg);
     border-bottom: 1px solid rgba(255,255,255,0.08);
     font-family: 'Rubik', sans-serif;
     font-size: var(--mon-fs-lg);
     font-weight: 600;
     color: #fff;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--mon-sp-sm);
 }
 .mon-equipe-header i { color: #0DC2FF; margin-right: .5rem; }
+/* Totais agregados (Suporte/Dev no período) — antes uma linha própria abaixo do título,
+ * agora compactados ao lado dele mesmo (ver renderEquipeTotal()). */
 .mon-equipe-total {
-    padding: var(--mon-sp-md) var(--mon-sp-xl);
-    border-bottom: 1px solid rgba(255,255,255,0.08);
     display: flex;
-    gap: var(--mon-sp-2xl);
+    gap: var(--mon-sp-md);
+    font-size: var(--mon-fs-sm);
+    font-weight: 600;
+    color: rgba(255,255,255,.75);
     flex-shrink: 0;
+    white-space: nowrap;
 }
-.mon-equipe-total-item { display: flex; flex-direction: column; gap: var(--mon-sp-3xs); }
-.mon-equipe-total-value {
-    font-size: var(--mon-fs-num);
-    font-weight: 700;
-    color: #fff;
-    font-family: 'Inter', monospace;
-}
-.mon-equipe-total-label {
-    font-size: var(--mon-fs-2xs);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    color: rgba(255,255,255,.4);
-}
+.mon-equipe-total b { font-family: 'Inter', monospace; }
 .mon-equipe-body {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    padding: var(--mon-sp-lg) var(--mon-sp-xl);
+    padding: var(--mon-sp-base) var(--mon-sp-lg);
 }
+/* Uma pessoa por linha: nome à esquerda, contadores Suporte/Dev à direita — sem
+ * bar/gráfico de proporção (removido junto com "Em andamento", ver relatório da tarefa). */
 .mon-membro-row {
-    padding-bottom: 1.1rem;
-    margin-bottom: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--mon-sp-md);
+    padding-bottom: var(--mon-sp-sm);
+    margin-bottom: var(--mon-sp-sm);
     border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 .mon-membro-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-.mon-membro-nome {
+.mon-membro-nome-plain {
     font-family: 'Rubik', sans-serif;
     font-size: var(--mon-fs-num);
     font-weight: 600;
     color: #fff;
-    margin-bottom: 1.1rem;
-    display: flex;
-    align-items: center;
-    gap: var(--mon-sp-sm);
-}
-.mon-membro-nome i { color: #0DC2FF; font-size: var(--mon-fs-icon); }
-
-.mon-row { margin-bottom: 1.1rem; }
-.mon-row:last-child { margin-bottom: 0; }
-.mon-row-label {
-    font-size: var(--mon-fs-xs);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    color: rgba(255,255,255,.4);
-    margin-bottom: .5rem;
-}
-.mon-bar {
-    display: flex;
-    width: 100%;
-    height: 24px;
-    border-radius: 6px;
-    overflow: hidden;
-    background: rgba(255,255,255,.04);
-}
-.mon-seg {
-    flex: 1 1 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: var(--mon-fs-2xs);
-    font-weight: 700;
+    min-width: 0;
+    flex: 1 1 auto;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding: 0 var(--mon-sp-sm);
-    cursor: pointer;
-    transition: filter .15s ease;
 }
-.mon-seg:hover { filter: brightness(1.12); }
-.mon-seg.suporte { background: linear-gradient(90deg,#0DC2FF,#0080aa); color: #061920; }
-/* Âmbar provisório pra sair do roxo já trocado em Tarefas — Gabriel pode pedir outro tom
- * depois de ver ao vivo (ver relatório da tarefa). */
-.mon-seg.dev      { background: linear-gradient(90deg,#f6ad55,#c47f2e); color: #061920; }
+.mon-membro-metricas {
+    display: flex;
+    gap: var(--mon-sp-md);
+    flex-shrink: 0;
+    font-size: var(--mon-fs-sm);
+    font-weight: 600;
+}
+.mon-membro-metrica { cursor: pointer; white-space: nowrap; transition: filter .15s ease; }
+.mon-membro-metrica:hover { filter: brightness(1.25); }
+.mon-membro-metrica.suporte { color: #0DC2FF; }
+.mon-membro-metrica.dev     { color: #f6ad55; }
 
 .mon-empty {
     text-align: center;
@@ -502,8 +485,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: var(--mon-sp-sm);
-    padding: var(--mon-sp-lg) var(--mon-sp-xl);
+    gap: var(--mon-sp-xs);
+    padding: var(--mon-sp-base) var(--mon-sp-lg);
     cursor: pointer;
     opacity: .45;
     border-bottom: 2px solid transparent;
@@ -515,16 +498,16 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 #mon-tab-tsk.active { border-bottom-color: #26FF93; }
 .mon-tab-title {
     font-family: 'Rubik', sans-serif;
-    font-size: var(--mon-fs-lg);
+    font-size: var(--mon-fs-md);
     font-weight: 600;
     color: #fff;
     white-space: nowrap;
 }
-.mon-tab-title i { margin-right: .5rem; }
+.mon-tab-title i { margin-right: var(--mon-sp-2xs); }
 #mon-tab-cha .mon-tab-title i { color: #0DC2FF; }
 #mon-tab-tsk .mon-tab-title i { color: #26FF93; }
 .mon-tab-count {
-    font-size: var(--mon-fs-sm);
+    font-size: var(--mon-fs-2xs);
     color: rgba(255,255,255,.45);
     white-space: nowrap;
 }
@@ -539,16 +522,16 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: var(--mon-sp-xs);
+    gap: var(--mon-sp-2xs);
     margin-left: auto;
-    padding: 0 var(--mon-sp-xl);
+    padding: 0 var(--mon-sp-lg);
 }
 .cha-thead {
     display: grid;
     grid-template-columns: clamp(21px,1.54vw,26px) minmax(clamp(112px,8.2vw,140px),1.4fr) minmax(clamp(88px,6.44vw,110px),0.9fr) minmax(clamp(80px,5.86vw,100px),0.8fr) minmax(clamp(72px,5.27vw,90px),0.8fr) clamp(62px,4.54vw,78px) clamp(40px,2.93vw,50px);
     gap: var(--mon-sp-base);
     align-items: center;
-    padding: var(--mon-sp-sm) var(--mon-sp-xl);
+    padding: var(--mon-sp-sm) var(--mon-sp-lg);
     border-bottom: 1px solid rgba(255,255,255,0.08);
     flex-shrink: 0;
 }
@@ -589,7 +572,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     grid-template-columns: clamp(21px,1.54vw,26px) minmax(clamp(112px,8.2vw,140px),1.4fr) minmax(clamp(88px,6.44vw,110px),0.9fr) minmax(clamp(80px,5.86vw,100px),0.8fr) minmax(clamp(72px,5.27vw,90px),0.8fr) clamp(62px,4.54vw,78px) clamp(40px,2.93vw,50px);
     gap: var(--mon-sp-base);
     align-items: center;
-    padding: var(--mon-sp-base) var(--mon-sp-xl);
+    padding: var(--mon-sp-xs) var(--mon-sp-lg);
     cursor: pointer;
 }
 .cha-row-main:hover { background: rgba(255,255,255,0.03); }
@@ -675,7 +658,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .cha-row-detail { display: none; }
 .cha-row-detail.open { display: block; }
 .cha-detail-inner {
-    padding: var(--mon-sp-lg) var(--mon-sp-xl) var(--mon-sp-xl) 3rem;
+    padding: var(--mon-sp-base) var(--mon-sp-lg) var(--mon-sp-lg) 2.4rem;
     background: rgba(13,194,255,.03);
     border-top: 1px solid rgba(13,194,255,.10);
 }
@@ -695,7 +678,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     grid-template-columns: clamp(21px,1.54vw,26px) clamp(56px,4.1vw,70px) minmax(clamp(88px,6.44vw,110px),1.6fr) minmax(clamp(56px,4.1vw,70px),0.8fr) minmax(clamp(56px,4.1vw,70px),0.8fr) minmax(clamp(48px,3.51vw,60px),0.7fr) minmax(clamp(48px,3.51vw,60px),0.7fr) minmax(clamp(64px,4.69vw,80px),0.7fr) clamp(16px,1.17vw,20px);
     gap: var(--mon-sp-base);
     align-items: center;
-    padding: var(--mon-sp-sm) var(--mon-sp-xl);
+    padding: var(--mon-sp-sm) var(--mon-sp-lg);
     border-bottom: 1px solid rgba(255,255,255,0.08);
     flex-shrink: 0;
 }
@@ -708,10 +691,10 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     white-space: nowrap;
 }
 .tsk-filter-pill {
-    font-size: var(--mon-fs-sm);
+    font-size: var(--mon-fs-2xs);
     font-weight: 600;
-    padding: var(--mon-sp-xs) var(--mon-sp-md);
-    border-radius: 20px;
+    padding: var(--mon-sp-3xs) var(--mon-sp-xs);
+    border-radius: 12px;
     cursor: pointer;
     border: 1px solid rgba(183,148,244,.35);
     color: rgba(255,255,255,.5);
@@ -762,7 +745,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     grid-template-columns: clamp(21px,1.54vw,26px) clamp(56px,4.1vw,70px) minmax(clamp(88px,6.44vw,110px),1.6fr) minmax(clamp(56px,4.1vw,70px),0.8fr) minmax(clamp(56px,4.1vw,70px),0.8fr) minmax(clamp(48px,3.51vw,60px),0.7fr) minmax(clamp(48px,3.51vw,60px),0.7fr) minmax(clamp(64px,4.69vw,80px),0.7fr) clamp(16px,1.17vw,20px);
     gap: var(--mon-sp-base);
     align-items: center;
-    padding: var(--mon-sp-md) var(--mon-sp-xl);
+    padding: var(--mon-sp-xs) var(--mon-sp-lg);
     cursor: pointer;
 }
 .tsk-row-main:hover { background: rgba(255,255,255,0.03); }
@@ -828,7 +811,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .tsk-row-detail { display: none; }
 .tsk-row-detail.open { display: block; }
 .tsk-detail-inner {
-    padding: var(--mon-sp-lg) var(--mon-sp-xl) var(--mon-sp-xl) 3rem;
+    padding: var(--mon-sp-base) var(--mon-sp-lg) var(--mon-sp-lg) 2.4rem;
     background: rgba(183,148,244,.03);
     border-top: 1px solid rgba(183,148,244,.10);
 }
@@ -863,8 +846,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 /* ===== MONITORAMENTO KW24 — linha do topo (Funil + Atendimento lado a lado) ===== */
 .topo-row {
     display: flex;
-    gap: var(--mon-sp-xl);
-    margin-bottom: 1.25rem;
+    gap: var(--mon-sp-lg);
+    margin-bottom: var(--mon-sp-lg);
     flex-shrink: 0;
 }
 @media (max-width: 1024px) {
@@ -883,7 +866,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     overflow: hidden;
 }
 .fun-box-header {
-    padding: var(--mon-sp-md) var(--mon-sp-xl);
+    padding: var(--mon-sp-base) var(--mon-sp-lg);
     border-bottom: 1px solid rgba(255,255,255,0.08);
     display: flex;
     align-items: baseline;
@@ -913,7 +896,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 }
 .fun-card:last-child { border-right: none; }
 .fun-card-header {
-    padding: var(--mon-sp-base) var(--mon-sp-xl);
+    padding: var(--mon-sp-sm) var(--mon-sp-lg);
     font-family: 'Rubik', sans-serif;
     font-size: var(--mon-fs-md);
     font-weight: 600;
@@ -923,7 +906,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .fun-card-header.criados i { color: #0DC2FF; }
 .fun-card-header.finalizados i { color: #48bb78; }
 .fun-card-body {
-    padding: var(--mon-sp-base) var(--mon-sp-xl) var(--mon-sp-base);
+    padding: var(--mon-sp-sm) var(--mon-sp-lg) var(--mon-sp-sm);
     display: flex;
     flex-wrap: wrap;
     gap: var(--mon-sp-md);
@@ -943,7 +926,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     color: rgba(255,255,255,.4);
 }
 .fun-dist {
-    padding: var(--mon-sp-base) var(--mon-sp-xl) var(--mon-sp-base);
+    padding: var(--mon-sp-sm) var(--mon-sp-lg) var(--mon-sp-sm);
     border-top: 1px solid rgba(255,255,255,0.08);
 }
 .fun-dist-header {
@@ -999,7 +982,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     overflow: hidden;
 }
 .ate-header {
-    padding: var(--mon-sp-md) var(--mon-sp-xl);
+    padding: var(--mon-sp-base) var(--mon-sp-lg);
     border-bottom: 1px solid rgba(255,255,255,0.08);
     font-family: 'Rubik', sans-serif;
     font-size: var(--mon-fs-lg);
@@ -1008,10 +991,10 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 }
 .ate-header i { color: #26FF93; margin-right: .5rem; }
 .ate-kpis {
-    padding: var(--mon-sp-base) var(--mon-sp-xl);
+    padding: var(--mon-sp-sm) var(--mon-sp-lg);
     border-bottom: 1px solid rgba(255,255,255,0.08);
     display: flex;
-    gap: var(--mon-sp-xl);
+    gap: var(--mon-sp-lg);
     flex-wrap: wrap;
 }
 .ate-kpi { display: flex; flex-direction: column; gap: var(--mon-sp-3xs); }
@@ -1045,7 +1028,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     display: flex;
     align-items: center;
     gap: var(--mon-sp-base);
-    padding: var(--mon-sp-sm) var(--mon-sp-xl);
+    padding: var(--mon-sp-2xs) var(--mon-sp-lg);
     border-bottom: 1px solid rgba(255,255,255,0.06);
     text-decoration: none;
 }
@@ -1126,8 +1109,10 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 
 <div class="mon-panels-row">
     <div class="mon-equipe-card">
-        <div class="mon-equipe-header"><i class="fas fa-users"></i>Equipe</div>
-        <div class="mon-equipe-total" id="mon-equipe-total"></div>
+        <div class="mon-equipe-header">
+            <span><i class="fas fa-users"></i>Equipe</span>
+            <span class="mon-equipe-total" id="mon-equipe-total"></span>
+        </div>
         <div class="mon-equipe-body" id="mon-equipe-grid">
             <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
         </div>
@@ -1272,20 +1257,10 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
-    // Segmentos sempre 50/50 (largura fixa) — não proporcional ao valor, pra nunca cortar o
-    // texto do label quando um dos dois lados é baixo ou zero.
-    function barHtml(labelA, labelB, personIdx, rowKey) {
-        return '<div class="mon-bar">'
-            + '<div class="mon-seg suporte" onclick="monAbrirDrill(' + personIdx + ',\'' + rowKey + '\',\'suporte\')">' + escHtml(labelA) + '</div>'
-            + '<div class="mon-seg dev" onclick="monAbrirDrill(' + personIdx + ',\'' + rowKey + '\',\'desenvolvimento\')">' + escHtml(labelB) + '</div>'
-            + '</div>';
-    }
-
+    // Linha em texto puro (sem bar/gráfico) — nome à esquerda, contadores clicáveis à
+    // direita, abrindo o mesmo drill-down de antes. "Em andamento" foi removido daqui (só
+    // da UI — a query em MonitoramentoEquipeService.php continua intacta, ver relatório).
     function membroCardHtml(m, idx) {
-        var and    = m.andamento  || {};
-        var andSup = (and.suporte && and.suporte.count) || 0;
-        var andDev = (and.desenvolvimento && and.desenvolvimento.count) || 0;
-
         var fin       = m.finalizado || {};
         var finSupMin = (fin.suporte && fin.suporte.minutos) || 0;
         var finDevMin = (fin.desenvolvimento && fin.desenvolvimento.minutos) || 0;
@@ -1293,18 +1268,11 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         var finDevCnt = (fin.desenvolvimento && fin.desenvolvimento.count) || 0;
 
         return '<div class="mon-membro-row">'
-            + '<div class="mon-membro-nome"><i class="fas fa-user-circle"></i>' + escHtml(m.nome) + '</div>'
-            + '<div class="mon-row">'
-                + '<div class="mon-row-label">Em andamento</div>'
-                + barHtml('Suporte · ' + andSup, 'Desenvolvimento · ' + andDev, idx, 'andamento')
-            + '</div>'
-            + '<div class="mon-row">'
-                + '<div class="mon-row-label">Finalizado no ciclo</div>'
-                + barHtml(
-                    'Suporte · ' + finSupCnt + ' · ' + Math.round(finSupMin / 60) + 'h',
-                    'Desenvolvimento · ' + finDevCnt + ' · ' + Math.round(finDevMin / 60) + 'h',
-                    idx, 'finalizado')
-            + '</div>'
+            + '<span class="mon-membro-nome-plain">' + escHtml(m.nome) + '</span>'
+            + '<span class="mon-membro-metricas">'
+                + '<span class="mon-membro-metrica suporte" onclick="monAbrirDrill(' + idx + ',\'finalizado\',\'suporte\')">Suporte ' + finSupCnt + '·' + Math.round(finSupMin / 60) + 'h</span>'
+                + '<span class="mon-membro-metrica dev" onclick="monAbrirDrill(' + idx + ',\'finalizado\',\'desenvolvimento\')">Dev ' + finDevCnt + '·' + Math.round(finDevMin / 60) + 'h</span>'
+            + '</span>'
             + '</div>';
     }
 
@@ -1317,8 +1285,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         var devHoras = Math.round((totalMinutos.desenvolvimento || 0) / 60);
 
         el.innerHTML =
-            '<div class="mon-equipe-total-item"><span class="mon-equipe-total-value">' + supHoras + 'h</span><span class="mon-equipe-total-label">Suporte no período</span></div>'
-            + '<div class="mon-equipe-total-item"><span class="mon-equipe-total-value">' + devHoras + 'h</span><span class="mon-equipe-total-label">Dev no período</span></div>';
+            '<span><b>' + supHoras + 'h</b> Suporte</span>'
+            + '<span><b>' + devHoras + 'h</b> Dev</span>';
     }
 
     function render(data) {
@@ -1342,7 +1310,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     }
 
     // ── Drill-down: lista de chamados (com ID clicável para o Bitrix24) por trás de um segmento ──
-    var ROW_LABELS    = { andamento: 'Em andamento', finalizado: 'Finalizado no ciclo' };
+    var ROW_LABELS    = { finalizado: 'Finalizado no ciclo' };
     var BUCKET_LABELS = { suporte: 'Suporte', desenvolvimento: 'Desenvolvimento' };
 
     function bitrixCardUrl(id) {

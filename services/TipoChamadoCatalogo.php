@@ -37,7 +37,7 @@ class TipoChamadoCatalogo {
      * tem pill dedicada (Gabriel pediu 6 pills no total, não 1 por tipo).
      */
     private const CATALOGO = [
-        21204 => ['categoria' => self::CATEGORIA_SUPORTE,         'label' => 'Suporte Bitrix24',                'pillLabel' => 'Suporte Bitrix24',   'cor' => '#0DC2FF', 'pill' => true],
+        21204 => ['categoria' => self::CATEGORIA_SUPORTE,         'label' => 'Suporte Bitrix24',                'pillLabel' => 'Bitrix24',            'cor' => '#0DC2FF', 'pill' => true],
         21206 => ['categoria' => self::CATEGORIA_SUPORTE,         'label' => 'Suporte Técnico',                  'pillLabel' => 'Suporte técnico',    'cor' => '#0DC2FF', 'pill' => true],
         21208 => ['categoria' => self::CATEGORIA_DESENVOLVIMENTO, 'label' => 'Desenvolvimento - Melhoria',       'pillLabel' => 'Dev · Melhoria',      'cor' => '#b794f4', 'pill' => true],
         21210 => ['categoria' => self::CATEGORIA_DESENVOLVIMENTO, 'label' => 'Desenvolvimento - Implementação', 'pillLabel' => 'Dev · Implementação', 'cor' => '#b794f4', 'pill' => true],
