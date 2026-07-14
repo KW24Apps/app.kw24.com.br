@@ -735,7 +735,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     overflow: hidden;
 }
 .fun-box-header {
-    padding: var(--mon-sp-lg) var(--mon-sp-xl);
+    padding: var(--mon-sp-md) var(--mon-sp-xl);
     border-bottom: 1px solid rgba(255,255,255,0.08);
     display: flex;
     align-items: baseline;
@@ -775,14 +775,14 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .fun-card-header.criados i { color: #0DC2FF; }
 .fun-card-header.finalizados i { color: #48bb78; }
 .fun-card-body {
-    padding: var(--mon-sp-lg) var(--mon-sp-xl) var(--mon-sp-lg);
+    padding: var(--mon-sp-base) var(--mon-sp-xl) var(--mon-sp-base);
     display: flex;
     flex-wrap: wrap;
-    gap: var(--mon-sp-xl);
+    gap: var(--mon-sp-md);
 }
 .fun-stat { display: flex; flex-direction: column; gap: var(--mon-sp-2xs); }
 .fun-stat-value {
-    font-size: var(--mon-fs-xl);
+    font-size: var(--mon-fs-num);
     font-weight: 700;
     color: #fff;
     font-family: 'Inter', monospace;
@@ -795,7 +795,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     color: rgba(255,255,255,.4);
 }
 .fun-dist {
-    padding: var(--mon-sp-md) var(--mon-sp-xl) var(--mon-sp-lg);
+    padding: var(--mon-sp-base) var(--mon-sp-xl) var(--mon-sp-base);
     border-top: 1px solid rgba(255,255,255,0.08);
 }
 .fun-dist-header {
@@ -851,7 +851,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     overflow: hidden;
 }
 .ate-header {
-    padding: var(--mon-sp-lg) var(--mon-sp-xl);
+    padding: var(--mon-sp-md) var(--mon-sp-xl);
     border-bottom: 1px solid rgba(255,255,255,0.08);
     font-family: 'Rubik', sans-serif;
     font-size: var(--mon-fs-lg);
@@ -860,10 +860,10 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 }
 .ate-header i { color: #26FF93; margin-right: .5rem; }
 .ate-kpis {
-    padding: var(--mon-sp-md) var(--mon-sp-xl);
+    padding: var(--mon-sp-base) var(--mon-sp-xl);
     border-bottom: 1px solid rgba(255,255,255,0.08);
     display: flex;
-    gap: var(--mon-sp-2xl);
+    gap: var(--mon-sp-xl);
     flex-wrap: wrap;
 }
 .ate-kpi { display: flex; flex-direction: column; gap: var(--mon-sp-3xs); }

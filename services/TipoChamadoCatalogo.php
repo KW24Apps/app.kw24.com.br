@@ -28,17 +28,24 @@ class TipoChamadoCatalogo {
     public const CATEGORIA_PROJETO         = 'projeto';
     public const CATEGORIA_OUTROS          = 'outros';
 
-    /** Tipo (valor do campo ufCrm41_1737476320) => dados de exibição + categoria. */
+    /**
+     * Tipo (valor do campo ufCrm41_1737476320) => dados de exibição + categoria.
+     * 'pill' controla só a apresentação do filtro de Chamados abertos: quem tem pill=false
+     * não ganha pill própria — cai no catch-all "Outros" (junto com qualquer tipo futuro fora
+     * deste catálogo, ver paraPills()). Não afeta 'categoria' — Desenvolvimento - Correção
+     * (24458) continua contando como Desenvolvimento na classificação do painel Equipe, só não
+     * tem pill dedicada (Gabriel pediu 6 pills no total, não 1 por tipo).
+     */
     private const CATALOGO = [
-        21204 => ['categoria' => self::CATEGORIA_SUPORTE,         'label' => 'Suporte Bitrix24',                'pillLabel' => 'Suporte Bitrix24',   'cor' => '#0DC2FF'],
-        21206 => ['categoria' => self::CATEGORIA_SUPORTE,         'label' => 'Suporte Técnico',                  'pillLabel' => 'Suporte técnico',    'cor' => '#0DC2FF'],
-        21208 => ['categoria' => self::CATEGORIA_DESENVOLVIMENTO, 'label' => 'Desenvolvimento - Melhoria',       'pillLabel' => 'Dev · Melhoria',      'cor' => '#b794f4'],
-        21210 => ['categoria' => self::CATEGORIA_DESENVOLVIMENTO, 'label' => 'Desenvolvimento - Implementação', 'pillLabel' => 'Dev · Implementação', 'cor' => '#b794f4'],
-        24458 => ['categoria' => self::CATEGORIA_DESENVOLVIMENTO, 'label' => 'Desenvolvimento - Correção',       'pillLabel' => 'Dev · Correção',      'cor' => '#b794f4'],
-        28354 => ['categoria' => self::CATEGORIA_PROJETO,         'label' => 'Projeto',                          'pillLabel' => 'Projeto',             'cor' => '#26FF93'],
-        21216 => ['categoria' => self::CATEGORIA_OUTROS,          'label' => 'INFRA',                            'pillLabel' => 'INFRA',               'cor' => '#f6ad55'],
-        23322 => ['categoria' => self::CATEGORIA_OUTROS,          'label' => 'Cobrança',                         'pillLabel' => 'Cobrança',            'cor' => '#fc8181'],
-        24456 => ['categoria' => self::CATEGORIA_OUTROS,          'label' => 'Orçamento',                        'pillLabel' => 'Orçamento',           'cor' => '#a0aec0'],
+        21204 => ['categoria' => self::CATEGORIA_SUPORTE,         'label' => 'Suporte Bitrix24',                'pillLabel' => 'Suporte Bitrix24',   'cor' => '#0DC2FF', 'pill' => true],
+        21206 => ['categoria' => self::CATEGORIA_SUPORTE,         'label' => 'Suporte Técnico',                  'pillLabel' => 'Suporte técnico',    'cor' => '#0DC2FF', 'pill' => true],
+        21208 => ['categoria' => self::CATEGORIA_DESENVOLVIMENTO, 'label' => 'Desenvolvimento - Melhoria',       'pillLabel' => 'Dev · Melhoria',      'cor' => '#b794f4', 'pill' => true],
+        21210 => ['categoria' => self::CATEGORIA_DESENVOLVIMENTO, 'label' => 'Desenvolvimento - Implementação', 'pillLabel' => 'Dev · Implementação', 'cor' => '#b794f4', 'pill' => true],
+        24458 => ['categoria' => self::CATEGORIA_DESENVOLVIMENTO, 'label' => 'Desenvolvimento - Correção',       'pillLabel' => 'Dev · Correção',      'cor' => '#b794f4', 'pill' => false],
+        28354 => ['categoria' => self::CATEGORIA_PROJETO,         'label' => 'Projeto',                          'pillLabel' => 'Projeto',             'cor' => '#26FF93', 'pill' => true],
+        21216 => ['categoria' => self::CATEGORIA_OUTROS,          'label' => 'INFRA',                            'pillLabel' => 'INFRA',               'cor' => '#f6ad55', 'pill' => false],
+        23322 => ['categoria' => self::CATEGORIA_OUTROS,          'label' => 'Cobrança',                         'pillLabel' => 'Cobrança',            'cor' => '#fc8181', 'pill' => false],
+        24456 => ['categoria' => self::CATEGORIA_OUTROS,          'label' => 'Orçamento',                        'pillLabel' => 'Orçamento',           'cor' => '#a0aec0', 'pill' => false],
     ];
 
     public static function categoria(int $tipo): string {
@@ -59,14 +66,18 @@ class TipoChamadoCatalogo {
     }
 
     /**
-     * Estrutura pronta pras pills de filtro de Tipo do painel Chamados abertos — cada tipo
-     * nomeado vira 1 pill, com ativoPadrao=true pra Suporte/Desenvolvimento (visão padrão) e
-     * false pra Projeto (o catch-all "Outros" é construído no frontend, com qualquer tipo fora
-     * desta lista, incluindo tipos futuros sem precisar mexer aqui).
+     * Estrutura pronta pras pills de filtro de Tipo do painel Chamados abertos — só os tipos
+     * com pill=true (5 hoje: os 2 de Suporte, os 2 de Dev "principais" e Projeto) ganham pill
+     * própria, ativoPadrao=true pra Suporte/Desenvolvimento e false pra Projeto. Qualquer tipo
+     * com pill=false (Dev · Correção, INFRA, Cobrança, Orçamento) — e qualquer tipo futuro fora
+     * deste catálogo inteiro — cai no catch-all "Outros", construído no frontend (não incluído
+     * aqui, ver chaChaveTipo()/chaRenderFiltroTipos() em monitoramento.php): 5 pills nomeadas
+     * retornadas + 1 "Outros" montada no cliente = 6 no total.
      */
     public static function paraPills(): array {
         $pills = [];
         foreach (self::CATALOGO as $tipo => $info) {
+            if (!$info['pill']) continue;
             $pills[] = [
                 'tipo'        => $tipo,
                 'label'       => $info['pillLabel'],
