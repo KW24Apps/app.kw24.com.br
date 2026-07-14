@@ -27,6 +27,13 @@ class MonitoramentoAtendimentoService {
     private const HORA_INICIO_COMERCIAL = 8;
     private const HORA_FIM_COMERCIAL    = 18;
 
+    // Não existe método REST que liste o histórico completo de sessões por fila (pesquisado
+    // e confirmado) — im.recent.list só devolve uma janela "recente". 200 é o máximo
+    // documentado de LIMIT; usado só pra tempoMedioRespostaAmplaMinutos, uma segunda amostra
+    // maior (inclui conversas já finalizadas dentro dessa janela) pra dar perspectiva sobre o
+    // tempoMedioRespostaMinutos "atual" — nunca é uma média histórica completa.
+    private const LIMIT_AMOSTRA_AMPLA = 200;
+
     private BitrixService $bitrixAutomacao;
 
     public function __construct() {
@@ -71,14 +78,37 @@ class MonitoramentoAtendimentoService {
             }
         }
 
+        // Segunda busca, com LIMIT bem maior (200, o máximo documentado) — mesma fila
+        // (filtrarPorFila aplicado igual), mas alcança conversas já finalizadas que saíram do
+        // recorte de 50 usado acima. Usada só pra tempoMedioRespostaAmplaMinutos (ver return);
+        // não participa da lista "conversas", de conversasAtivas nem do statusFila/reclamadaPor
+        // (esses continuam exatamente como antes, baseados só em $itensFila).
+        $itensAmplos = [];
+        foreach ($identidades as $identidade) {
+            $recentesAmplos = $identidade['bitrix']->call('im.recent.list', [
+                'SKIP_DIALOG'                  => 'Y',
+                'SKIP_CHAT'                    => 'Y',
+                'SKIP_OPENLINES'               => 'N',
+                'SKIP_UNDISTRIBUTED_OPENLINES' => 'N',
+                'LIMIT'                        => self::LIMIT_AMOSTRA_AMPLA,
+            ]);
+            foreach ($this->filtrarPorFila($recentesAmplos['items'] ?? []) as $it) {
+                $sessionId = $it['lines']['id'] ?? null;
+                if ($sessionId === null || isset($itensAmplos[$sessionId])) continue;
+                $itensAmplos[$sessionId] = ['item' => $it, 'identidade' => $identidade];
+            }
+        }
+
         // Histórico completo de cada conversa — busca com o webhook da identidade que
         // efetivamente viu essa conversa (ela é participante real; a automação pode não ser).
+        // União de $itensAmplos + $itensFila: como a amostra ampla usa LIMIT maior na mesma
+        // ordenação por recência, ela já cobre praticamente todo $itensFila — evita refazer a
+        // chamada de histórico duas vezes pra mesma sessão.
         $historicos = [];
-        foreach ($itensFila as $entrada) {
-            $it        = $entrada['item'];
-            $chatId    = $it['chat']['id'] ?? null;
-            $sessionId = $it['lines']['id'] ?? null;
-            if ($chatId === null || $sessionId === null) continue;
+        foreach (($itensAmplos + $itensFila) as $sessionId => $entrada) {
+            $it     = $entrada['item'];
+            $chatId = $it['chat']['id'] ?? null;
+            if ($chatId === null) continue;
 
             $hist = $entrada['identidade']['bitrix']->call('imopenlines.session.history.get', [
                 'CHAT_ID'    => $chatId,
@@ -170,6 +200,23 @@ class MonitoramentoAtendimentoService {
         $conversasSemGrupo = array_values(array_filter($conversas, fn($c) => !$c['ehGrupo']));
         $grupos             = array_values(array_filter($conversas, fn($c) => $c['ehGrupo']));
 
+        // Amostra ampliada (ver $itensAmplos acima) — mesma exclusão de grupo, mesmo
+        // filtrarPorFila, mesma paresClienteAtendente/minutosUteisEntre; só o conjunto de
+        // sessões de origem é maior (inclui conversas já finalizadas dentro da janela de 200).
+        $amostrasRespostaAmpla = [];
+        foreach ($itensAmplos as $sessionId => $entrada) {
+            $titulo = $entrada['item']['title'] ?? '(sem título)';
+            if ($this->ehGrupo($titulo)) continue;
+
+            $msgs = $historicos[$sessionId] ?? [];
+            foreach ($this->paresClienteAtendente($msgs, $nomesInternos) as $par) {
+                $amostrasRespostaAmpla[] = $this->minutosUteisEntre(
+                    new DateTime($par['clienteData']),
+                    new DateTime($par['atendenteData'])
+                );
+            }
+        }
+
         return [
             'bitrixBase'              => $bitrixBase,
             'identidades'             => array_column($identidades, 'nome'), // diagnóstico — quais webhooks foram consultados
@@ -181,6 +228,13 @@ class MonitoramentoAtendimentoService {
             'tempoMedioRespostaMinutos' => $amostrasResposta
                 ? round(array_sum($amostrasResposta) / count($amostrasResposta))
                 : null,
+            // Amostra maior (LIMIT=200/identidade) pra dar perspectiva — NÃO é média histórica
+            // completa (Bitrix24 não expõe isso, ver docblock da classe), só uma janela mais
+            // larga da mesma fila/exclusão de grupo. amostraAmplaTotalSessoes é diagnóstico.
+            'tempoMedioRespostaAmplaMinutos' => $amostrasRespostaAmpla
+                ? round(array_sum($amostrasRespostaAmpla) / count($amostrasRespostaAmpla))
+                : null,
+            'amostraAmplaTotalSessoes' => count($itensAmplos),
             'conversas' => $conversasSemGrupo,
             'grupos'    => $grupos,
         ];
