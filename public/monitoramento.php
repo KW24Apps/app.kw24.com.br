@@ -54,6 +54,21 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     font-size: var(--mon-fs-sm);
     color: rgba(255,255,255,.35);
 }
+.mon-config-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: rgba(255,255,255,.7);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--mon-fs-lg);
+    transition: background .15s, color .15s;
+}
+.mon-config-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
 .mon-panels-row {
     display: flex;
     gap: var(--mon-sp-xl);
@@ -328,6 +343,139 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     flex: 1;
     min-height: 0;
 }
+
+/* Modal de config dos webhooks pessoais (Atendimento) — CRUD, ver WebhooksPessoaisAtendimento */
+#mon-webhooks-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(6,25,32,.7);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+#mon-webhooks-box {
+    background: #0d1e2d;
+    border: 1.5px solid rgba(255,255,255,.12);
+    border-radius: 14px;
+    padding: var(--mon-sp-2xl);
+    width: 460px;
+    max-width: 92vw;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    animation: monDrillPop .18s ease;
+}
+#mon-webhooks-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--mon-sp-lg);
+    margin-bottom: var(--mon-sp-lg);
+    flex-shrink: 0;
+}
+#mon-webhooks-title {
+    margin: 0;
+    color: #fff;
+    font-family: 'Rubik', sans-serif;
+    font-size: var(--mon-fs-lg);
+    font-weight: 600;
+}
+#mon-webhooks-subtitle {
+    margin: .3rem 0 0;
+    color: rgba(255,255,255,.4);
+    font-size: var(--mon-fs-sm);
+    line-height: 1.4;
+}
+#mon-webhooks-close {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,.5);
+    font-size: var(--mon-fs-icon);
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 var(--mon-sp-2xs);
+    flex-shrink: 0;
+}
+#mon-webhooks-close:hover { color: #fff; }
+#mon-webhooks-list {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    margin-bottom: var(--mon-sp-lg);
+}
+.mon-webhook-row {
+    display: flex;
+    align-items: center;
+    gap: var(--mon-sp-sm);
+    padding: var(--mon-sp-sm) 0;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.mon-webhook-row:last-child { border-bottom: none; }
+.mon-webhook-nome {
+    color: #fff;
+    font-size: var(--mon-fs-base);
+    font-weight: 500;
+    flex-shrink: 0;
+    width: 110px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.mon-webhook-url {
+    color: rgba(255,255,255,.45);
+    font-size: var(--mon-fs-sm);
+    font-family: 'Inter', monospace;
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.mon-webhook-acoes { display: flex; gap: var(--mon-sp-2xs); flex-shrink: 0; }
+.mon-webhook-acoes button {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,.4);
+    cursor: pointer;
+    font-size: var(--mon-fs-sm);
+    padding: var(--mon-sp-2xs);
+}
+.mon-webhook-acoes button:hover { color: #fff; }
+#mon-webhooks-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mon-sp-sm);
+    flex-shrink: 0;
+    border-top: 1px solid rgba(255,255,255,.08);
+    padding-top: var(--mon-sp-lg);
+}
+#mon-webhooks-form input {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    padding: var(--mon-sp-sm);
+    font-size: var(--mon-fs-base);
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+}
+#mon-webhooks-form input::placeholder { color: rgba(255,255,255,0.30); }
+#mon-webhooks-form input:focus { border-color: #0DC2FF; }
+#mon-webhooks-form button {
+    background: linear-gradient(90deg,#0DC2FF,#0080aa);
+    border: none;
+    border-radius: 8px;
+    color: #061920;
+    font-weight: 600;
+    font-size: var(--mon-fs-base);
+    padding: var(--mon-sp-sm);
+    cursor: pointer;
+}
+#mon-webhooks-feedback { font-size: var(--mon-fs-sm); margin-top: var(--mon-sp-xs); flex-shrink: 0; min-height: 1.2em; }
+#mon-webhooks-feedback.ok { color: #26FF93; }
+#mon-webhooks-feedback.erro { color: #fc8181; }
 
 /* ===== MONITORAMENTO KW24 — painel único com abas (Chamados abertos / Tarefas) =====
  * Antes eram 2 caixas em accordion (só uma expandida por vez); agora é 1 caixa só com uma
@@ -935,6 +1083,9 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     <h1 class="page-title"><i class="fas fa-satellite-dish" style="color:#0DC2FF;margin-right:.5rem"></i>Monitoramento KW24</h1>
     <div class="page-header-actions">
         <span class="mon-updated" id="mon-updated">—</span>
+        <button class="mon-config-btn" id="mon-config-btn" onclick="monAbrirConfigWebhooks()" title="Webhooks pessoais (Atendimento)">
+            <i class="fas fa-cog"></i>
+        </button>
         <button class="btn-primary" id="mon-refresh-btn" onclick="monAtualizar()">
             <i class="fas fa-sync-alt" id="mon-refresh-icon"></i> Atualizar
         </button>
@@ -1054,6 +1205,29 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             <button id="tsk-chat-close" onclick="tskFecharChat()" aria-label="Fechar">&times;</button>
         </div>
         <div id="tsk-chat-list"></div>
+    </div>
+</div>
+
+<!-- Config dos webhooks pessoais (Atendimento) — um webhook Bitrix24 (escopo im) por
+     colaborador, pra o painel ver as conversas que cada um participa. -->
+<div id="mon-webhooks-overlay" onclick="if(event.target===this) monFecharConfigWebhooks()">
+    <div id="mon-webhooks-box">
+        <div id="mon-webhooks-header">
+            <div>
+                <h3 id="mon-webhooks-title">Webhooks pessoais — Atendimento</h3>
+                <p id="mon-webhooks-subtitle">Cada colaborador gera seu próprio webhook Bitrix24
+                    (escopo <code>im</code>) no perfil dele — cadastre aqui pra o painel
+                    Atendimento agregar as conversas de todos, não só as do automação.</p>
+            </div>
+            <button id="mon-webhooks-close" onclick="monFecharConfigWebhooks()" aria-label="Fechar">&times;</button>
+        </div>
+        <div id="mon-webhooks-list"></div>
+        <div id="mon-webhooks-form">
+            <input type="text" id="mon-webhook-nome" placeholder="Nome (ex.: Gabriel Acker)">
+            <input type="url" id="mon-webhook-url" placeholder="https://.../rest/.../TOKEN/">
+            <button onclick="monSalvarWebhookPessoal()"><span id="mon-webhooks-submit-label">Adicionar</span></button>
+        </div>
+        <div id="mon-webhooks-feedback"></div>
     </div>
 </div>
 
@@ -1352,6 +1526,129 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') tskFecharChat();
     });
+
+    // ── Config dos webhooks pessoais (Atendimento) — CRUD via modal ───────────────
+    var monWebhookEditandoId = null;
+
+    function monWebhookFeedback(msg, classe) {
+        var fb = document.getElementById('mon-webhooks-feedback');
+        fb.textContent = msg;
+        fb.className = classe;
+        if (classe === 'ok') setTimeout(function () { fb.textContent = ''; }, 4000);
+    }
+
+    function monWebhookLimparForm() {
+        monWebhookEditandoId = null;
+        document.getElementById('mon-webhook-nome').value = '';
+        document.getElementById('mon-webhook-url').value = '';
+        document.getElementById('mon-webhook-url').placeholder = 'https://.../rest/.../TOKEN/';
+        document.getElementById('mon-webhooks-submit-label').textContent = 'Adicionar';
+    }
+
+    function monWebhookRowHtml(p) {
+        var nomeEscapado = escHtml(p.nome).replace(/'/g, "\\'");
+        return '<div class="mon-webhook-row">'
+            + '<span class="mon-webhook-nome" title="' + escHtml(p.nome) + '">' + escHtml(p.nome) + '</span>'
+            + '<span class="mon-webhook-url" title="' + escHtml(p.webhookMascarado) + '">' + escHtml(p.webhookMascarado) + '</span>'
+            + '<span class="mon-webhook-acoes">'
+                + '<button onclick="monEditarWebhookPessoal(\'' + p.id + '\',\'' + nomeEscapado + '\')" title="Editar"><i class="fas fa-pen"></i></button>'
+                + '<button onclick="monRemoverWebhookPessoal(\'' + p.id + '\')" title="Remover"><i class="fas fa-trash"></i></button>'
+            + '</span>'
+            + '</div>';
+    }
+
+    function monRenderWebhooksPessoais(pessoas) {
+        var el = document.getElementById('mon-webhooks-list');
+        el.innerHTML = (pessoas && pessoas.length)
+            ? pessoas.map(monWebhookRowHtml).join('')
+            : '<div class="mon-empty" style="padding:1.5rem 0"><div>Nenhum webhook pessoal cadastrado ainda — o Atendimento usa só o webhook de automação até você cadastrar o primeiro.</div></div>';
+    }
+
+    function monCarregarWebhooksPessoais() {
+        return fetch('/api/monitoramento-webhooks-pessoais.php', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ acao: 'listar' })
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.erro) {
+                    document.getElementById('mon-webhooks-list').innerHTML =
+                        '<div class="mon-empty" style="color:#fc8181">' + escHtml(data.erro) + '</div>';
+                    return;
+                }
+                monRenderWebhooksPessoais(data.pessoas || []);
+            })
+            .catch(function () {
+                document.getElementById('mon-webhooks-list').innerHTML =
+                    '<div class="mon-empty" style="color:#fc8181">Erro de comunicação.</div>';
+            });
+    }
+
+    window.monAbrirConfigWebhooks = function () {
+        monWebhookLimparForm();
+        document.getElementById('mon-webhooks-feedback').textContent = '';
+        document.getElementById('mon-webhooks-overlay').style.display = 'flex';
+        monCarregarWebhooksPessoais();
+    };
+
+    window.monFecharConfigWebhooks = function () {
+        document.getElementById('mon-webhooks-overlay').style.display = 'none';
+    };
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') monFecharConfigWebhooks();
+    });
+
+    window.monEditarWebhookPessoal = function (id, nomeAtual) {
+        monWebhookEditandoId = id;
+        document.getElementById('mon-webhook-nome').value = nomeAtual;
+        document.getElementById('mon-webhook-url').value = '';
+        document.getElementById('mon-webhook-url').placeholder = 'Deixe em branco pra manter o webhook atual';
+        document.getElementById('mon-webhooks-submit-label').textContent = 'Salvar edição';
+        document.getElementById('mon-webhooks-feedback').textContent = '';
+    };
+
+    window.monRemoverWebhookPessoal = function (id) {
+        fetch('/api/monitoramento-webhooks-pessoais.php', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ acao: 'remover', id: id })
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.erro) { monWebhookFeedback(data.erro, 'erro'); return; }
+                monRenderWebhooksPessoais(data.pessoas || []);
+                if (monWebhookEditandoId === id) monWebhookLimparForm();
+            })
+            .catch(function () { monWebhookFeedback('Erro de comunicação.', 'erro'); });
+    };
+
+    window.monSalvarWebhookPessoal = function () {
+        var nome = document.getElementById('mon-webhook-nome').value.trim();
+        var url  = document.getElementById('mon-webhook-url').value.trim();
+
+        if (!nome) { monWebhookFeedback('Nome é obrigatório.', 'erro'); return; }
+        if (!monWebhookEditandoId && !url) { monWebhookFeedback('Webhook é obrigatório.', 'erro'); return; }
+
+        var acao    = monWebhookEditandoId ? 'editar' : 'adicionar';
+        var payload = { acao: acao, nome: nome, webhookUrl: url };
+        if (monWebhookEditandoId) payload.id = monWebhookEditandoId;
+
+        fetch('/api/monitoramento-webhooks-pessoais.php', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.erro) { monWebhookFeedback(data.erro, 'erro'); return; }
+                monRenderWebhooksPessoais(data.pessoas || []);
+                monWebhookLimparForm();
+                monWebhookFeedback('Salvo com sucesso.', 'ok');
+            })
+            .catch(function () { monWebhookFeedback('Erro de comunicação.', 'erro'); });
+    };
 
     // ── Filtro por pessoa (pills multi-select, 1 a 4 ativos) ──────────────────────
     function renderFiltroPessoas(equipe) {

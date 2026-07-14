@@ -1,0 +1,99 @@
+<?php
+require_once __DIR__ . '/../helpers/Database.php';
+require_once __DIR__ . '/../dao/ConfiguracaoDAO.php';
+
+/**
+ * CRUD dos webhooks Bitrix24 pessoais (escopo im, um por colaborador) usados pelo painel
+ * Atendimento pra agregar conversas de vários operadores — im.recent.list só retorna o que o
+ * DONO do webhook participa (confirmado em pesquisa anterior), então um webhook fixo só (o de
+ * automação) nunca via as conversas atendidas direto por Gabriel/Jeferson/Tainá/Michael.
+ *
+ * Armazenamento: um único JSON em configuracoes_sistema (mesmo padrão de
+ * monitoramento_equipe_token/financeiro_webhook_bitrix) — sem tabela nova, sem migration.
+ *
+ * Sensibilidade: listar() retorna a URL completa em texto puro — só pra uso INTERNO do
+ * backend (ex.: MonitoramentoAtendimentoService chamando im.recent.list com cada webhook).
+ * Nunca serializar o retorno de listar() direto numa resposta HTTP. listarMascarado() é o que
+ * a UI de configuração deve usar — mesmo nível de sensibilidade já dado ao webhook principal
+ * documentado em ACESSOS.md.
+ */
+class WebhooksPessoaisAtendimento {
+    private const CHAVE = 'monitoramento_atendimento_webhooks';
+
+    private ConfiguracaoDAO $dao;
+
+    public function __construct() {
+        $this->dao = new ConfiguracaoDAO();
+    }
+
+    /** Texto puro — só uso interno do backend, nunca expor em resposta HTTP. */
+    public function listar(): array {
+        $json = $this->dao->get(self::CHAVE);
+        if ($json === null || $json === '') return [];
+        $lista = json_decode($json, true);
+        return is_array($lista) ? $lista : [];
+    }
+
+    /** Pra UI — id, nome e URL mascarada (nunca o valor completo). */
+    public function listarMascarado(): array {
+        return array_map(function ($p) {
+            return [
+                'id'               => $p['id']   ?? '',
+                'nome'             => $p['nome'] ?? '',
+                'webhookMascarado' => self::mascarar($p['webhookUrl'] ?? ''),
+            ];
+        }, $this->listar());
+    }
+
+    public function adicionar(string $nome, string $webhookUrl): void {
+        $lista = $this->listar();
+        $lista[] = [
+            'id'         => uniqid('pw_', true),
+            'nome'       => $nome,
+            'webhookUrl' => $webhookUrl,
+        ];
+        $this->salvar($lista);
+    }
+
+    /** $webhookUrl null = mantém a URL já salva (edição só do nome). */
+    public function editar(string $id, string $nome, ?string $webhookUrl): void {
+        $lista = $this->listar();
+        foreach ($lista as &$p) {
+            if (($p['id'] ?? null) === $id) {
+                $p['nome'] = $nome;
+                if ($webhookUrl !== null) $p['webhookUrl'] = $webhookUrl;
+            }
+        }
+        unset($p);
+        $this->salvar($lista);
+    }
+
+    public function remover(string $id): void {
+        $lista = array_values(array_filter(
+            $this->listar(),
+            fn($p) => ($p['id'] ?? null) !== $id
+        ));
+        $this->salvar($lista);
+    }
+
+    private function salvar(array $lista): void {
+        $this->dao->set(self::CHAVE, json_encode($lista, JSON_UNESCAPED_UNICODE));
+    }
+
+    /** "https://portal.bitrix24.com.br/rest/21/TOKEN/" -> mantém domínio+userId, mascara o
+     *  token exceto os últimos 4 caracteres. */
+    private static function mascarar(string $url): string {
+        if ($url === '') return '';
+        $comBarra = rtrim($url, '/') . '/';
+        return preg_replace_callback(
+            '#(/rest/\d+/)([a-z0-9]+)(/)$#i',
+            function ($m) {
+                $token = $m[2];
+                $tail  = strlen($token) > 4 ? substr($token, -4) : $token;
+                $head  = strlen($token) > 4 ? str_repeat('*', strlen($token) - 4) : '';
+                return $m[1] . $head . $tail . $m[3];
+            },
+            $comBarra
+        );
+    }
+}
