@@ -294,7 +294,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     background: rgba(255,255,255,0.05);
     border: 1.5px solid rgba(255,255,255,0.10);
     border-radius: 12px;
-    flex: 0 0 42%;
+    flex: 1 1 0;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -330,7 +330,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 }
 .cha-thead {
     display: grid;
-    grid-template-columns: 26px minmax(160px,1fr) 150px 140px 130px 84px 56px;
+    grid-template-columns: 26px minmax(150px,1fr) 175px 130px 120px 78px 50px;
     gap: .6rem;
     align-items: center;
     padding: .5rem 1.25rem;
@@ -359,7 +359,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .cha-row:last-child { border-bottom: none; }
 .cha-row-main {
     display: grid;
-    grid-template-columns: 26px minmax(160px,1fr) 150px 140px 130px 84px 56px;
+    grid-template-columns: 26px minmax(150px,1fr) 175px 130px 120px 78px 50px;
     gap: .6rem;
     align-items: center;
     padding: .6rem 1.25rem;
@@ -403,6 +403,10 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     padding: .15rem .5rem;
     border-radius: 20px;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    min-width: 0;
     justify-self: start;
 }
 .cha-etapa {
@@ -411,6 +415,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
 }
 .cha-solicitante {
     font-size: .78rem;
@@ -418,6 +423,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
 }
 .cha-avatares { display: flex; gap: .25rem; }
 .cha-avatar {
@@ -461,7 +467,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     background: rgba(255,255,255,0.05);
     border: 1.5px solid rgba(255,255,255,0.10);
     border-radius: 12px;
-    flex: 1 1 auto;
+    flex: 1 1 0;
     min-width: 320px;
     min-height: 0;
     display: flex;
@@ -529,9 +535,10 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 }
 .tsk-row:last-child { border-bottom: none; }
 .tsk-row-main {
-    display: flex;
+    display: grid;
+    grid-template-columns: 26px 74px minmax(140px,1fr) minmax(150px,220px) 108px 20px;
+    gap: .6rem;
     align-items: center;
-    gap: .75rem;
     padding: .8rem 1.25rem;
     cursor: pointer;
 }
@@ -560,13 +567,12 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     color: #fff;
     font-size: .85rem;
     font-weight: 500;
-    flex: 1;
-    min-width: 120px;
+    min-width: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.tsk-badges { display: flex; flex-wrap: wrap; gap: .35rem; flex-shrink: 0; }
+.tsk-badges { display: flex; flex-wrap: wrap; gap: .35rem; min-width: 0; justify-content: flex-end; }
 .tsk-badge {
     font-size: .68rem;
     font-weight: 600;
@@ -580,8 +586,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .tsk-deadline {
     font-size: .78rem;
     color: rgba(255,255,255,.5);
-    flex-shrink: 0;
     white-space: nowrap;
+    text-align: right;
 }
 .tsk-deadline.atrasada { color: #fc8181; font-weight: 600; }
 .tsk-chat-icon { color: rgba(255,255,255,.35); flex-shrink: 0; font-size: .8rem; }
@@ -632,25 +638,51 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 }
 
 /* ===== MONITORAMENTO KW24 — Funil (volume: criados / finalizados, SPA 1054 / Funil 208) ===== */
-.fun-section {
-    display: flex;
-    gap: 1.25rem;
-    flex: 1 1 0;
-    min-width: 0;
-}
-.fun-card {
+.fun-box {
     background: rgba(255,255,255,0.05);
     border: 1.5px solid rgba(255,255,255,0.10);
     border-radius: 12px;
     flex: 1 1 0;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
 }
-.fun-card-header {
+.fun-box-header {
     padding: .9rem 1.25rem;
     border-bottom: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: baseline;
+    gap: .6rem;
     font-family: 'Rubik', sans-serif;
     font-size: .95rem;
+    font-weight: 600;
+    color: #fff;
+}
+.fun-box-header i { color: #0DC2FF; margin-right: .2rem; }
+.fun-box-ciclo {
+    font-size: .72rem;
+    font-weight: 500;
+    color: rgba(255,255,255,.4);
+    font-family: 'Inter', monospace;
+}
+.fun-cards {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+.fun-card {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.fun-card:last-child { border-bottom: none; }
+.fun-card-header {
+    padding: .7rem 1.25rem;
+    font-family: 'Rubik', sans-serif;
+    font-size: .85rem;
     font-weight: 600;
     color: #fff;
 }
@@ -723,7 +755,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     color: rgba(255,255,255,.4);
 }
 .ate-list {
-    max-height: 200px;
+    height: 340px;
     overflow-y: auto;
 }
 .ate-list::-webkit-scrollbar { width: 5px; }
@@ -778,26 +810,29 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 </div>
 
 <div class="topo-row">
-    <div class="fun-section" id="fun-section">
-        <div class="fun-card">
-            <div class="fun-card-header criados"><i class="fas fa-inbox"></i>Chamados criados</div>
-            <div class="fun-card-body" id="fun-criados-body">
-                <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
-            </div>
-        </div>
-        <div class="fun-card">
-            <div class="fun-card-header finalizados"><i class="fas fa-check-circle"></i>Chamados finalizados</div>
-            <div class="fun-card-body" id="fun-finalizados-body">
-                <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
-            </div>
-        </div>
-    </div>
-
     <div class="ate-section">
         <div class="ate-header"><i class="fas fa-headset"></i>Atendimento</div>
         <div class="ate-kpis" id="ate-kpis"></div>
         <div class="ate-list" id="ate-list">
             <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+        </div>
+    </div>
+
+    <div class="fun-box" id="fun-section">
+        <div class="fun-box-header"><i class="fas fa-filter"></i>Funil<span class="fun-box-ciclo" id="fun-ciclo"></span></div>
+        <div class="fun-cards">
+            <div class="fun-card">
+                <div class="fun-card-header criados"><i class="fas fa-inbox"></i>Chamados criados</div>
+                <div class="fun-card-body" id="fun-criados-body">
+                    <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+                </div>
+            </div>
+            <div class="fun-card">
+                <div class="fun-card-header finalizados"><i class="fas fa-check-circle"></i>Chamados finalizados</div>
+                <div class="fun-card-body" id="fun-finalizados-body">
+                    <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -1248,10 +1283,10 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         return '<div class="cha-row">'
             + '<div class="cha-row-main" onclick="chaToggle(' + c.id + ')">'
                 + '<button class="cha-chevron-btn" id="cha-btn-' + c.id + '"><i class="fas fa-chevron-right" style="font-size:.7rem"></i></button>'
-                + '<div class="cha-row-chamado">' + idHtml + '<span class="cha-row-title">' + escHtml(c.titulo) + '</span></div>'
-                + '<span class="cha-badge" style="background:' + c.tipoCor + '22;color:' + c.tipoCor + ';border:1px solid ' + c.tipoCor + '55">' + escHtml(c.tipoLabel) + '</span>'
-                + '<span class="cha-etapa">' + escHtml(c.etapaLabel) + '</span>'
-                + '<span class="cha-solicitante">' + escHtml(c.solicitante || '—') + '</span>'
+                + '<div class="cha-row-chamado">' + idHtml + '<span class="cha-row-title" title="' + escHtml(c.titulo) + '">' + escHtml(c.titulo) + '</span></div>'
+                + '<span class="cha-badge" title="' + escHtml(c.tipoLabel) + '" style="background:' + c.tipoCor + '22;color:' + c.tipoCor + ';border:1px solid ' + c.tipoCor + '55">' + escHtml(c.tipoLabel) + '</span>'
+                + '<span class="cha-etapa" title="' + escHtml(c.etapaLabel) + '">' + escHtml(c.etapaLabel) + '</span>'
+                + '<span class="cha-solicitante" title="' + escHtml(c.solicitante || '') + '">' + escHtml(c.solicitante || '—') + '</span>'
                 + '<span class="cha-avatares">' + avatares + '</span>'
                 + '<span class="cha-acoes">' + chatIcon + linkIcon + '</span>'
             + '</div>'
@@ -1327,16 +1362,27 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         return '<div class="fun-stat"><span class="fun-stat-value">' + (valor != null ? valor : '—') + '</span><span class="fun-stat-label">' + escHtml(label) + '</span></div>';
     }
 
+    function fmtDiaMes(iso) {
+        var p = (iso || '').split('-');
+        return p.length === 3 ? (p[2] + '/' + p[1]) : '';
+    }
+
     function renderFunil(data) {
+        var cicloEl          = document.getElementById('fun-ciclo');
         var criadosBody     = document.getElementById('fun-criados-body');
         var finalizadosBody = document.getElementById('fun-finalizados-body');
         if (!criadosBody || !finalizadosBody) return;
 
         if (data.aviso) {
+            if (cicloEl) cicloEl.textContent = '';
             var avisoHtml = '<div class="mon-empty"><i class="fas fa-plug"></i><div>' + escHtml(data.aviso) + '</div></div>';
             criadosBody.innerHTML     = avisoHtml;
             finalizadosBody.innerHTML = avisoHtml;
             return;
+        }
+
+        if (cicloEl && data.periodo) {
+            cicloEl.textContent = 'ciclo ' + fmtDiaMes(data.periodo.inicio) + '-' + fmtDiaMes(data.periodo.fim);
         }
 
         var criados     = data.chamadosCriados     || {};
