@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../helpers/Database.php';
 require_once __DIR__ . '/../services/BitrixService.php';
+require_once __DIR__ . '/../services/TipoChamadoCatalogo.php';
 
 /**
  * Agregação do painel "Chamados abertos" — Monitoramento KW24.
@@ -37,36 +38,6 @@ class MonitoramentoChamadosService {
         'DT1054_208:UC_NUJRTQ'   => 'Treinamento/Validação',
     ];
 
-    // MVP padrão: os 5 tipos faturáveis. "Mostrar todos os tipos" acrescenta os 3 extras.
-    // Cobrança (23322) está incluída no conjunto extra por instrução da tarefa, mas confirmado por
-    // teste real que não aparece atualmente em nenhum chamado ABERTO do Funil 208 (só 1 ocorrência
-    // histórica, já finalizada) — condiz com a nota de que Cobrança normalmente vive no funil de
-    // faturamento (210), não no 208.
-    private const TIPOS_PADRAO = [21204, 21206, 21208, 21210, 28354];
-    private const TIPOS_EXTRA  = [24458, 21216, 23322];
-
-    private const TIPO_LABELS = [
-        21204 => 'Suporte Bitrix24',
-        21206 => 'Suporte Técnico',
-        21208 => 'Desenvolvimento - Melhoria',
-        21210 => 'Desenvolvimento - Implementação',
-        28354 => 'Projeto',
-        24458 => 'Desenvolvimento - Correção',
-        21216 => 'INFRA',
-        23322 => 'Cobrança',
-    ];
-
-    private const TIPO_CORES = [
-        21204 => '#0DC2FF',
-        21206 => '#0DC2FF',
-        21208 => '#b794f4',
-        21210 => '#b794f4',
-        28354 => '#26FF93',
-        24458 => '#b794f4',
-        21216 => '#f6ad55',
-        23322 => '#fc8181',
-    ];
-
     private BitrixService $bitrix;
 
     public function __construct() {
@@ -78,14 +49,14 @@ class MonitoramentoChamadosService {
     }
 
     public function getDados(int $mensagensPorChamado = 5): array {
-        $tiposTodos = array_merge(self::TIPOS_PADRAO, self::TIPOS_EXTRA);
-
+        // Sem filtro por Tipo aqui de propósito — um tipo novo que apareça no futuro (fora do
+        // catálogo conhecido) deve continuar aparecendo no painel (cai em "Outros" no
+        // frontend), não desaparecer silenciosamente por não estar numa lista fixa.
         $items = $this->bitrix->listItems(
             self::ENTITY_TYPE,
             [
                 'categoryId' => self::CAT_DEMANDAS,
                 'stageId'    => array_keys(self::ETAPAS),
-                self::F_TIPO => $tiposTodos,
             ],
             ['id', self::F_NOME, 'title', self::F_TIPO, 'stageId', self::F_RESP, 'createdTime', self::F_SOLICITANTE, self::F_RESUMO],
             0
@@ -146,9 +117,8 @@ class MonitoramentoChamadosService {
                 'id'           => $id,
                 'titulo'       => $it[self::F_NOME] ?: ($it['title'] ?? ''),
                 'tipo'         => $tipo,
-                'tipoLabel'    => self::TIPO_LABELS[$tipo] ?? ('Tipo #' . $tipo),
-                'tipoCor'      => self::TIPO_CORES[$tipo] ?? '#a0aec0',
-                'tipoPadrao'   => in_array($tipo, self::TIPOS_PADRAO, true),
+                'tipoLabel'    => TipoChamadoCatalogo::label($tipo),
+                'tipoCor'      => TipoChamadoCatalogo::cor($tipo),
                 'etapaLabel'   => self::ETAPAS[$stageId] ?? $stageId, // defensivo — não deveria faltar (ver nota da classe)
                 'responsaveis' => $responsaveis,
                 'solicitante'  => trim((string)($it[self::F_SOLICITANTE] ?? '')),
@@ -167,11 +137,10 @@ class MonitoramentoChamadosService {
         });
 
         return [
-            'bitrixBase'  => $this->bitrix->getPortalBaseUrl(),
-            'total'       => count($chamados),
-            'chamados'    => $chamados,
-            'tiposPadrao' => self::TIPOS_PADRAO,
-            'tiposExtra'  => self::TIPOS_EXTRA,
+            'bitrixBase'    => $this->bitrix->getPortalBaseUrl(),
+            'total'         => count($chamados),
+            'chamados'      => $chamados,
+            'catalogoTipos' => TipoChamadoCatalogo::paraPills(),
         ];
     }
 

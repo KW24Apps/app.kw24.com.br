@@ -1549,34 +1549,36 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     };
 
     // ── Filtro por Tipo (pills multi-select, mesmo padrão do filtro por pessoa do Tarefas) ──
-    // Lista fixa (não derivada dos dados) — os 4 principais + Projeto sempre aparecem, mesmo
-    // sem chamado aberto no momento; "outros" é um bucket catch-all (chave especial, não um
-    // código de tipo real) que cobre qualquer tipo fora dos 5 nomeados aqui, incluindo tipos
+    // Cada tipo nomeado vem do backend (TipoChamadoCatalogo::paraPills(), fonte única de
+    // verdade compartilhada com a classificação Suporte/Desenvolvimento do painel Equipe) —
+    // nada de mapa duplicado aqui. "Outros" é um bucket catch-all (chave especial, não um
+    // tipo real) que cobre qualquer tipo fora da lista vinda do backend, incluindo tipos
     // novos que apareçam no futuro sem precisar mexer neste código.
-    var CHA_TIPO_PILLS = [
-        { key: '21210', label: 'Dev · Implementação' },
-        { key: '21208', label: 'Dev · Melhoria' },
-        { key: '21206', label: 'Suporte técnico' },
-        { key: '21204', label: 'Suporte Bitrix24' },
-        { key: '28354', label: 'Projeto' },
-        { key: 'outros', label: 'Outros' },
-    ];
-    var CHA_TIPOS_ATIVOS_PADRAO = ['21210', '21208', '21206', '21204']; // Projeto e Outros começam desmarcados
+    var chaCatalogoTipos = null; // [{tipo, label, ativoPadrao}] — vem de data.catalogoTipos
 
     function chaChaveTipo(c) {
         var key = String(c.tipo);
-        return CHA_TIPO_PILLS.some(function (p) { return p.key === key; }) ? key : 'outros';
+        var conhecido = (chaCatalogoTipos || []).some(function (p) { return String(p.tipo) === key; });
+        return conhecido ? key : 'outros';
     }
 
-    function chaRenderFiltroTipos() {
+    function chaRenderFiltroTipos(catalogo) {
         var el = document.getElementById('cha-filtro-tipos');
         if (!el) return;
 
+        chaCatalogoTipos = catalogo || [];
+
         if (chaSelectedTipos === null) {
-            chaSelectedTipos = new Set(CHA_TIPOS_ATIVOS_PADRAO);
+            chaSelectedTipos = new Set(
+                chaCatalogoTipos.filter(function (p) { return p.ativoPadrao; })
+                                .map(function (p) { return String(p.tipo); })
+            );
         }
 
-        el.innerHTML = CHA_TIPO_PILLS.map(function (p) {
+        var pills = chaCatalogoTipos.map(function (p) { return { key: String(p.tipo), label: p.label }; });
+        pills.push({ key: 'outros', label: 'Outros' });
+
+        el.innerHTML = pills.map(function (p) {
             var ativo = chaSelectedTipos.has(p.key);
             return '<span class="tsk-filter-pill tipo' + (ativo ? ' active' : '') + '" onclick="chaToggleTipoFiltro(\'' + p.key + '\')">'
                 + escHtml(p.label) + '</span>';
@@ -1649,7 +1651,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         }
 
         var todos = data.chamados || [];
-        chaRenderFiltroTipos();
+        chaRenderFiltroTipos(data.catalogoTipos);
 
         var visiveis = todos.filter(function (c) { return chaSelectedTipos.has(chaChaveTipo(c)); });
         visiveis = chaAplicarOrdenacao(visiveis);

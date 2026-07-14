@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../helpers/Database.php';
 require_once __DIR__ . '/../dao/ConfiguracaoDAO.php';
 require_once __DIR__ . '/../services/BitrixService.php';
+require_once __DIR__ . '/../services/TipoChamadoCatalogo.php';
 
 /**
  * Agregação do painel "Equipe" — Monitoramento KW24.
@@ -16,9 +17,6 @@ class MonitoramentoEquipeService {
     private const F_RESPONSAVEL  = 'ufCrm41_1727877194';
     private const F_TEMPO_FINAL  = 'ufCrm41_1751475675';
     private const F_DATA_FIN     = 'ufCrm41_1778777816';
-
-    private const TIPOS_SUPORTE = [21204, 21206];
-    private const TIPOS_DEV     = [21208, 21210];
 
     private const EQUIPE = [
         ['nome' => 'Gabriel Acker',   'bitrixUserId' => 21,    'stageId' => 'DT1054_208:UC_1GHUI5'],
@@ -91,9 +89,16 @@ class MonitoramentoEquipeService {
         ];
     }
 
+    /** Classificação Suporte/Desenvolvimento via o catálogo único de Tipo de Chamado — Projeto e
+     *  Outros (INFRA, Cobrança, Orçamento etc.) retornam null e ficam de fora dos dois buckets,
+     *  de propósito (não são Suporte nem Desenvolvimento). Antes este método tinha seu próprio
+     *  mapa parcial (TIPOS_SUPORTE/TIPOS_DEV) sem o tipo 24458 (Desenvolvimento - Correção),
+     *  fazendo esses cards desaparecerem silenciosamente das contagens de Dev — corrigido ao
+     *  passar a usar o catálogo compartilhado, que já inclui 24458 em "desenvolvimento". */
     private function bucketDoTipo(int $tipo): ?string {
-        if (in_array($tipo, self::TIPOS_SUPORTE, true)) return 'suporte';
-        if (in_array($tipo, self::TIPOS_DEV, true))     return 'desenvolvimento';
+        $categoria = TipoChamadoCatalogo::categoria($tipo);
+        if ($categoria === TipoChamadoCatalogo::CATEGORIA_SUPORTE)         return 'suporte';
+        if ($categoria === TipoChamadoCatalogo::CATEGORIA_DESENVOLVIMENTO) return 'desenvolvimento';
         return null;
     }
 
