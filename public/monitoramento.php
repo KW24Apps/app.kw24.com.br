@@ -1555,32 +1555,37 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     };
 
     // ── Filtro por Tipo (pills multi-select, mesmo padrão do filtro por pessoa do Tarefas) ──
-    function chaTiposDisponiveis(chamados) {
-        var vistos = {};
-        var lista  = [];
-        chamados.forEach(function (c) {
-            if (!vistos[c.tipo]) {
-                vistos[c.tipo] = true;
-                lista.push({ tipo: c.tipo, label: c.tipoLabel, cor: c.tipoCor });
-            }
-        });
-        lista.sort(function (a, b) { return a.label < b.label ? -1 : (a.label > b.label ? 1 : 0); });
-        return lista;
+    // Lista fixa (não derivada dos dados) — os 4 principais + Projeto sempre aparecem, mesmo
+    // sem chamado aberto no momento; "outros" é um bucket catch-all (chave especial, não um
+    // código de tipo real) que cobre qualquer tipo fora dos 5 nomeados aqui, incluindo tipos
+    // novos que apareçam no futuro sem precisar mexer neste código.
+    var CHA_TIPO_PILLS = [
+        { key: '21210', label: 'Dev · Implementação' },
+        { key: '21208', label: 'Dev · Melhoria' },
+        { key: '21206', label: 'Suporte técnico' },
+        { key: '21204', label: 'Suporte Bitrix24' },
+        { key: '28354', label: 'Projeto' },
+        { key: 'outros', label: 'Outros' },
+    ];
+    var CHA_TIPOS_ATIVOS_PADRAO = ['21210', '21208', '21206', '21204']; // Projeto e Outros começam desmarcados
+
+    function chaChaveTipo(c) {
+        var key = String(c.tipo);
+        return CHA_TIPO_PILLS.some(function (p) { return p.key === key; }) ? key : 'outros';
     }
 
-    function chaRenderFiltroTipos(tipos) {
+    function chaRenderFiltroTipos() {
         var el = document.getElementById('cha-filtro-tipos');
         if (!el) return;
-        if (!tipos.length) { el.innerHTML = ''; return; }
 
         if (chaSelectedTipos === null) {
-            chaSelectedTipos = new Set(tipos.map(function (t) { return t.tipo; }));
+            chaSelectedTipos = new Set(CHA_TIPOS_ATIVOS_PADRAO);
         }
 
-        el.innerHTML = tipos.map(function (t) {
-            var ativo = chaSelectedTipos.has(t.tipo);
-            return '<span class="tsk-filter-pill tipo' + (ativo ? ' active' : '') + '" onclick="chaToggleTipoFiltro(' + t.tipo + ')">'
-                + escHtml(t.label) + '</span>';
+        el.innerHTML = CHA_TIPO_PILLS.map(function (p) {
+            var ativo = chaSelectedTipos.has(p.key);
+            return '<span class="tsk-filter-pill tipo' + (ativo ? ' active' : '') + '" onclick="chaToggleTipoFiltro(\'' + p.key + '\')">'
+                + escHtml(p.label) + '</span>';
         }).join('');
     }
 
@@ -1650,11 +1655,9 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         }
 
         var todos = data.chamados || [];
-        chaRenderFiltroTipos(chaTiposDisponiveis(todos));
+        chaRenderFiltroTipos();
 
-        var visiveis = (chaSelectedTipos && chaSelectedTipos.size)
-            ? todos.filter(function (c) { return chaSelectedTipos.has(c.tipo); })
-            : todos;
+        var visiveis = todos.filter(function (c) { return chaSelectedTipos.has(chaChaveTipo(c)); });
         visiveis = chaAplicarOrdenacao(visiveis);
 
         countEl.textContent = visiveis.length + ' em aberto';
