@@ -307,6 +307,30 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     flex-direction: column;
     overflow: hidden;
 }
+/* Accordion Chamados abertos/Tarefas — só um expandido por vez (ver monTogglePainel()). O
+ * colapsado vira flex:0 0 auto (só a altura do header) e o expandido, sendo o único item que
+ * ainda cresce no flex column de .mon-right-col, absorve sozinho toda a altura que sobra —
+ * não precisa de nenhum valor de altura "cheia" hardcoded. */
+.cha-section.collapsed,
+.tsk-section.collapsed {
+    flex: 0 0 auto;
+}
+.cha-section.collapsed .cha-thead,
+.cha-section.collapsed .cha-list,
+.tsk-section.collapsed .tsk-thead,
+.tsk-section.collapsed .tsk-list {
+    display: none;
+}
+.mon-accordion-chevron {
+    margin-left: .4rem;
+    color: rgba(255,255,255,.35);
+    font-size: .75rem;
+    transition: transform .2s;
+}
+.cha-section.collapsed .mon-accordion-chevron,
+.tsk-section.collapsed .mon-accordion-chevron {
+    transform: rotate(-90deg);
+}
 .cha-section-header {
     padding: .9rem 1.25rem;
     border-bottom: 1px solid rgba(255,255,255,0.08);
@@ -315,6 +339,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     flex-wrap: wrap;
     gap: .6rem;
     flex-shrink: 0;
+    cursor: pointer;
 }
 .cha-section-title {
     font-family: 'Rubik', sans-serif;
@@ -489,6 +514,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     flex-wrap: wrap;
     gap: .6rem;
     flex-shrink: 0;
+    cursor: pointer;
 }
 .tsk-section-title {
     font-family: 'Rubik', sans-serif;
@@ -508,6 +534,23 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     flex-wrap: wrap;
     gap: .4rem;
     margin-left: auto;
+}
+.tsk-thead {
+    display: grid;
+    grid-template-columns: 26px 74px minmax(120px,1fr) minmax(85px,130px) minmax(85px,130px) minmax(70px,140px) 92px 20px;
+    gap: .5rem;
+    align-items: center;
+    padding: .5rem 1.25rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0;
+}
+.tsk-th {
+    font-size: .64rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: rgba(255,255,255,.35);
+    white-space: nowrap;
 }
 .tsk-filter-pill {
     font-size: .72rem;
@@ -552,8 +595,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .tsk-row:last-child { border-bottom: none; }
 .tsk-row-main {
     display: grid;
-    grid-template-columns: 26px 74px minmax(140px,1fr) minmax(150px,220px) 108px 20px;
-    gap: .6rem;
+    grid-template-columns: 26px 74px minmax(120px,1fr) minmax(85px,130px) minmax(85px,130px) minmax(70px,140px) 92px 20px;
+    gap: .5rem;
     align-items: center;
     padding: .8rem 1.25rem;
     cursor: pointer;
@@ -588,13 +631,19 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.tsk-badges { display: flex; flex-wrap: wrap; gap: .35rem; min-width: 0; justify-content: flex-end; }
+.tsk-pessoa-cell { min-width: 0; overflow: hidden; }
+.tsk-outros { display: flex; flex-wrap: wrap; gap: .3rem; min-width: 0; }
 .tsk-badge {
+    display: inline-block;
+    max-width: 100%;
     font-size: .68rem;
     font-weight: 600;
     padding: .18rem .55rem;
     border-radius: 20px;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: top;
 }
 .tsk-badge.forte  { background: linear-gradient(90deg,#26FF93,#1a9c5a); color: #061920; }
 .tsk-badge.media  { background: rgba(38,255,147,.3); color: #fff; }
@@ -911,13 +960,14 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     </div>
 
     <div class="mon-right-col">
-        <div class="cha-section">
-            <div class="cha-section-header">
+        <div class="cha-section" id="cha-section">
+            <div class="cha-section-header" onclick="monTogglePainel('cha')">
                 <span class="cha-section-title"><i class="fas fa-inbox"></i>Chamados abertos</span>
                 <span class="cha-section-count" id="cha-count">Carregando…</span>
                 <div class="cha-header-filters">
-                    <span class="tsk-filter-pill" id="cha-toggle-tipos" onclick="chaToggleTipos()">Mostrar todos os tipos</span>
+                    <span class="tsk-filter-pill" id="cha-toggle-tipos" onclick="event.stopPropagation();chaToggleTipos()">Mostrar todos os tipos</span>
                 </div>
+                <i class="fas fa-chevron-down mon-accordion-chevron"></i>
             </div>
             <div class="cha-thead">
                 <span></span>
@@ -933,11 +983,22 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             </div>
         </div>
 
-        <div class="tsk-section">
-            <div class="tsk-section-header">
+        <div class="tsk-section" id="tsk-section">
+            <div class="tsk-section-header" onclick="monTogglePainel('tsk')">
                 <span class="tsk-section-title"><i class="fas fa-list-check"></i>Tarefas</span>
                 <span class="tsk-section-count" id="tsk-count">Carregando…</span>
-                <div class="tsk-header-filters" id="tsk-filter-row"></div>
+                <div class="tsk-header-filters" id="tsk-filter-row" onclick="event.stopPropagation()"></div>
+                <i class="fas fa-chevron-down mon-accordion-chevron"></i>
+            </div>
+            <div class="tsk-thead">
+                <span></span>
+                <span></span>
+                <span class="tsk-th">Tarefa</span>
+                <span class="tsk-th">Criador</span>
+                <span class="tsk-th">Responsável</span>
+                <span class="tsk-th">Outros</span>
+                <span class="tsk-th">Prazo</span>
+                <span></span>
             </div>
             <div class="tsk-list" id="tsk-list">
                 <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
@@ -976,6 +1037,26 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 
     var AUTO_REFRESH_MS = 30 * 60 * 1000; // 30 minutos
     var lastData = null;
+
+    // ── Accordion Chamados abertos/Tarefas — só um expandido por vez ──────────────
+    // Padrão: Chamados abertos aberto, Tarefas colapsado (o mais checado com mais frequência).
+    var monPainelAberto = 'cha';
+
+    function monAtualizarAccordion() {
+        var chaSec = document.getElementById('cha-section');
+        var tskSec = document.getElementById('tsk-section');
+        if (!chaSec || !tskSec) return;
+        chaSec.classList.toggle('collapsed', monPainelAberto !== 'cha');
+        tskSec.classList.toggle('collapsed', monPainelAberto !== 'tsk');
+    }
+
+    window.monTogglePainel = function (painel) {
+        if (monPainelAberto === painel) return;
+        monPainelAberto = painel;
+        monAtualizarAccordion();
+    };
+
+    monAtualizarAccordion();
 
     function escHtml(s) {
         return String(s)
@@ -1127,21 +1208,18 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             + escHtml(primeiroNome(b.nome)) + ' · ' + escHtml(papeis) + '</span>';
     }
 
-    // Criador/Responsável aparecem sempre, mesmo quando não são um dos 4 da equipe — só o
-    // destaque visual (forte = verde) muda conforme pessoa.ehEquipe (ver MonitoramentoTarefasService).
-    function tskPessoaChipHtml(pessoa, papel) {
-        if (!pessoa || !pessoa.bitrixUserId) return '';
+    // Criador/Responsável aparecem sempre, cada um na sua própria coluna (ver .tsk-thead) —
+    // mesmo quando não são um dos 4 da equipe. Só o destaque visual (forte = verde) muda
+    // conforme pessoa.ehEquipe (ver MonitoramentoTarefasService). Papel não repetido no chip
+    // (o cabeçalho da coluna já diz Criador/Responsável) — só a "Outros" (Participante/
+    // Observador) mantém o papel no texto, já que ali pode ter mais de uma pessoa junto.
+    function tskPessoaChipHtml(pessoa) {
+        if (!pessoa || !pessoa.bitrixUserId) {
+            return '<span style="color:rgba(255,255,255,.3);font-size:.72rem">—</span>';
+        }
         var classe = pessoa.ehEquipe ? 'forte' : 'externo';
         return '<span class="tsk-badge ' + classe + '" title="' + escHtml(pessoa.nome) + '">'
-            + escHtml(primeiroNome(pessoa.nome)) + ' · ' + escHtml(papel) + '</span>';
-    }
-
-    function tskPessoasHtml(t) {
-        var criador = t.criador, resp = t.responsavel;
-        if (criador && resp && criador.bitrixUserId && criador.bitrixUserId === resp.bitrixUserId) {
-            return tskPessoaChipHtml(criador, 'Criador/Resp.');
-        }
-        return tskPessoaChipHtml(criador, 'Criador') + tskPessoaChipHtml(resp, 'Responsável');
+            + escHtml(primeiroNome(pessoa.nome)) + '</span>';
     }
 
     function tskChatMsgHtml(c) {
@@ -1170,7 +1248,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         var chatIcon = t.temChat
             ? '<i class="fas fa-comment-dots tsk-chat-icon" title="Ver mensagens" onclick="event.stopPropagation();tskAbrirChat(' + t.id + ')"></i>'
             : '';
-        var badges = tskPessoasHtml(t) + (t.badges || []).map(tskBadgeHtml).join('');
+        var outrosHtml = (t.badges || []).map(tskBadgeHtml).join('');
 
         var descricaoHtml = t.descricao
             ? '<div class="tsk-detail-label">Descrição</div><div class="tsk-detail-text">' + escHtml(t.descricao) + '</div>'
@@ -1183,7 +1261,9 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                 + '<button class="tsk-chevron-btn" id="tsk-btn-' + t.id + '"><i class="fas fa-chevron-right" style="font-size:.7rem"></i></button>'
                 + idHtml
                 + '<span class="tsk-row-title">' + escHtml(t.titulo) + '</span>'
-                + '<span class="tsk-badges">' + badges + '</span>'
+                + '<span class="tsk-pessoa-cell">' + tskPessoaChipHtml(t.criador) + '</span>'
+                + '<span class="tsk-pessoa-cell">' + tskPessoaChipHtml(t.responsavel) + '</span>'
+                + '<span class="tsk-outros">' + outrosHtml + '</span>'
                 + deadlineHtml
                 + chatIcon
             + '</div>'
