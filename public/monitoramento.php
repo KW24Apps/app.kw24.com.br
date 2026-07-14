@@ -10,15 +10,16 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 ?>
 <style>
 /* ===== MONITORAMENTO KW24 — layout geral =====
- * Sidebar e topbar já são fixos por natureza do shell (.app-layout é grid de 100vh,
- * .content-area é quem clipa o overflow por padrão em toda a aplicação). Essa página
- * precisa de mais altura que uma tela só (painéis bem maiores — ver .mon-panels-row),
- * então sobrescrevemos .content-area SÓ quando esta tela está montada (seletor escopado
- * por :has(.mon-updated), não uma mudança global em layout.css) pra virar a área que
- * rola, mantendo sidebar/topbar intocados (eles ficam fora de .content-area). */
-.content-area:has(.mon-updated) {
-    overflow-y: auto;
-}
+ * .content-area já é a área certa (grid row 1fr do shell, altura = 100vh - topbar) com
+ * overflow:hidden por padrão em toda a aplicação — sidebar/topbar ficam fora dela, então
+ * já são fixos por natureza, sem precisar de nenhuma regra extra aqui. A página inteira
+ * (header + topo-row + mon-panels-row) precisa caber dentro dessa altura já certa, sem
+ * scroll de página — só o scroll interno de cada painel (cha-list/tsk-list/mon-equipe-body
+ * etc., cada um com seu próprio overflow-y:auto). Por isso mon-panels-row usa flex:1 (ocupa
+ * só o que sobra do content-area) em vez de uma altura mínima fixa — uma versão anterior
+ * (min-height:1600px + content-area:has(...){overflow-y:auto}) inflava a página e criava
+ * scrollbar de página inteira; removida.
+ */
 .mon-updated {
     font-size: .72rem;
     color: rgba(255,255,255,.35);
@@ -27,7 +28,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     display: flex;
     gap: 1.25rem;
     align-items: stretch;
-    min-height: 1600px;
+    flex: 1;
+    min-height: 0;
 }
 .mon-right-col {
     display: flex;
@@ -35,9 +37,10 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     gap: 1.25rem;
     flex: 1 1 auto;
     min-width: 320px;
+    min-height: 0;
 }
 @media (max-width: 1024px) {
-    .mon-panels-row { flex-direction: column; min-height: 0; }
+    .mon-panels-row { flex-direction: column; }
     .mon-equipe-card { flex: 0 0 auto !important; max-height: 45vh; }
     .mon-right-col { flex: 1 1 auto; min-height: 560px; }
     .cha-section { flex: 0 0 260px !important; }
@@ -144,7 +147,9 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 }
 .mon-seg:hover { filter: brightness(1.12); }
 .mon-seg.suporte { background: linear-gradient(90deg,#0DC2FF,#0080aa); color: #061920; }
-.mon-seg.dev      { background: linear-gradient(90deg,#b794f4,#805ad5); color: #fff; }
+/* Âmbar provisório pra sair do roxo já trocado em Tarefas — Gabriel pode pedir outro tom
+ * depois de ver ao vivo (ver relatório da tarefa). */
+.mon-seg.dev      { background: linear-gradient(90deg,#f6ad55,#c47f2e); color: #061920; }
 
 .mon-empty {
     text-align: center;
@@ -537,7 +542,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 }
 .tsk-thead {
     display: grid;
-    grid-template-columns: 26px 74px minmax(120px,1fr) minmax(85px,130px) minmax(85px,130px) minmax(70px,140px) 92px 20px;
+    grid-template-columns: 26px 70px minmax(110px,1fr) minmax(78px,120px) minmax(78px,120px) minmax(55px,105px) minmax(55px,105px) 88px 20px;
     gap: .5rem;
     align-items: center;
     padding: .5rem 1.25rem;
@@ -595,7 +600,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .tsk-row:last-child { border-bottom: none; }
 .tsk-row-main {
     display: grid;
-    grid-template-columns: 26px 74px minmax(120px,1fr) minmax(85px,130px) minmax(85px,130px) minmax(70px,140px) 92px 20px;
+    grid-template-columns: 26px 70px minmax(110px,1fr) minmax(78px,120px) minmax(78px,120px) minmax(55px,105px) minmax(55px,105px) 88px 20px;
     gap: .5rem;
     align-items: center;
     padding: .8rem 1.25rem;
@@ -996,7 +1001,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                 <span class="tsk-th">Tarefa</span>
                 <span class="tsk-th">Criador</span>
                 <span class="tsk-th">Responsável</span>
-                <span class="tsk-th">Outros</span>
+                <span class="tsk-th">Participantes</span>
+                <span class="tsk-th">Observadores</span>
                 <span class="tsk-th">Prazo</span>
                 <span></span>
             </div>
@@ -1202,17 +1208,16 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         return (nome || '').split(' ')[0];
     }
 
+    // Papel não repetido no chip — a coluna (Participantes/Observadores, ver .tsk-thead) já
+    // diz qual é. Uma pessoa com os dois papéis na mesma tarefa aparece nas duas colunas.
     function tskBadgeHtml(b) {
-        var papeis = (b.papeis || []).join(', ');
-        return '<span class="tsk-badge ' + (b.intensidade || 'forte') + '">'
-            + escHtml(primeiroNome(b.nome)) + ' · ' + escHtml(papeis) + '</span>';
+        return '<span class="tsk-badge ' + (b.intensidade || 'media') + '">'
+            + escHtml(primeiroNome(b.nome)) + '</span>';
     }
 
     // Criador/Responsável aparecem sempre, cada um na sua própria coluna (ver .tsk-thead) —
     // mesmo quando não são um dos 4 da equipe. Só o destaque visual (forte = verde) muda
-    // conforme pessoa.ehEquipe (ver MonitoramentoTarefasService). Papel não repetido no chip
-    // (o cabeçalho da coluna já diz Criador/Responsável) — só a "Outros" (Participante/
-    // Observador) mantém o papel no texto, já que ali pode ter mais de uma pessoa junto.
+    // conforme pessoa.ehEquipe (ver MonitoramentoTarefasService).
     function tskPessoaChipHtml(pessoa) {
         if (!pessoa || !pessoa.bitrixUserId) {
             return '<span style="color:rgba(255,255,255,.3);font-size:.72rem">—</span>';
@@ -1248,7 +1253,12 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         var chatIcon = t.temChat
             ? '<i class="fas fa-comment-dots tsk-chat-icon" title="Ver mensagens" onclick="event.stopPropagation();tskAbrirChat(' + t.id + ')"></i>'
             : '';
-        var outrosHtml = (t.badges || []).map(tskBadgeHtml).join('');
+        var participantesHtml = (t.badges || [])
+            .filter(function (b) { return (b.papeis || []).indexOf('Participante') !== -1; })
+            .map(tskBadgeHtml).join('');
+        var observadoresHtml = (t.badges || [])
+            .filter(function (b) { return (b.papeis || []).indexOf('Observador') !== -1; })
+            .map(tskBadgeHtml).join('');
 
         var descricaoHtml = t.descricao
             ? '<div class="tsk-detail-label">Descrição</div><div class="tsk-detail-text">' + escHtml(t.descricao) + '</div>'
@@ -1263,7 +1273,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                 + '<span class="tsk-row-title">' + escHtml(t.titulo) + '</span>'
                 + '<span class="tsk-pessoa-cell">' + tskPessoaChipHtml(t.criador) + '</span>'
                 + '<span class="tsk-pessoa-cell">' + tskPessoaChipHtml(t.responsavel) + '</span>'
-                + '<span class="tsk-outros">' + outrosHtml + '</span>'
+                + '<span class="tsk-outros">' + participantesHtml + '</span>'
+                + '<span class="tsk-outros">' + observadoresHtml + '</span>'
                 + deadlineHtml
                 + chatIcon
             + '</div>'
