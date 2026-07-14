@@ -620,12 +620,23 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .tsk-chat-msg-data { color: rgba(255,255,255,.35); }
 .tsk-chat-msg-texto { color: rgba(255,255,255,.7); font-size: .8rem; line-height: 1.45; white-space: pre-wrap; }
 
-/* ===== MONITORAMENTO KW24 — Funil (volume: criados / finalizados, SPA 1054 / Funil 208) ===== */
-.fun-section {
+/* ===== MONITORAMENTO KW24 — linha do topo (Funil + Atendimento lado a lado) ===== */
+.topo-row {
     display: flex;
     gap: 1.25rem;
     margin-bottom: 1.25rem;
     flex-shrink: 0;
+}
+@media (max-width: 1024px) {
+    .topo-row { flex-direction: column; }
+}
+
+/* ===== MONITORAMENTO KW24 — Funil (volume: criados / finalizados, SPA 1054 / Funil 208) ===== */
+.fun-section {
+    display: flex;
+    gap: 1.25rem;
+    flex: 1 1 0;
+    min-width: 0;
 }
 .fun-card {
     background: rgba(255,255,255,0.05);
@@ -668,6 +679,92 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 @media (max-width: 1024px) {
     .fun-section { flex-direction: column; }
 }
+
+/* ===== MONITORAMENTO KW24 — Atendimento (Contact Center / Open Lines, fila "Geral KW24 - Suporte") ===== */
+.ate-section {
+    background: rgba(255,255,255,0.05);
+    border: 1.5px solid rgba(255,255,255,0.10);
+    border-radius: 12px;
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.ate-header {
+    padding: .9rem 1.25rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-family: 'Rubik', sans-serif;
+    font-size: .95rem;
+    font-weight: 600;
+    color: #fff;
+}
+.ate-header i { color: #26FF93; margin-right: .5rem; }
+.ate-kpis {
+    padding: .8rem 1.25rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+.ate-kpi { display: flex; flex-direction: column; gap: .15rem; }
+.ate-kpi-value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fff;
+    font-family: 'Inter', monospace;
+}
+.ate-kpi-value.alerta { color: #fc8181; }
+.ate-kpi-label {
+    font-size: .62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: rgba(255,255,255,.4);
+}
+.ate-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+.ate-list::-webkit-scrollbar { width: 5px; }
+.ate-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
+.ate-list::-webkit-scrollbar-thumb { background: rgba(38,255,147,0.25); border-radius: 3px; }
+.ate-row {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .55rem 1.25rem;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    text-decoration: none;
+}
+.ate-row:last-child { border-bottom: none; }
+.ate-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.ate-dot.aguardando { background: #fc8181; }
+.ate-dot.respondido { background: #48bb78; }
+.ate-row-main { display: flex; flex-direction: column; gap: .1rem; min-width: 0; flex: 1; }
+.ate-row-titulo {
+    color: #fff;
+    font-size: .82rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ate-row-msg {
+    color: rgba(255,255,255,.45);
+    font-size: .72rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ate-row-tempo {
+    flex-shrink: 0;
+    font-size: .72rem;
+    color: rgba(255,255,255,.5);
+    font-family: 'Inter', monospace;
+    white-space: nowrap;
+}
+.ate-row-tempo.aguardando { color: #fc8181; font-weight: 600; }
 </style>
 
 <div class="page-header">
@@ -680,16 +777,26 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     </div>
 </div>
 
-<div class="fun-section" id="fun-section">
-    <div class="fun-card">
-        <div class="fun-card-header criados"><i class="fas fa-inbox"></i>Chamados criados</div>
-        <div class="fun-card-body" id="fun-criados-body">
-            <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+<div class="topo-row">
+    <div class="fun-section" id="fun-section">
+        <div class="fun-card">
+            <div class="fun-card-header criados"><i class="fas fa-inbox"></i>Chamados criados</div>
+            <div class="fun-card-body" id="fun-criados-body">
+                <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+            </div>
+        </div>
+        <div class="fun-card">
+            <div class="fun-card-header finalizados"><i class="fas fa-check-circle"></i>Chamados finalizados</div>
+            <div class="fun-card-body" id="fun-finalizados-body">
+                <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+            </div>
         </div>
     </div>
-    <div class="fun-card">
-        <div class="fun-card-header finalizados"><i class="fas fa-check-circle"></i>Chamados finalizados</div>
-        <div class="fun-card-body" id="fun-finalizados-body">
+
+    <div class="ate-section">
+        <div class="ate-header"><i class="fas fa-headset"></i>Atendimento</div>
+        <div class="ate-kpis" id="ate-kpis"></div>
+        <div class="ate-list" id="ate-list">
             <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
         </div>
     </div>
@@ -1261,7 +1368,85 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             });
     }
 
-    // ── Carregamento geral (Equipe + Chamados abertos + Tarefas + Funil) ──────────
+    // ── Painel Atendimento (Contact Center / Open Lines — fila "Geral KW24 - Suporte") ──
+    function fmtMinutos(min) {
+        if (min == null) return '';
+        if (min < 60) return min + 'min';
+        var h = Math.floor(min / 60);
+        var m = min % 60;
+        return h + 'h' + (m ? ' ' + m + 'min' : '');
+    }
+
+    function ateRowHtml(c) {
+        var dotClasse   = c.aguardando ? 'aguardando' : 'respondido';
+        var tempoClasse = c.aguardando ? ' aguardando' : '';
+        var msg         = c.ultimaMensagemTexto
+            ? escHtml(c.ultimaMensagemTexto)
+            : '<span style="color:rgba(255,255,255,.35)">Sem mensagens ainda</span>';
+        var tempoTexto  = c.minutosDesdeUltimaAtividade != null
+            ? (c.aguardando ? 'aguardando há ' : 'há ') + fmtMinutos(c.minutosDesdeUltimaAtividade)
+            : '';
+
+        var body = '<span class="ate-dot ' + dotClasse + '"></span>'
+            + '<span class="ate-row-main">'
+                + '<span class="ate-row-titulo">' + escHtml(c.titulo) + '</span>'
+                + '<span class="ate-row-msg">' + msg + '</span>'
+            + '</span>'
+            + '<span class="ate-row-tempo' + tempoClasse + '">' + escHtml(tempoTexto) + '</span>';
+
+        return c.urlBitrix24
+            ? '<a class="ate-row" href="' + escHtml(c.urlBitrix24) + '" target="_blank" rel="noopener">' + body + '</a>'
+            : '<div class="ate-row">' + body + '</div>';
+    }
+
+    function renderAtendimento(data) {
+        var kpisEl = document.getElementById('ate-kpis');
+        var listEl = document.getElementById('ate-list');
+        if (!kpisEl || !listEl) return;
+
+        if (data.aviso) {
+            kpisEl.innerHTML = '';
+            listEl.innerHTML = '<div class="mon-empty"><i class="fas fa-plug"></i><div>' + escHtml(data.aviso) + '</div></div>';
+            return;
+        }
+
+        var ativas   = data.conversasAtivas || { total: 0, aguardando: 0 };
+        var tempoTxt = data.tempoMedioRespostaMinutos != null
+            ? fmtMinutos(data.tempoMedioRespostaMinutos)
+            : 'sem dados suficientes';
+
+        kpisEl.innerHTML =
+            '<div class="ate-kpi"><span class="ate-kpi-value">' + ativas.total + '</span><span class="ate-kpi-label">Conversas ativas</span></div>'
+            + '<div class="ate-kpi"><span class="ate-kpi-value' + (ativas.aguardando ? ' alerta' : '') + '">' + ativas.aguardando + '</span><span class="ate-kpi-label">Aguardando resposta</span></div>'
+            + '<div class="ate-kpi"><span class="ate-kpi-value">' + escHtml(tempoTxt) + '</span><span class="ate-kpi-label">Tempo médio de resposta</span></div>';
+
+        var conversas = data.conversas || [];
+        listEl.innerHTML = conversas.length
+            ? conversas.map(ateRowHtml).join('')
+            : '<div class="mon-empty"><i class="fas fa-check-circle"></i><div>Nenhuma conversa ativa no momento.</div></div>';
+    }
+
+    function carregarAtendimento() {
+        return fetch('/api/monitoramento-atendimento-cards.php', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.erro) {
+                    document.getElementById('ate-kpis').innerHTML = '';
+                    document.getElementById('ate-list').innerHTML =
+                        '<div class="mon-empty" style="color:#fc8181"><i class="fas fa-exclamation-circle"></i><div>'
+                        + escHtml(data.erro) + '</div></div>';
+                    return;
+                }
+                renderAtendimento(data);
+            })
+            .catch(function () {
+                document.getElementById('ate-kpis').innerHTML = '';
+                document.getElementById('ate-list').innerHTML =
+                    '<div class="mon-empty" style="color:#fc8181"><i class="fas fa-exclamation-circle"></i><div>Erro de comunicação.</div></div>';
+            });
+    }
+
+    // ── Carregamento geral (Equipe + Chamados abertos + Tarefas + Funil + Atendimento) ──
     function carregar() {
         var icon = document.getElementById('mon-refresh-icon');
         if (icon) icon.classList.add('fa-spin');
@@ -1283,7 +1468,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                     '<div class="mon-empty" style="color:#fc8181"><i class="fas fa-exclamation-circle"></i><div>Erro de comunicação.</div></div>';
             });
 
-        Promise.all([pEquipe, carregarChamados(), carregarTarefas(), carregarFunil()]).then(function () {
+        Promise.all([pEquipe, carregarChamados(), carregarTarefas(), carregarFunil(), carregarAtendimento()]).then(function () {
             if (icon) icon.classList.remove('fa-spin');
             var upd = document.getElementById('mon-updated');
             if (upd) upd.textContent = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR');
