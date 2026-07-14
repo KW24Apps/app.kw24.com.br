@@ -9,6 +9,36 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 }
 ?>
 <style>
+/* ===== MONITORAMENTO KW24 — escala fluida (clamp) =====
+ * Piso pensado pra 1366x768 (laptop comum, onde o layout quebrava); teto = valor original
+ * validado no monitor grande (~1920px+), sem regressão lá. Interpola linearmente entre os
+ * dois — nada de salto único de breakpoint, escala junto com a largura da janela.
+ * Fórmula: min + (100vw - 1366px) * F, onde F = (max-min)*16/554 (554 = 1920-1366, 16 =
+ * px por rem). Abaixo de 1366px ou acima de 1920px, clamp() trava no piso/teto.
+ */
+:root {
+    --mon-fs-2xs:  clamp(0.53rem, 0.53rem + (100vw - 1366px) * 0.0026,  0.62rem);
+    --mon-fs-xs:   clamp(0.58rem, 0.58rem + (100vw - 1366px) * 0.00289, 0.68rem);
+    --mon-fs-sm:   clamp(0.64rem, 0.64rem + (100vw - 1366px) * 0.00318, 0.75rem);
+    --mon-fs-base: clamp(0.68rem, 0.68rem + (100vw - 1366px) * 0.00346, 0.80rem);
+    --mon-fs-md:   clamp(0.72rem, 0.72rem + (100vw - 1366px) * 0.00375, 0.85rem);
+    --mon-fs-lg:   clamp(0.81rem, 0.81rem + (100vw - 1366px) * 0.00404, 0.95rem);
+    --mon-fs-num:  clamp(0.85rem, 0.85rem + (100vw - 1366px) * 0.00433, 1.00rem);
+    --mon-fs-icon: clamp(1.02rem, 1.02rem + (100vw - 1366px) * 0.0052,  1.20rem);
+    --mon-fs-xl:   clamp(1.28rem, 1.28rem + (100vw - 1366px) * 0.00635, 1.50rem);
+    --mon-fs-2xl:  clamp(1.70rem, 1.70rem + (100vw - 1366px) * 0.00866, 2.00rem);
+
+    --mon-sp-3xs: clamp(0.14rem, 0.14rem + (100vw - 1366px) * 0.00115, 0.18rem);
+    --mon-sp-2xs: clamp(0.20rem, 0.20rem + (100vw - 1366px) * 0.00144, 0.25rem);
+    --mon-sp-xs:  clamp(0.28rem, 0.28rem + (100vw - 1366px) * 0.00202, 0.35rem);
+    --mon-sp-sm:  clamp(0.40rem, 0.40rem + (100vw - 1366px) * 0.00289, 0.50rem);
+    --mon-sp-base:clamp(0.52rem, 0.52rem + (100vw - 1366px) * 0.00375, 0.65rem);
+    --mon-sp-md:  clamp(0.64rem, 0.64rem + (100vw - 1366px) * 0.00462, 0.80rem);
+    --mon-sp-lg:  clamp(0.80rem, 0.80rem + (100vw - 1366px) * 0.00578, 1.00rem);
+    --mon-sp-xl:  clamp(1.00rem, 1.00rem + (100vw - 1366px) * 0.00722, 1.25rem);
+    --mon-sp-2xl: clamp(1.20rem, 1.20rem + (100vw - 1366px) * 0.00866, 1.50rem);
+}
+
 /* ===== MONITORAMENTO KW24 — layout geral =====
  * .content-area já é a área certa (grid row 1fr do shell, altura = 100vh - topbar) com
  * overflow:hidden por padrão em toda a aplicação — sidebar/topbar ficam fora dela, então
@@ -21,12 +51,12 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
  * scrollbar de página inteira; removida.
  */
 .mon-updated {
-    font-size: .72rem;
+    font-size: var(--mon-fs-sm);
     color: rgba(255,255,255,.35);
 }
 .mon-panels-row {
     display: flex;
-    gap: 1.25rem;
+    gap: var(--mon-sp-xl);
     align-items: stretch;
     flex: 1;
     min-height: 0;
@@ -34,7 +64,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .mon-right-col {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: var(--mon-sp-xl);
     flex: 1 1 auto;
     min-width: 320px;
     min-height: 0;
@@ -50,38 +80,38 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     background: rgba(255,255,255,0.05);
     border: 1.5px solid rgba(255,255,255,0.10);
     border-radius: 12px;
-    flex: 0 0 400px;
-    min-width: 320px;
+    flex: 0 0 clamp(280px, 21vw, 400px);
+    min-width: 260px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
 }
 .mon-equipe-header {
-    padding: .9rem 1.25rem;
+    padding: var(--mon-sp-lg) var(--mon-sp-xl);
     border-bottom: 1px solid rgba(255,255,255,0.08);
     font-family: 'Rubik', sans-serif;
-    font-size: .95rem;
+    font-size: var(--mon-fs-lg);
     font-weight: 600;
     color: #fff;
     flex-shrink: 0;
 }
 .mon-equipe-header i { color: #0DC2FF; margin-right: .5rem; }
 .mon-equipe-total {
-    padding: .8rem 1.25rem;
+    padding: var(--mon-sp-md) var(--mon-sp-xl);
     border-bottom: 1px solid rgba(255,255,255,0.08);
     display: flex;
-    gap: 1.5rem;
+    gap: var(--mon-sp-2xl);
     flex-shrink: 0;
 }
-.mon-equipe-total-item { display: flex; flex-direction: column; gap: .15rem; }
+.mon-equipe-total-item { display: flex; flex-direction: column; gap: var(--mon-sp-3xs); }
 .mon-equipe-total-value {
-    font-size: 1rem;
+    font-size: var(--mon-fs-num);
     font-weight: 700;
     color: #fff;
     font-family: 'Inter', monospace;
 }
 .mon-equipe-total-label {
-    font-size: .62rem;
+    font-size: var(--mon-fs-2xs);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .06em;
@@ -91,7 +121,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    padding: 1.1rem 1.25rem;
+    padding: var(--mon-sp-lg) var(--mon-sp-xl);
 }
 .mon-membro-row {
     padding-bottom: 1.1rem;
@@ -101,20 +131,20 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .mon-membro-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
 .mon-membro-nome {
     font-family: 'Rubik', sans-serif;
-    font-size: 1rem;
+    font-size: var(--mon-fs-num);
     font-weight: 600;
     color: #fff;
     margin-bottom: 1.1rem;
     display: flex;
     align-items: center;
-    gap: .55rem;
+    gap: var(--mon-sp-sm);
 }
-.mon-membro-nome i { color: #0DC2FF; font-size: 1.1rem; }
+.mon-membro-nome i { color: #0DC2FF; font-size: var(--mon-fs-icon); }
 
 .mon-row { margin-bottom: 1.1rem; }
 .mon-row:last-child { margin-bottom: 0; }
 .mon-row-label {
-    font-size: .67rem;
+    font-size: var(--mon-fs-xs);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .06em;
@@ -134,12 +164,12 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: .62rem;
+    font-size: var(--mon-fs-2xs);
     font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding: 0 .4rem;
+    padding: 0 var(--mon-sp-sm);
     cursor: pointer;
     transition: filter .15s ease;
 }
@@ -154,7 +184,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     padding: 3rem 1rem;
     color: rgba(255,255,255,.3);
 }
-.mon-empty i { font-size: 2rem; margin-bottom: .75rem; display: block; color: rgba(13,194,255,.4); }
+.mon-empty i { font-size: var(--mon-fs-2xl); margin-bottom: .75rem; display: block; color: rgba(13,194,255,.4); }
 
 /* Drill-down: lista de chamados de um segmento */
 #mon-drill-overlay {
@@ -171,7 +201,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     background: #0d1e2d;
     border: 1.5px solid rgba(255,255,255,.12);
     border-radius: 14px;
-    padding: 1.5rem;
+    padding: var(--mon-sp-2xl);
     width: 520px;
     max-width: 92vw;
     max-height: 72vh;
@@ -184,7 +214,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    gap: 1rem;
+    gap: var(--mon-sp-lg);
     margin-bottom: 1rem;
     flex-shrink: 0;
 }
@@ -192,22 +222,22 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     margin: 0;
     color: #fff;
     font-family: 'Rubik', sans-serif;
-    font-size: 1rem;
+    font-size: var(--mon-fs-num);
     font-weight: 600;
 }
 #mon-drill-subtitle {
     margin: .2rem 0 0;
     color: rgba(255,255,255,.4);
-    font-size: .75rem;
+    font-size: var(--mon-fs-sm);
 }
 #mon-drill-close {
     background: none;
     border: none;
     color: rgba(255,255,255,.5);
-    font-size: 1.2rem;
+    font-size: var(--mon-fs-icon);
     cursor: pointer;
     line-height: 1;
-    padding: 0 .25rem;
+    padding: 0 var(--mon-sp-2xs);
 }
 #mon-drill-close:hover { color: #fff; }
 #mon-drill-list {
@@ -219,21 +249,21 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: .75rem;
-    padding: .6rem 0;
+    gap: var(--mon-sp-md);
+    padding: var(--mon-sp-base) 0;
     border-bottom: 1px solid rgba(255,255,255,.06);
     text-decoration: none;
     color: #0DC2FF;
-    font-size: .82rem;
+    font-size: var(--mon-fs-md);
     transition: color .15s;
 }
 .mon-drill-item:hover { color: #26d4ff; }
 .mon-drill-item:last-child { border-bottom: none; }
-.mon-drill-item-main { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
+.mon-drill-item-main { display: flex; flex-direction: column; gap: var(--mon-sp-3xs); min-width: 0; }
 .mon-drill-id { font-family: 'Inter', monospace; font-weight: 700; }
 .mon-drill-titletext {
     color: rgba(255,255,255,.6);
-    font-size: .75rem;
+    font-size: var(--mon-fs-sm);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -241,7 +271,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .mon-drill-time {
     flex-shrink: 0;
     color: rgba(255,255,255,.5);
-    font-size: .75rem;
+    font-size: var(--mon-fs-sm);
     font-family: 'Inter', monospace;
 }
 
@@ -260,7 +290,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     background: #0d1e2d;
     border: 1.5px solid rgba(255,255,255,.12);
     border-radius: 14px;
-    padding: 1.5rem;
+    padding: var(--mon-sp-2xl);
     width: 480px;
     max-width: 92vw;
     max-height: 72vh;
@@ -272,7 +302,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    gap: 1rem;
+    gap: var(--mon-sp-lg);
     margin-bottom: 1rem;
     flex-shrink: 0;
 }
@@ -280,17 +310,17 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     margin: 0;
     color: #fff;
     font-family: 'Rubik', sans-serif;
-    font-size: 1rem;
+    font-size: var(--mon-fs-num);
     font-weight: 600;
 }
 #tsk-chat-close {
     background: none;
     border: none;
     color: rgba(255,255,255,.5);
-    font-size: 1.2rem;
+    font-size: var(--mon-fs-icon);
     cursor: pointer;
     line-height: 1;
-    padding: 0 .25rem;
+    padding: 0 var(--mon-sp-2xs);
 }
 #tsk-chat-close:hover { color: #fff; }
 #tsk-chat-list {
@@ -324,8 +354,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: .5rem;
-    padding: .9rem 1.25rem;
+    gap: var(--mon-sp-sm);
+    padding: var(--mon-sp-lg) var(--mon-sp-xl);
     cursor: pointer;
     opacity: .45;
     border-bottom: 2px solid transparent;
@@ -337,7 +367,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 #mon-tab-tsk.active { border-bottom-color: #26FF93; }
 .mon-tab-title {
     font-family: 'Rubik', sans-serif;
-    font-size: .95rem;
+    font-size: var(--mon-fs-lg);
     font-weight: 600;
     color: #fff;
     white-space: nowrap;
@@ -346,7 +376,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 #mon-tab-cha .mon-tab-title i { color: #0DC2FF; }
 #mon-tab-tsk .mon-tab-title i { color: #26FF93; }
 .mon-tab-count {
-    font-size: .75rem;
+    font-size: var(--mon-fs-sm);
     color: rgba(255,255,255,.45);
     white-space: nowrap;
 }
@@ -361,21 +391,21 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: .4rem;
+    gap: var(--mon-sp-xs);
     margin-left: auto;
-    padding: 0 1.25rem;
+    padding: 0 var(--mon-sp-xl);
 }
 .cha-thead {
     display: grid;
-    grid-template-columns: 26px minmax(140px,1.4fr) minmax(110px,0.9fr) minmax(100px,0.8fr) minmax(90px,0.8fr) 78px 50px;
-    gap: .6rem;
+    grid-template-columns: clamp(21px,1.54vw,26px) minmax(clamp(112px,8.2vw,140px),1.4fr) minmax(clamp(88px,6.44vw,110px),0.9fr) minmax(clamp(80px,5.86vw,100px),0.8fr) minmax(clamp(72px,5.27vw,90px),0.8fr) clamp(62px,4.54vw,78px) clamp(40px,2.93vw,50px);
+    gap: var(--mon-sp-base);
     align-items: center;
-    padding: .5rem 1.25rem;
+    padding: var(--mon-sp-sm) var(--mon-sp-xl);
     border-bottom: 1px solid rgba(255,255,255,0.08);
     flex-shrink: 0;
 }
 .cha-th {
-    font-size: .64rem;
+    font-size: var(--mon-fs-xs);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .05em;
@@ -387,12 +417,12 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .cha-th-sort, .tsk-th-sort {
     display: flex;
     align-items: center;
-    gap: .25rem;
+    gap: var(--mon-sp-2xs);
     cursor: pointer;
     user-select: none;
 }
 .cha-th-sort:hover, .tsk-th-sort:hover { color: rgba(255,255,255,.6); }
-.mon-sort-icon { font-size: .6rem; color: rgba(255,255,255,.25); }
+.mon-sort-icon { font-size: var(--mon-fs-2xs); color: rgba(255,255,255,.25); }
 .mon-sort-icon.active { color: #0DC2FF; }
 .cha-list {
     display: flex;
@@ -408,10 +438,10 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .cha-row:last-child { border-bottom: none; }
 .cha-row-main {
     display: grid;
-    grid-template-columns: 26px minmax(140px,1.4fr) minmax(110px,0.9fr) minmax(100px,0.8fr) minmax(90px,0.8fr) 78px 50px;
-    gap: .6rem;
+    grid-template-columns: clamp(21px,1.54vw,26px) minmax(clamp(112px,8.2vw,140px),1.4fr) minmax(clamp(88px,6.44vw,110px),0.9fr) minmax(clamp(80px,5.86vw,100px),0.8fr) minmax(clamp(72px,5.27vw,90px),0.8fr) clamp(62px,4.54vw,78px) clamp(40px,2.93vw,50px);
+    gap: var(--mon-sp-base);
     align-items: center;
-    padding: .6rem 1.25rem;
+    padding: var(--mon-sp-base) var(--mon-sp-xl);
     cursor: pointer;
 }
 .cha-row-main:hover { background: rgba(255,255,255,0.03); }
@@ -420,16 +450,16 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     border: none;
     color: rgba(255,255,255,.28);
     cursor: pointer;
-    padding: .3rem;
+    padding: var(--mon-sp-xs);
     flex-shrink: 0;
     transition: color .15s, transform .2s;
     line-height: 1;
 }
 .cha-chevron-btn.open { color: #0DC2FF; transform: rotate(90deg); }
-.cha-row-chamado { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+.cha-row-chamado { display: flex; align-items: center; gap: var(--mon-sp-sm); min-width: 0; }
 .cha-row-id {
     font-family: 'Inter', monospace;
-    font-size: .78rem;
+    font-size: var(--mon-fs-base);
     font-weight: 700;
     color: #0DC2FF;
     text-decoration: none;
@@ -438,7 +468,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .cha-row-id:hover { color: #26d4ff; }
 .cha-row-title {
     color: #fff;
-    font-size: .83rem;
+    font-size: var(--mon-fs-md);
     font-weight: 500;
     flex: 1 1 0;
     min-width: 0;
@@ -447,9 +477,9 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     text-overflow: ellipsis;
 }
 .cha-badge {
-    font-size: .64rem;
+    font-size: var(--mon-fs-xs);
     font-weight: 700;
-    padding: .15rem .5rem;
+    padding: var(--mon-sp-3xs) var(--mon-sp-sm);
     border-radius: 20px;
     white-space: nowrap;
     overflow: hidden;
@@ -459,7 +489,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     justify-self: start;
 }
 .cha-etapa {
-    font-size: .72rem;
+    font-size: var(--mon-fs-sm);
     color: rgba(255,255,255,.5);
     white-space: nowrap;
     overflow: hidden;
@@ -467,62 +497,62 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     min-width: 0;
 }
 .cha-solicitante {
-    font-size: .78rem;
+    font-size: var(--mon-fs-base);
     color: rgba(255,255,255,.65);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     min-width: 0;
 }
-.cha-avatares { display: flex; gap: .25rem; }
+.cha-avatares { display: flex; gap: var(--mon-sp-2xs); }
 .cha-avatar {
     width: 22px;
     height: 22px;
     border-radius: 50%;
     background: linear-gradient(135deg,#0DC2FF,#086B8D);
     color: #061920;
-    font-size: .6rem;
+    font-size: var(--mon-fs-2xs);
     font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
 }
-.cha-sem-resp { font-size: .68rem; color: rgba(255,255,255,.3); white-space: nowrap; }
-.cha-acoes { display: flex; gap: .5rem; align-items: center; justify-content: flex-end; }
-.cha-chat-icon { color: rgba(255,255,255,.35); flex-shrink: 0; font-size: .78rem; cursor: pointer; }
+.cha-sem-resp { font-size: var(--mon-fs-xs); color: rgba(255,255,255,.3); white-space: nowrap; }
+.cha-acoes { display: flex; gap: var(--mon-sp-sm); align-items: center; justify-content: flex-end; }
+.cha-chat-icon { color: rgba(255,255,255,.35); flex-shrink: 0; font-size: var(--mon-fs-base); cursor: pointer; }
 .cha-chat-icon:hover { color: #b794f4; }
-.cha-link-icon { color: rgba(255,255,255,.35); flex-shrink: 0; font-size: .78rem; text-decoration: none; }
+.cha-link-icon { color: rgba(255,255,255,.35); flex-shrink: 0; font-size: var(--mon-fs-base); text-decoration: none; }
 .cha-link-icon:hover { color: #0DC2FF; }
 .cha-row-detail { display: none; }
 .cha-row-detail.open { display: block; }
 .cha-detail-inner {
-    padding: 1rem 1.25rem 1.25rem 3rem;
+    padding: var(--mon-sp-lg) var(--mon-sp-xl) var(--mon-sp-xl) 3rem;
     background: rgba(13,194,255,.03);
     border-top: 1px solid rgba(13,194,255,.10);
 }
 .cha-detail-label {
-    font-size: .67rem;
+    font-size: var(--mon-fs-xs);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .06em;
     color: #0DC2FF;
     margin-bottom: .35rem;
 }
-.cha-detail-text { color: rgba(255,255,255,.75); font-size: .82rem; line-height: 1.5; }
+.cha-detail-text { color: rgba(255,255,255,.75); font-size: var(--mon-fs-md); line-height: 1.5; }
 
 /* ===== MONITORAMENTO KW24 — Tarefas ===== */
 .tsk-thead {
     display: grid;
-    grid-template-columns: 26px 70px minmax(110px,1.6fr) minmax(70px,0.8fr) minmax(70px,0.8fr) minmax(60px,0.7fr) minmax(60px,0.7fr) minmax(80px,0.7fr) 20px;
-    gap: .65rem;
+    grid-template-columns: clamp(21px,1.54vw,26px) clamp(56px,4.1vw,70px) minmax(clamp(88px,6.44vw,110px),1.6fr) minmax(clamp(56px,4.1vw,70px),0.8fr) minmax(clamp(56px,4.1vw,70px),0.8fr) minmax(clamp(48px,3.51vw,60px),0.7fr) minmax(clamp(48px,3.51vw,60px),0.7fr) minmax(clamp(64px,4.69vw,80px),0.7fr) clamp(16px,1.17vw,20px);
+    gap: var(--mon-sp-base);
     align-items: center;
-    padding: .5rem 1.25rem;
+    padding: var(--mon-sp-sm) var(--mon-sp-xl);
     border-bottom: 1px solid rgba(255,255,255,0.08);
     flex-shrink: 0;
 }
 .tsk-th {
-    font-size: .64rem;
+    font-size: var(--mon-fs-xs);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .05em;
@@ -530,9 +560,9 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     white-space: nowrap;
 }
 .tsk-filter-pill {
-    font-size: .72rem;
+    font-size: var(--mon-fs-sm);
     font-weight: 600;
-    padding: .3rem .75rem;
+    padding: var(--mon-sp-xs) var(--mon-sp-md);
     border-radius: 20px;
     cursor: pointer;
     border: 1px solid rgba(183,148,244,.35);
@@ -581,10 +611,10 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .tsk-row:last-child { border-bottom: none; }
 .tsk-row-main {
     display: grid;
-    grid-template-columns: 26px 70px minmax(110px,1.6fr) minmax(70px,0.8fr) minmax(70px,0.8fr) minmax(60px,0.7fr) minmax(60px,0.7fr) minmax(80px,0.7fr) 20px;
-    gap: .65rem;
+    grid-template-columns: clamp(21px,1.54vw,26px) clamp(56px,4.1vw,70px) minmax(clamp(88px,6.44vw,110px),1.6fr) minmax(clamp(56px,4.1vw,70px),0.8fr) minmax(clamp(56px,4.1vw,70px),0.8fr) minmax(clamp(48px,3.51vw,60px),0.7fr) minmax(clamp(48px,3.51vw,60px),0.7fr) minmax(clamp(64px,4.69vw,80px),0.7fr) clamp(16px,1.17vw,20px);
+    gap: var(--mon-sp-base);
     align-items: center;
-    padding: .8rem 1.25rem;
+    padding: var(--mon-sp-md) var(--mon-sp-xl);
     cursor: pointer;
 }
 .tsk-row-main:hover { background: rgba(255,255,255,0.03); }
@@ -593,7 +623,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     border: none;
     color: rgba(255,255,255,.28);
     cursor: pointer;
-    padding: .3rem;
+    padding: var(--mon-sp-xs);
     flex-shrink: 0;
     transition: color .15s, transform .2s;
     line-height: 1;
@@ -601,7 +631,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .tsk-chevron-btn.open { color: #b794f4; transform: rotate(90deg); }
 .tsk-row-id {
     font-family: 'Inter', monospace;
-    font-size: .78rem;
+    font-size: var(--mon-fs-base);
     font-weight: 700;
     color: #0DC2FF;
     text-decoration: none;
@@ -610,23 +640,23 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .tsk-row-id:hover { color: #26d4ff; }
 .tsk-row-title {
     color: #fff;
-    font-size: .85rem;
+    font-size: var(--mon-fs-md);
     font-weight: 500;
     min-width: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding-right: .9rem; /* respiro fixo antes de Criador — não tira largura da coluna vizinha */
+    padding-right: var(--mon-sp-lg); /* respiro fluido antes de Criador — não tira largura da coluna vizinha */
 }
 .tsk-th-prazo { justify-content: flex-end; } /* alinha com .tsk-deadline (text-align:right) */
 .tsk-pessoa-cell { min-width: 0; overflow: hidden; }
-.tsk-outros { display: flex; flex-wrap: wrap; gap: .3rem; min-width: 0; }
+.tsk-outros { display: flex; flex-wrap: wrap; gap: var(--mon-sp-xs); min-width: 0; }
 .tsk-badge {
     display: inline-block;
     max-width: 100%;
-    font-size: .68rem;
+    font-size: var(--mon-fs-xs);
     font-weight: 600;
-    padding: .18rem .55rem;
+    padding: var(--mon-sp-3xs) var(--mon-sp-sm);
     border-radius: 20px;
     white-space: nowrap;
     overflow: hidden;
@@ -640,22 +670,22 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
  * pra separar visualmente de quem é "da casa" (ver tskPessoaChipHtml()). */
 .tsk-badge.externo { background: transparent; border: 1px solid rgba(255,255,255,.15); color: rgba(255,255,255,.55); }
 .tsk-deadline {
-    font-size: .78rem;
+    font-size: var(--mon-fs-base);
     color: rgba(255,255,255,.5);
     white-space: nowrap;
     text-align: right;
 }
 .tsk-deadline.atrasada { color: #fc8181; font-weight: 600; }
-.tsk-chat-icon { color: rgba(255,255,255,.35); flex-shrink: 0; font-size: .8rem; }
+.tsk-chat-icon { color: rgba(255,255,255,.35); flex-shrink: 0; font-size: var(--mon-fs-base); }
 .tsk-row-detail { display: none; }
 .tsk-row-detail.open { display: block; }
 .tsk-detail-inner {
-    padding: 1rem 1.25rem 1.25rem 3rem;
+    padding: var(--mon-sp-lg) var(--mon-sp-xl) var(--mon-sp-xl) 3rem;
     background: rgba(183,148,244,.03);
     border-top: 1px solid rgba(183,148,244,.10);
 }
 .tsk-detail-label {
-    font-size: .67rem;
+    font-size: var(--mon-fs-xs);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .06em;
@@ -664,28 +694,28 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     margin-top: .85rem;
 }
 .tsk-detail-label:first-child { margin-top: 0; }
-.tsk-detail-text { color: rgba(255,255,255,.75); font-size: .82rem; line-height: 1.5; }
+.tsk-detail-text { color: rgba(255,255,255,.75); font-size: var(--mon-fs-md); line-height: 1.5; }
 .tsk-chat-msg {
     display: flex;
     flex-direction: column;
-    gap: .15rem;
-    padding: .5rem 0;
+    gap: var(--mon-sp-3xs);
+    padding: var(--mon-sp-sm) 0;
     border-bottom: 1px solid rgba(255,255,255,.05);
 }
 .tsk-chat-msg:last-child { border-bottom: none; }
 .tsk-chat-msg-head {
     display: flex;
     justify-content: space-between;
-    font-size: .72rem;
+    font-size: var(--mon-fs-sm);
 }
 .tsk-chat-msg-autor { color: #b794f4; font-weight: 600; }
 .tsk-chat-msg-data { color: rgba(255,255,255,.35); }
-.tsk-chat-msg-texto { color: rgba(255,255,255,.7); font-size: .8rem; line-height: 1.45; white-space: pre-wrap; }
+.tsk-chat-msg-texto { color: rgba(255,255,255,.7); font-size: var(--mon-fs-base); line-height: 1.45; white-space: pre-wrap; }
 
 /* ===== MONITORAMENTO KW24 — linha do topo (Funil + Atendimento lado a lado) ===== */
 .topo-row {
     display: flex;
-    gap: 1.25rem;
+    gap: var(--mon-sp-xl);
     margin-bottom: 1.25rem;
     flex-shrink: 0;
 }
@@ -705,19 +735,19 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     overflow: hidden;
 }
 .fun-box-header {
-    padding: .9rem 1.25rem;
+    padding: var(--mon-sp-lg) var(--mon-sp-xl);
     border-bottom: 1px solid rgba(255,255,255,0.08);
     display: flex;
     align-items: baseline;
-    gap: .6rem;
+    gap: var(--mon-sp-base);
     font-family: 'Rubik', sans-serif;
-    font-size: .95rem;
+    font-size: var(--mon-fs-lg);
     font-weight: 600;
     color: #fff;
 }
 .fun-box-header i { color: #0DC2FF; margin-right: .2rem; }
 .fun-box-ciclo {
-    font-size: .72rem;
+    font-size: var(--mon-fs-sm);
     font-weight: 500;
     color: rgba(255,255,255,.4);
     font-family: 'Inter', monospace;
@@ -735,9 +765,9 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 }
 .fun-card:last-child { border-right: none; }
 .fun-card-header {
-    padding: .7rem 1.25rem;
+    padding: var(--mon-sp-base) var(--mon-sp-xl);
     font-family: 'Rubik', sans-serif;
-    font-size: .85rem;
+    font-size: var(--mon-fs-md);
     font-weight: 600;
     color: #fff;
 }
@@ -745,31 +775,31 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .fun-card-header.criados i { color: #0DC2FF; }
 .fun-card-header.finalizados i { color: #48bb78; }
 .fun-card-body {
-    padding: .9rem 1.25rem 1.1rem;
+    padding: var(--mon-sp-lg) var(--mon-sp-xl) var(--mon-sp-lg);
     display: flex;
     flex-wrap: wrap;
-    gap: 1.25rem;
+    gap: var(--mon-sp-xl);
 }
-.fun-stat { display: flex; flex-direction: column; gap: .25rem; }
+.fun-stat { display: flex; flex-direction: column; gap: var(--mon-sp-2xs); }
 .fun-stat-value {
-    font-size: 1.5rem;
+    font-size: var(--mon-fs-xl);
     font-weight: 700;
     color: #fff;
     font-family: 'Inter', monospace;
 }
 .fun-stat-label {
-    font-size: .64rem;
+    font-size: var(--mon-fs-xs);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .06em;
     color: rgba(255,255,255,.4);
 }
 .fun-dist {
-    padding: .8rem 1.25rem 1rem;
+    padding: var(--mon-sp-md) var(--mon-sp-xl) var(--mon-sp-lg);
     border-top: 1px solid rgba(255,255,255,0.08);
 }
 .fun-dist-header {
-    font-size: .67rem;
+    font-size: var(--mon-fs-xs);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .06em;
@@ -779,14 +809,14 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .fun-dist-row {
     display: flex;
     align-items: center;
-    gap: .6rem;
+    gap: var(--mon-sp-base);
     margin-bottom: .4rem;
 }
 .fun-dist-row:last-child { margin-bottom: 0; }
 .fun-dist-label {
-    flex: 0 0 150px;
+    flex: 0 0 clamp(110px, 11vw, 150px);
     min-width: 0;
-    font-size: .72rem;
+    font-size: var(--mon-fs-sm);
     color: rgba(255,255,255,.65);
     white-space: nowrap;
     overflow: hidden;
@@ -803,7 +833,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .fun-dist-value {
     flex: 0 0 26px;
     text-align: right;
-    font-size: .72rem;
+    font-size: var(--mon-fs-sm);
     font-weight: 700;
     color: #fff;
     font-family: 'Inter', monospace;
@@ -821,38 +851,43 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     overflow: hidden;
 }
 .ate-header {
-    padding: .9rem 1.25rem;
+    padding: var(--mon-sp-lg) var(--mon-sp-xl);
     border-bottom: 1px solid rgba(255,255,255,0.08);
     font-family: 'Rubik', sans-serif;
-    font-size: .95rem;
+    font-size: var(--mon-fs-lg);
     font-weight: 600;
     color: #fff;
 }
 .ate-header i { color: #26FF93; margin-right: .5rem; }
 .ate-kpis {
-    padding: .8rem 1.25rem;
+    padding: var(--mon-sp-md) var(--mon-sp-xl);
     border-bottom: 1px solid rgba(255,255,255,0.08);
     display: flex;
-    gap: 1.5rem;
+    gap: var(--mon-sp-2xl);
     flex-wrap: wrap;
 }
-.ate-kpi { display: flex; flex-direction: column; gap: .15rem; }
+.ate-kpi { display: flex; flex-direction: column; gap: var(--mon-sp-3xs); }
 .ate-kpi-value {
-    font-size: 1rem;
+    font-size: var(--mon-fs-num);
     font-weight: 700;
     color: #fff;
     font-family: 'Inter', monospace;
 }
 .ate-kpi-value.alerta { color: #fc8181; }
 .ate-kpi-label {
-    font-size: .62rem;
+    font-size: var(--mon-fs-2xs);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .06em;
     color: rgba(255,255,255,.4);
 }
 .ate-list {
-    height: 340px;
+    /* Altura fluida por viewport HEIGHT (não width) — essa é a maior contribuinte de
+     * overflow vertical em telas baixas (1366x768): com altura fixa em 340px, sobrava
+     * pouquíssima altura pro mon-panels-row (Equipe/Chamados/Tarefas) abaixo. 30vh dá
+     * ~230px numa tela de 768px de altura (cabe) e ~340px numa tela de 1080px+ (igual a
+     * antes, sem regressão no monitor grande). */
+    height: clamp(180px, 30vh, 340px);
     overflow-y: auto;
 }
 .ate-list::-webkit-scrollbar { width: 5px; }
@@ -861,8 +896,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .ate-row {
     display: flex;
     align-items: center;
-    gap: .6rem;
-    padding: .55rem 1.25rem;
+    gap: var(--mon-sp-base);
+    padding: var(--mon-sp-sm) var(--mon-sp-xl);
     border-bottom: 1px solid rgba(255,255,255,0.06);
     text-decoration: none;
 }
@@ -870,10 +905,10 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .ate-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .ate-dot.aguardando { background: #fc8181; }
 .ate-dot.respondido { background: #48bb78; }
-.ate-row-main { display: flex; flex-direction: column; gap: .1rem; min-width: 0; flex: 1; }
+.ate-row-main { display: flex; flex-direction: column; gap: var(--mon-sp-3xs); min-width: 0; flex: 1; }
 .ate-row-titulo {
     color: #fff;
-    font-size: .82rem;
+    font-size: var(--mon-fs-md);
     font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
@@ -881,14 +916,14 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 }
 .ate-row-msg {
     color: rgba(255,255,255,.45);
-    font-size: .72rem;
+    font-size: var(--mon-fs-sm);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 .ate-row-tempo {
     flex-shrink: 0;
-    font-size: .72rem;
+    font-size: var(--mon-fs-sm);
     color: rgba(255,255,255,.5);
     font-family: 'Inter', monospace;
     white-space: nowrap;
