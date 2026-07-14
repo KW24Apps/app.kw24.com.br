@@ -43,9 +43,16 @@ class MonitoramentoAtendimentoService {
         // Busca im.recent.list em cada identidade e mescla. Dedup por sessionId: uma conversa
         // ainda não reclamada por ninguém é entregue simultaneamente a todos os membros da
         // fila, então apareceria repetida em mais de uma resposta — mantém só a primeira
-        // ocorrência, junto com QUAL identidade a viu (usado abaixo pra buscar o histórico
-        // com o webhook certo, já que só quem participa de fato consegue ler a sessão).
-        $vistos    = [];
+        // ocorrência (usada abaixo pra buscar o histórico com o webhook certo, já que só quem
+        // participa de fato consegue ler a sessão), mas registra TODAS as identidades que a
+        // viram em $vistoPor. Esse é o sinal usado pra distinguir "aguardando atendimento"
+        // (ninguém reclamou ainda, todo mundo da fila vê a mesma sessão) de "sendo atendida
+        // por alguém" (só quem pegou o atendimento continua vendo): ver statusFila abaixo.
+        // Só é confiável com 2+ identidades reais cadastradas — com 1 só (ou no fallback de
+        // automação única), toda sessão aparece pra essa única identidade de qualquer forma,
+        // reclamada ou não, e não dá pra diferenciar (ver $multiIdentidade).
+        $multiIdentidade = count($identidades) >= 2;
+        $vistoPor  = [];
         $itensFila = [];
         foreach ($identidades as $identidade) {
             $recentes = $identidade['bitrix']->call('im.recent.list', [
@@ -57,9 +64,10 @@ class MonitoramentoAtendimentoService {
             ]);
             foreach ($this->filtrarPorFila($recentes['items'] ?? []) as $it) {
                 $sessionId = $it['lines']['id'] ?? null;
-                if ($sessionId === null || isset($vistos[$sessionId])) continue;
-                $vistos[$sessionId] = true;
-                $itensFila[] = ['item' => $it, 'identidade' => $identidade];
+                if ($sessionId === null) continue;
+                $vistoPor[$sessionId][] = $identidade['nome'];
+                if (isset($itensFila[$sessionId])) continue;
+                $itensFila[$sessionId] = ['item' => $it, 'identidade' => $identidade];
             }
         }
 
@@ -109,6 +117,22 @@ class MonitoramentoAtendimentoService {
                 );
             }
 
+            // Reclamada = só uma identidade viu essa sessão (ela pegou o atendimento);
+            // aguardando atendimento = 2+ identidades ainda veem a mesma sessão (ninguém
+            // reclamou, continua sendo distribuída pra fila toda). Só calculável com
+            // $multiIdentidade — no fallback (1 identidade só) fica null (indeterminado).
+            $vistoPorCount = count($vistoPor[$sessionId] ?? []);
+            $statusFila    = null;
+            $reclamadaPor  = null;
+            if ($multiIdentidade) {
+                if ($vistoPorCount >= 2) {
+                    $statusFila = 'aguardando_atendimento';
+                } else {
+                    $statusFila   = 'em_atendimento';
+                    $reclamadaPor = $entrada['identidade']['nome'];
+                }
+            }
+
             $conversas[] = [
                 'sessionId'                   => (int)$sessionId,
                 'titulo'                      => $it['title'] ?? '(sem título)',
@@ -119,17 +143,24 @@ class MonitoramentoAtendimentoService {
                 'statusCodigoBruto'           => $it['lines']['status'] ?? null, // não confirmado — só pra calibração visual
                 'urlBitrix24'                 => $bitrixBase ? ($bitrixBase . '/online/?IM_HISTORY=imol|' . $sessionId) : null,
                 'vistaPor'                    => $entrada['identidade']['nome'], // diagnóstico — qual identidade trouxe essa conversa
+                'statusFila'                  => $statusFila,   // 'aguardando_atendimento' | 'em_atendimento' | null (indeterminado)
+                'reclamadaPor'                => $reclamadaPor, // nome de quem está atendendo, só quando statusFila === 'em_atendimento'
             ];
         }
 
         usort($conversas, function ($a, $b) {
+            $prioridadeFila = ['aguardando_atendimento' => 0, 'em_atendimento' => 1];
+            $pa = $prioridadeFila[$a['statusFila']] ?? 1;
+            $pb = $prioridadeFila[$b['statusFila']] ?? 1;
+            if ($pa !== $pb) return $pa <=> $pb;
             if ($a['aguardando'] !== $b['aguardando']) return $b['aguardando'] <=> $a['aguardando'];
             return ($b['minutosDesdeUltimaAtividade'] ?? 0) <=> ($a['minutosDesdeUltimaAtividade'] ?? 0);
         });
 
         return [
-            'bitrixBase'      => $bitrixBase,
-            'identidades'     => array_column($identidades, 'nome'), // diagnóstico — quais webhooks foram consultados
+            'bitrixBase'              => $bitrixBase,
+            'identidades'             => array_column($identidades, 'nome'), // diagnóstico — quais webhooks foram consultados
+            'agrupamentoPorResponsavel' => $multiIdentidade, // se true, front separa em "Aguardando atendimento" / "Sendo atendida"
             'conversasAtivas' => [
                 'total'      => count($conversas),
                 'aguardando' => count(array_filter($conversas, fn($c) => $c['aguardando'])),

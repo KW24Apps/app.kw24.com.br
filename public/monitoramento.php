@@ -1060,6 +1060,27 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     white-space: nowrap;
 }
 .ate-row-tempo.aguardando { color: #fc8181; font-weight: 600; }
+/* Agrupamento "Aguardando atendimento" (ninguém reclamou) vs "Sendo atendida" (ver
+ * statusFila/agrupamentoPorResponsavel em MonitoramentoAtendimentoService) — só aparece
+ * quando há 2+ webhooks pessoais cadastrados; com 1 só (ou fallback automação), a lista
+ * continua plana como antes. */
+.ate-group-header {
+    font-size: var(--mon-fs-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: rgba(255,255,255,.4);
+    padding: var(--mon-sp-xs) var(--mon-sp-lg) var(--mon-sp-2xs);
+    background: rgba(255,255,255,.02);
+}
+.ate-group-header.alerta { color: #fc8181; }
+.ate-row-responsavel {
+    flex-shrink: 0;
+    font-size: var(--mon-fs-xs);
+    color: rgba(38,255,147,.85);
+    font-weight: 600;
+    white-space: nowrap;
+}
 </style>
 
 <div class="page-header">
@@ -2098,12 +2119,16 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         var tempoTexto  = c.minutosDesdeUltimaAtividade != null
             ? (c.aguardando ? 'aguardando há ' : 'há ') + fmtMinutos(c.minutosDesdeUltimaAtividade)
             : '';
+        var responsavelHtml = c.reclamadaPor
+            ? '<span class="ate-row-responsavel">' + escHtml(c.reclamadaPor) + '</span>'
+            : '';
 
         var body = '<span class="ate-dot ' + dotClasse + '"></span>'
             + '<span class="ate-row-main">'
                 + '<span class="ate-row-titulo">' + escHtml(c.titulo) + '</span>'
                 + '<span class="ate-row-msg">' + msg + '</span>'
             + '</span>'
+            + responsavelHtml
             + '<span class="ate-row-tempo' + tempoClasse + '">' + escHtml(tempoTexto) + '</span>';
 
         return c.urlBitrix24
@@ -2133,9 +2158,32 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             + '<div class="ate-kpi"><span class="ate-kpi-value">' + escHtml(tempoTxt) + '</span><span class="ate-kpi-label">Tempo médio de resposta</span></div>';
 
         var conversas = data.conversas || [];
-        listEl.innerHTML = conversas.length
-            ? conversas.map(ateRowHtml).join('')
-            : '<div class="mon-empty"><i class="fas fa-check-circle"></i><div>Nenhuma conversa ativa no momento.</div></div>';
+        if (!conversas.length) {
+            listEl.innerHTML = '<div class="mon-empty"><i class="fas fa-check-circle"></i><div>Nenhuma conversa ativa no momento.</div></div>';
+            return;
+        }
+
+        // Agrupamento "Aguardando atendimento" × "Sendo atendida" só é confiável com 2+
+        // webhooks pessoais cadastrados (ver agrupamentoPorResponsavel/statusFila no
+        // service) — sem isso, mantém a lista plana de sempre.
+        if (!data.agrupamentoPorResponsavel) {
+            listEl.innerHTML = conversas.map(ateRowHtml).join('');
+            return;
+        }
+
+        var semDono = conversas.filter(function (c) { return c.statusFila === 'aguardando_atendimento'; });
+        var comDono = conversas.filter(function (c) { return c.statusFila === 'em_atendimento'; });
+
+        var html = '';
+        if (semDono.length) {
+            html += '<div class="ate-group-header alerta">Aguardando atendimento (' + semDono.length + ')</div>'
+                + semDono.map(ateRowHtml).join('');
+        }
+        if (comDono.length) {
+            html += '<div class="ate-group-header">Sendo atendida (' + comDono.length + ')</div>'
+                + comDono.map(ateRowHtml).join('');
+        }
+        listEl.innerHTML = html;
     }
 
     function carregarAtendimento() {
