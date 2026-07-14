@@ -242,7 +242,18 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     overflow-y: auto;
     flex: 1;
     min-height: 0;
+    /* scrollbar-gutter reserva o espaço da barra sem empurrar o layout quando ela aparece/some
+     * (lista curta sem scroll vs. longa com scroll não pulam de largura); o padding extra dá
+     * uma folga visual entre a thumb e o ícone de link externo na borda direita das linhas. */
+    scrollbar-gutter: stable;
+    padding-right: var(--mon-sp-sm);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(13,194,255,.3) rgba(255,255,255,.03);
 }
+#mon-drill-list::-webkit-scrollbar { width: 7px; }
+#mon-drill-list::-webkit-scrollbar-track { background: rgba(255,255,255,.03); border-radius: 4px; }
+#mon-drill-list::-webkit-scrollbar-thumb { background: rgba(13,194,255,.3); border-radius: 4px; }
+#mon-drill-list::-webkit-scrollbar-thumb:hover { background: rgba(13,194,255,.5); }
 .mon-drill-item {
     display: flex;
     align-items: center;
