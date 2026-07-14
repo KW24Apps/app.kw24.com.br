@@ -992,15 +992,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     flex-direction: column;
     overflow: hidden;
 }
-.ate-header {
-    padding: var(--mon-sp-base) var(--mon-sp-lg);
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-    font-family: 'Rubik', sans-serif;
-    font-size: var(--mon-fs-lg);
-    font-weight: 600;
-    color: #fff;
-}
-.ate-header i { color: #26FF93; margin-right: .5rem; }
 .ate-kpis {
     padding: var(--mon-sp-sm) var(--mon-sp-lg);
     border-bottom: 1px solid rgba(255,255,255,0.08);
@@ -1117,7 +1108,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 
 <div class="topo-row">
     <div class="ate-section">
-        <div class="ate-header"><i class="fas fa-headset"></i>Atendimento</div>
         <div class="mon-tabs-bar">
             <div class="mon-tab active" id="mon-tab-ate-conv" onclick="ateTrocarAba('conv')">
                 <span class="mon-tab-title"><i class="fas fa-comments"></i>Conversas</span>
