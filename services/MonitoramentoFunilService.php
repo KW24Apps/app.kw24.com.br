@@ -27,7 +27,16 @@ class MonitoramentoFunilService {
     private const STAGE_CLIENTE   = 'DT1054_208:UC_UNOPWM';
     private const STAGE_TREINO    = 'DT1054_208:UC_NUJRTQ';
     private const STAGE_PROGRAMADAS = 'DT1054_208:CLIENT'; // não pedido como bucket próprio — cai em "Outros"
-    private const STAGES_PESSOA   = [
+
+    // Estágio pessoal de cada um dos 4 da equipe no Funil 208 — vira 1 barra por pessoa na
+    // distribuição (ver distribuicaoAbertos()), não mais somado num bucket único.
+    private const STAGE_PESSOA_NOMES = [
+        'DT1054_208:UC_1GHUI5' => 'Gabriel Acker',
+        'DT1054_208:UC_ASEGSF' => 'Jeferson Santos',
+        'DT1054_208:UC_DBW95I' => 'Tainá Oliveira',
+        'DT1054_208:UC_F3HI83' => 'Michael Botelho',
+    ];
+    private const STAGES_PESSOA = [
         'DT1054_208:UC_1GHUI5', 'DT1054_208:UC_ASEGSF', 'DT1054_208:UC_DBW95I', 'DT1054_208:UC_F3HI83',
     ];
     private const STAGES_ABERTOS = [
@@ -77,12 +86,12 @@ class MonitoramentoFunilService {
      * atenção" (idade/estágio parado) — isso continua fora de escopo, aguardando os campos que o
      * usuário vai trazer depois. Aqui é só a foto atual de "quanto tem em cada fila".
      *
-     * Os 4 estágios por pessoa (Equipe) são somados num único bucket "Atribuído a um
-     * colaborador" — o detalhe por pessoa já vive no painel Equipe, sem necessidade de duplicar
-     * aqui. "Outros" pega qualquer estágio aberto não nomeado explicitamente (hoje só
-     * "Fila - Demandas Programadas"), garantindo que a soma dos buckets sempre bata com o total
-     * de chamados abertos mostrado no painel Chamados abertos — nunca deve ficar de fora
-     * silenciosamente.
+     * Os 4 estágios por pessoa (Equipe) viram 1 barra cada, nomeada com o nome da pessoa —
+     * mesmos números já mostrados por pessoa no painel Equipe, só que aqui como parte da
+     * distribuição geral. "Outros" pega qualquer estágio aberto não nomeado explicitamente
+     * (hoje só "Fila - Demandas Programadas"), garantindo que a soma dos buckets sempre bata
+     * com o total de chamados abertos mostrado no painel Chamados abertos — nunca deve ficar
+     * de fora silenciosamente.
      */
     private function distribuicaoAbertos(): array {
         $items = $this->bitrix->listItems(
@@ -98,24 +107,25 @@ class MonitoramentoFunilService {
             if (isset($contagem[$stage])) $contagem[$stage]++;
         }
 
-        $atribuido = 0;
-        foreach (self::STAGES_PESSOA as $s) $atribuido += $contagem[$s];
-
         $nomeados = array_merge(
             [self::STAGE_DEV, self::STAGE_SUPORTE, self::STAGE_CLIENTE, self::STAGE_TREINO, self::STAGE_KW24],
             self::STAGES_PESSOA
         );
         $outros = array_sum($contagem) - array_sum(array_intersect_key($contagem, array_flip($nomeados)));
 
-        return [
-            ['label' => 'Fila - Desenvolvimento',       'total' => $contagem[self::STAGE_DEV]],
-            ['label' => 'Fila - Suporte',                'total' => $contagem[self::STAGE_SUPORTE]],
-            ['label' => 'Pendente Cliente',              'total' => $contagem[self::STAGE_CLIENTE]],
-            ['label' => 'Treinamento/Validação',         'total' => $contagem[self::STAGE_TREINO]],
-            ['label' => 'Demandas - KW24',                'total' => $contagem[self::STAGE_KW24]],
-            ['label' => 'Atribuído a um colaborador',    'total' => $atribuido],
-            ['label' => 'Outros',                        'total' => $outros],
+        $buckets = [
+            ['label' => 'Fila - Desenvolvimento', 'total' => $contagem[self::STAGE_DEV]],
+            ['label' => 'Fila - Suporte',          'total' => $contagem[self::STAGE_SUPORTE]],
+            ['label' => 'Pendente Cliente',        'total' => $contagem[self::STAGE_CLIENTE]],
+            ['label' => 'Treinamento/Validação',   'total' => $contagem[self::STAGE_TREINO]],
+            ['label' => 'Demandas - KW24',         'total' => $contagem[self::STAGE_KW24]],
         ];
+        foreach (self::STAGE_PESSOA_NOMES as $stage => $nome) {
+            $buckets[] = ['label' => $nome, 'total' => $contagem[$stage]];
+        }
+        $buckets[] = ['label' => 'Outros', 'total' => $outros];
+
+        return $buckets;
     }
 
     /**

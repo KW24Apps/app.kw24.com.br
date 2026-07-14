@@ -315,11 +315,12 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 }
 .mon-tabs-bar {
     display: flex;
+    align-items: center;
+    flex-wrap: wrap;
     border-bottom: 1px solid rgba(255,255,255,0.08);
     flex-shrink: 0;
 }
 .mon-tab {
-    flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -357,12 +358,12 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     overflow: hidden;
 }
 .mon-tab-filters {
-    padding: .6rem 1.25rem;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
     display: flex;
+    align-items: center;
     flex-wrap: wrap;
     gap: .4rem;
-    flex-shrink: 0;
+    margin-left: auto;
+    padding: 0 1.25rem;
 }
 .cha-thead {
     display: grid;
@@ -957,10 +958,11 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                     <span class="mon-tab-title"><i class="fas fa-list-check"></i>Tarefas</span>
                     <span class="mon-tab-count" id="tsk-count">Carregando…</span>
                 </div>
+                <div class="mon-tab-filters" id="cha-filtro-tipos"></div>
+                <div class="mon-tab-filters" id="tsk-filter-row" style="display:none"></div>
             </div>
 
             <div class="mon-tab-content" id="mon-tab-content-cha">
-                <div class="mon-tab-filters" id="cha-filtro-tipos"></div>
                 <div class="cha-thead">
                     <span></span>
                     <span class="cha-th">Chamado</span>
@@ -976,7 +978,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             </div>
 
             <div class="mon-tab-content" id="mon-tab-content-tsk" style="display:none">
-                <div class="mon-tab-filters" id="tsk-filter-row"></div>
                 <div class="tsk-thead">
                     <span></span>
                     <span></span>
@@ -1036,12 +1037,16 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         var tabTsk  = document.getElementById('mon-tab-tsk');
         var contCha = document.getElementById('mon-tab-content-cha');
         var contTsk = document.getElementById('mon-tab-content-tsk');
+        var filCha  = document.getElementById('cha-filtro-tipos');
+        var filTsk  = document.getElementById('tsk-filter-row');
         if (!tabCha || !tabTsk || !contCha || !contTsk) return;
 
         tabCha.classList.toggle('active', monAbaAtiva === 'cha');
         tabTsk.classList.toggle('active', monAbaAtiva === 'tsk');
         contCha.style.display = monAbaAtiva === 'cha' ? 'flex' : 'none';
         contTsk.style.display = monAbaAtiva === 'tsk' ? 'flex' : 'none';
+        if (filCha) filCha.style.display = monAbaAtiva === 'cha' ? 'flex' : 'none';
+        if (filTsk) filTsk.style.display = monAbaAtiva === 'tsk' ? 'flex' : 'none';
     }
 
     window.monTrocarAba = function (aba) {
@@ -1689,13 +1694,18 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     }
 
     var FUN_DIST_CORES = {
-        'Fila - Desenvolvimento':      '#b794f4',
-        'Fila - Suporte':              '#0DC2FF',
-        'Pendente Cliente':            '#f6ad55',
-        'Treinamento/Validação':       '#a0aec0',
-        'Demandas - KW24':             '#26FF93',
-        'Atribuído a um colaborador': '#ecc94b',
-        'Outros':                      '#718096',
+        'Fila - Desenvolvimento': '#b794f4',
+        'Fila - Suporte':         '#0DC2FF',
+        'Pendente Cliente':       '#f6ad55',
+        'Treinamento/Validação':  '#a0aec0',
+        'Demandas - KW24':        '#26FF93',
+        // As 4 barras por pessoa (antes um único bucket "Atribuído a um colaborador")
+        // compartilham a mesma cor — se agrupam visualmente como "atribuído a alguém".
+        'Gabriel Acker':   '#ecc94b',
+        'Jeferson Santos': '#ecc94b',
+        'Tainá Oliveira':  '#ecc94b',
+        'Michael Botelho': '#ecc94b',
+        'Outros':                 '#718096',
     };
 
     function funDistRowHtml(bucket, maxTotal) {
