@@ -21,8 +21,6 @@ class MonitoramentoTarefasService {
         12126 => 'Michael Botelho',
     ];
 
-    private const ROLE_RESPONSAVEL  = 'Responsável';
-    private const ROLE_CRIADOR      = 'Criador';
     private const ROLE_PARTICIPANTE = 'Participante';
     private const ROLE_OBSERVADOR   = 'Observador';
 
@@ -47,11 +45,19 @@ class MonitoramentoTarefasService {
         $taskIds     = array_map('intval', array_keys($porId));
         $comentarios = $taskIds ? $this->bitrix->getCommentsForTasks($taskIds, $comentariosPorTarefa) : [];
 
+        // Criador/Responsável são mostrados SEMPRE, mesmo quando não são um dos 4 da equipe
+        // (badges, abaixo, só cobrem Participante/Observador da equipe — ver montarBadges) —
+        // resolve em lote os nomes de quem não está no roster fixo self::EQUIPE.
+        $idsEnvolvidos = [];
+        foreach ($porId as $t) {
+            $idsEnvolvidos[] = (int)($t['responsibleId'] ?? 0);
+            $idsEnvolvidos[] = (int)($t['createdBy'] ?? 0);
+        }
+        $idsForaEquipe = array_diff(array_unique(array_filter($idsEnvolvidos)), array_keys(self::EQUIPE));
+        $nomesExtras   = $idsForaEquipe ? $this->bitrix->getUserNames($idsForaEquipe) : [];
+
         $tarefas = [];
         foreach ($porId as $t) {
-            $badges = $this->montarBadges($t);
-            if (!$badges) continue; // defensivo — não deveria ocorrer dado o filtro acima
-
             $id       = (int)$t['id'];
             $deadline = $t['deadline'] ?? null;
             $atrasada = !empty($deadline) && strtotime($deadline) < time();
@@ -71,7 +77,9 @@ class MonitoramentoTarefasService {
                 'descricao'     => $this->limparBBCode((string)($t['description'] ?? '')),
                 'deadline'      => $deadline,
                 'atrasada'      => $atrasada,
-                'badges'        => $badges,
+                'criador'       => $this->pessoa((int)($t['createdBy']     ?? 0), $nomesExtras),
+                'responsavel'   => $this->pessoa((int)($t['responsibleId'] ?? 0), $nomesExtras),
+                'badges'        => $this->montarBadges($t),
                 'temChat'       => count($coments) > 0,
                 'comentarios'   => $coments,
             ];
@@ -117,10 +125,20 @@ class MonitoramentoTarefasService {
         return $porId;
     }
 
+    /** Resolve um envolvido (Criador/Responsável) pra nome + se é um dos 4 da equipe — mostrado
+     *  sempre, mesmo quando a pessoa não está em self::EQUIPE (ver getDados()). */
+    private function pessoa(int $uid, array $nomesExtras): array {
+        return [
+            'bitrixUserId' => $uid,
+            'nome'         => self::EQUIPE[$uid] ?? ($nomesExtras[$uid] ?? ('Usuário #' . $uid)),
+            'ehEquipe'     => isset(self::EQUIPE[$uid]),
+        ];
+    }
+
     /**
-     * Um badge por pessoa da equipe envolvida, combinando todos os papéis dela na mesma tarefa.
-     * Intensidade: Responsável/Criador = forte; Participante (sem Resp./Criador) = média;
-     * só Observador = fraca.
+     * Um badge por pessoa da equipe envolvida como Participante ou Observador — Responsável e
+     * Criador viram campos dedicados (ver pessoa()/getDados()), não duplicam aqui.
+     * Intensidade: Participante = média; só Observador = fraca.
      */
     private function montarBadges(array $t): array {
         $porPessoa = [];
@@ -131,8 +149,6 @@ class MonitoramentoTarefasService {
             $porPessoa[$uid]['papeis'][] = $papel;
         };
 
-        $add((int)($t['responsibleId'] ?? 0), self::ROLE_RESPONSAVEL);
-        $add((int)($t['createdBy'] ?? 0), self::ROLE_CRIADOR);
         foreach ((array)($t['accomplices'] ?? []) as $uid) $add((int)$uid, self::ROLE_PARTICIPANTE);
         foreach ((array)($t['auditors'] ?? []) as $uid) $add((int)$uid, self::ROLE_OBSERVADOR);
 
@@ -143,20 +159,10 @@ class MonitoramentoTarefasService {
                 'bitrixUserId' => $uid,
                 'nome'         => $info['nome'],
                 'papeis'       => $papeis,
-                'intensidade'  => $this->intensidadeDosPapeis($papeis),
+                'intensidade'  => in_array(self::ROLE_PARTICIPANTE, $papeis, true) ? 'media' : 'fraca',
             ];
         }
         return $badges;
-    }
-
-    private function intensidadeDosPapeis(array $papeis): string {
-        if (in_array(self::ROLE_RESPONSAVEL, $papeis, true) || in_array(self::ROLE_CRIADOR, $papeis, true)) {
-            return 'forte';
-        }
-        if (in_array(self::ROLE_PARTICIPANTE, $papeis, true)) {
-            return 'media';
-        }
-        return 'fraca'; // só Observador
     }
 
     /**

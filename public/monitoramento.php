@@ -337,7 +337,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 }
 .cha-thead {
     display: grid;
-    grid-template-columns: 26px minmax(150px,1fr) 175px 130px 120px 78px 50px;
+    grid-template-columns: 26px minmax(140px,1.4fr) minmax(110px,0.9fr) minmax(100px,0.8fr) minmax(90px,0.8fr) 78px 50px;
     gap: .6rem;
     align-items: center;
     padding: .5rem 1.25rem;
@@ -366,7 +366,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .cha-row:last-child { border-bottom: none; }
 .cha-row-main {
     display: grid;
-    grid-template-columns: 26px minmax(150px,1fr) 175px 130px 120px 78px 50px;
+    grid-template-columns: 26px minmax(140px,1.4fr) minmax(110px,0.9fr) minmax(100px,0.8fr) minmax(90px,0.8fr) 78px 50px;
     gap: .6rem;
     align-items: center;
     padding: .6rem 1.25rem;
@@ -527,6 +527,15 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     color: #fff;
     border-color: transparent;
 }
+/* Pills de filtro por pessoa (Tarefas) — verde, para diferenciar do toggle "Mostrar todos os
+ * tipos" de Chamados abertos, que reaproveita a classe base .tsk-filter-pill sem esse modificador. */
+.tsk-filter-pill.pessoa { border-color: rgba(38,255,147,.35); }
+.tsk-filter-pill.pessoa:hover { border-color: rgba(38,255,147,.6); color: rgba(255,255,255,.8); }
+.tsk-filter-pill.pessoa.active {
+    background: linear-gradient(90deg,#26FF93,#1a9c5a);
+    color: #061920;
+    border-color: transparent;
+}
 .tsk-list {
     display: flex;
     flex-direction: column;
@@ -587,9 +596,12 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     border-radius: 20px;
     white-space: nowrap;
 }
-.tsk-badge.forte  { background: linear-gradient(90deg,#b794f4,#805ad5); color: #fff; }
-.tsk-badge.media  { background: rgba(183,148,244,.35); color: #fff; }
-.tsk-badge.fraca  { background: transparent; border: 1px solid rgba(183,148,244,.45); color: #b794f4; }
+.tsk-badge.forte  { background: linear-gradient(90deg,#26FF93,#1a9c5a); color: #061920; }
+.tsk-badge.media  { background: rgba(38,255,147,.3); color: #fff; }
+.tsk-badge.fraca  { background: transparent; border: 1px solid rgba(38,255,147,.4); color: #26FF93; }
+/* Criador/Responsável quando NÃO é um dos 4 da equipe — visível, mas neutro (sem destaque),
+ * pra separar visualmente de quem é "da casa" (ver tskPessoaChipHtml()). */
+.tsk-badge.externo { background: transparent; border: 1px solid rgba(255,255,255,.15); color: rgba(255,255,255,.55); }
 .tsk-deadline {
     font-size: .78rem;
     color: rgba(255,255,255,.5);
@@ -673,10 +685,17 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     color: rgba(255,255,255,.4);
     font-family: 'Inter', monospace;
 }
+.fun-body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
 .fun-cards {
     display: flex;
     flex-direction: column;
-    flex: 1;
+    flex: 1 1 0;
+    min-width: 0;
+    border-right: 1px solid rgba(255,255,255,0.08);
 }
 .fun-card {
     flex: 1 1 0;
@@ -716,29 +735,32 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     color: rgba(255,255,255,.4);
 }
 .fun-dist {
-    padding: .9rem 1.25rem 1.1rem;
-    border-top: 1px solid rgba(255,255,255,0.08);
-    flex-shrink: 0;
+    flex: 1 1 0;
+    min-width: 0;
+    padding: .8rem 1rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 .fun-dist-header {
-    font-size: .67rem;
+    font-size: .64rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: .06em;
+    letter-spacing: .05em;
     color: rgba(255,255,255,.4);
-    margin-bottom: .65rem;
+    margin-bottom: .55rem;
 }
 .fun-dist-row {
     display: flex;
     align-items: center;
-    gap: .6rem;
-    margin-bottom: .4rem;
+    gap: .4rem;
+    margin-bottom: .32rem;
 }
 .fun-dist-row:last-child { margin-bottom: 0; }
 .fun-dist-label {
-    flex: 0 0 150px;
+    flex: 0 0 92px;
     min-width: 0;
-    font-size: .72rem;
+    font-size: .66rem;
     color: rgba(255,255,255,.65);
     white-space: nowrap;
     overflow: hidden;
@@ -746,16 +768,16 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 }
 .fun-dist-track {
     flex: 1;
-    height: 10px;
+    height: 8px;
     background: rgba(255,255,255,.06);
-    border-radius: 5px;
+    border-radius: 4px;
     overflow: hidden;
 }
-.fun-dist-fill { height: 100%; border-radius: 5px; }
+.fun-dist-fill { height: 100%; border-radius: 4px; }
 .fun-dist-value {
-    flex: 0 0 26px;
+    flex: 0 0 18px;
     text-align: right;
-    font-size: .72rem;
+    font-size: .66rem;
     font-weight: 700;
     color: #fff;
     font-family: 'Inter', monospace;
@@ -869,23 +891,25 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 
     <div class="fun-box" id="fun-section">
         <div class="fun-box-header"><i class="fas fa-filter"></i>Funil<span class="fun-box-ciclo" id="fun-ciclo"></span></div>
-        <div class="fun-cards">
-            <div class="fun-card">
-                <div class="fun-card-header criados"><i class="fas fa-inbox"></i>Chamados criados</div>
-                <div class="fun-card-body" id="fun-criados-body">
-                    <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+        <div class="fun-body">
+            <div class="fun-cards">
+                <div class="fun-card">
+                    <div class="fun-card-header criados"><i class="fas fa-inbox"></i>Chamados criados</div>
+                    <div class="fun-card-body" id="fun-criados-body">
+                        <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+                    </div>
+                </div>
+                <div class="fun-card">
+                    <div class="fun-card-header finalizados"><i class="fas fa-check-circle"></i>Chamados finalizados</div>
+                    <div class="fun-card-body" id="fun-finalizados-body">
+                        <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+                    </div>
                 </div>
             </div>
-            <div class="fun-card">
-                <div class="fun-card-header finalizados"><i class="fas fa-check-circle"></i>Chamados finalizados</div>
-                <div class="fun-card-body" id="fun-finalizados-body">
-                    <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
-                </div>
+            <div class="fun-dist">
+                <div class="fun-dist-header">Distribuição dos abertos</div>
+                <div id="fun-dist-rows"></div>
             </div>
-        </div>
-        <div class="fun-dist">
-            <div class="fun-dist-header">Distribuição dos chamados abertos</div>
-            <div id="fun-dist-rows"></div>
         </div>
     </div>
 </div>
@@ -1116,6 +1140,23 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             + escHtml(primeiroNome(b.nome)) + ' · ' + escHtml(papeis) + '</span>';
     }
 
+    // Criador/Responsável aparecem sempre, mesmo quando não são um dos 4 da equipe — só o
+    // destaque visual (forte = verde) muda conforme pessoa.ehEquipe (ver MonitoramentoTarefasService).
+    function tskPessoaChipHtml(pessoa, papel) {
+        if (!pessoa || !pessoa.bitrixUserId) return '';
+        var classe = pessoa.ehEquipe ? 'forte' : 'externo';
+        return '<span class="tsk-badge ' + classe + '" title="' + escHtml(pessoa.nome) + '">'
+            + escHtml(primeiroNome(pessoa.nome)) + ' · ' + escHtml(papel) + '</span>';
+    }
+
+    function tskPessoasHtml(t) {
+        var criador = t.criador, resp = t.responsavel;
+        if (criador && resp && criador.bitrixUserId && criador.bitrixUserId === resp.bitrixUserId) {
+            return tskPessoaChipHtml(criador, 'Criador/Resp.');
+        }
+        return tskPessoaChipHtml(criador, 'Criador') + tskPessoaChipHtml(resp, 'Responsável');
+    }
+
     function tskChatMsgHtml(c) {
         return '<div class="tsk-chat-msg">'
             + '<div class="tsk-chat-msg-head">'
@@ -1142,7 +1183,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         var chatIcon = t.temChat
             ? '<i class="fas fa-comment-dots tsk-chat-icon" title="Ver mensagens" onclick="event.stopPropagation();tskAbrirChat(' + t.id + ')"></i>'
             : '';
-        var badges = (t.badges || []).map(tskBadgeHtml).join('');
+        var badges = tskPessoasHtml(t) + (t.badges || []).map(tskBadgeHtml).join('');
 
         var descricaoHtml = t.descricao
             ? '<div class="tsk-detail-label">Descrição</div><div class="tsk-detail-text">' + escHtml(t.descricao) + '</div>'
@@ -1218,7 +1259,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 
         el.innerHTML = equipe.map(function (p) {
             var ativo = tskSelectedUids.has(p.bitrixUserId);
-            return '<span class="tsk-filter-pill' + (ativo ? ' active' : '') + '" onclick="tskToggleFiltro(' + p.bitrixUserId + ')">'
+            return '<span class="tsk-filter-pill pessoa' + (ativo ? ' active' : '') + '" onclick="tskToggleFiltro(' + p.bitrixUserId + ')">'
                 + escHtml(primeiroNome(p.nome)) + '</span>';
         }).join('');
     }
