@@ -43,8 +43,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     .mon-panels-row { flex-direction: column; }
     .mon-equipe-card { flex: 0 0 auto !important; max-height: 45vh; }
     .mon-right-col { flex: 1 1 auto; min-height: 560px; }
-    .cha-section { flex: 0 0 260px !important; }
-    .tsk-section { flex: 1 1 auto !important; min-height: 280px; }
 }
 
 /* ===== Painel Equipe — card único, membros empilhados ===== */
@@ -301,8 +299,11 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     min-height: 0;
 }
 
-/* ===== MONITORAMENTO KW24 — Chamados abertos ===== */
-.cha-section {
+/* ===== MONITORAMENTO KW24 — painel único com abas (Chamados abertos / Tarefas) =====
+ * Antes eram 2 caixas em accordion (só uma expandida por vez); agora é 1 caixa só com uma
+ * barra de abas no topo — só o conteúdo (filtros + thead + lista) da aba ativa é exibido
+ * (display:none no outro), sem precisar de lógica de "colapsar". Ver monTrocarAba(). */
+.mon-tabs-section {
     background: rgba(255,255,255,0.05);
     border: 1.5px solid rgba(255,255,255,0.10);
     border-radius: 12px;
@@ -312,58 +313,56 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     flex-direction: column;
     overflow: hidden;
 }
-/* Accordion Chamados abertos/Tarefas — só um expandido por vez (ver monTogglePainel()). O
- * colapsado vira flex:0 0 auto (só a altura do header) e o expandido, sendo o único item que
- * ainda cresce no flex column de .mon-right-col, absorve sozinho toda a altura que sobra —
- * não precisa de nenhum valor de altura "cheia" hardcoded. */
-.cha-section.collapsed,
-.tsk-section.collapsed {
-    flex: 0 0 auto;
-}
-.cha-section.collapsed .cha-thead,
-.cha-section.collapsed .cha-list,
-.tsk-section.collapsed .tsk-thead,
-.tsk-section.collapsed .tsk-list {
-    display: none;
-}
-.mon-accordion-chevron {
-    margin-left: .4rem;
-    color: rgba(255,255,255,.35);
-    font-size: .75rem;
-    transition: transform .2s;
-}
-.cha-section.collapsed .mon-accordion-chevron,
-.tsk-section.collapsed .mon-accordion-chevron {
-    transform: rotate(-90deg);
-}
-.cha-section-header {
-    padding: .9rem 1.25rem;
+.mon-tabs-bar {
+    display: flex;
     border-bottom: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0;
+}
+.mon-tab {
+    flex: 1;
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: .6rem;
-    flex-shrink: 0;
+    justify-content: center;
+    gap: .5rem;
+    padding: .9rem 1.25rem;
     cursor: pointer;
+    opacity: .45;
+    border-bottom: 2px solid transparent;
+    transition: opacity .15s, background .15s;
 }
-.cha-section-title {
+.mon-tab:hover { opacity: .75; }
+.mon-tab.active { opacity: 1; background: rgba(255,255,255,0.03); }
+#mon-tab-cha.active { border-bottom-color: #0DC2FF; }
+#mon-tab-tsk.active { border-bottom-color: #26FF93; }
+.mon-tab-title {
     font-family: 'Rubik', sans-serif;
     font-size: .95rem;
     font-weight: 600;
     color: #fff;
     white-space: nowrap;
 }
-.cha-section-title i { color: #0DC2FF; margin-right: .5rem; }
-.cha-section-count {
+.mon-tab-title i { margin-right: .5rem; }
+#mon-tab-cha .mon-tab-title i { color: #0DC2FF; }
+#mon-tab-tsk .mon-tab-title i { color: #26FF93; }
+.mon-tab-count {
     font-size: .75rem;
     color: rgba(255,255,255,.45);
     white-space: nowrap;
 }
-.cha-header-filters {
+.mon-tab-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+.mon-tab-filters {
+    padding: .6rem 1.25rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
     display: flex;
     flex-wrap: wrap;
     gap: .4rem;
-    margin-left: auto;
+    flex-shrink: 0;
 }
 .cha-thead {
     display: grid;
@@ -512,46 +511,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .cha-detail-text { color: rgba(255,255,255,.75); font-size: .82rem; line-height: 1.5; }
 
 /* ===== MONITORAMENTO KW24 — Tarefas ===== */
-.tsk-section {
-    background: rgba(255,255,255,0.05);
-    border: 1.5px solid rgba(255,255,255,0.10);
-    border-radius: 12px;
-    flex: 1 1 0;
-    min-width: 320px;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-.tsk-section-header {
-    padding: .9rem 1.25rem;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: .6rem;
-    flex-shrink: 0;
-    cursor: pointer;
-}
-.tsk-section-title {
-    font-family: 'Rubik', sans-serif;
-    font-size: .95rem;
-    font-weight: 600;
-    color: #fff;
-    white-space: nowrap;
-}
-.tsk-section-title i { color: #b794f4; margin-right: .5rem; }
-.tsk-section-count {
-    font-size: .75rem;
-    color: rgba(255,255,255,.45);
-    white-space: nowrap;
-}
-.tsk-header-filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .4rem;
-    margin-left: auto;
-}
 .tsk-thead {
     display: grid;
     grid-template-columns: 26px 70px minmax(110px,1.6fr) minmax(70px,0.8fr) minmax(70px,0.8fr) minmax(60px,0.7fr) minmax(60px,0.7fr) minmax(80px,0.7fr) 20px;
@@ -988,47 +947,50 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     </div>
 
     <div class="mon-right-col">
-        <div class="cha-section" id="cha-section">
-            <div class="cha-section-header" onclick="monTogglePainel('cha')">
-                <span class="cha-section-title"><i class="fas fa-inbox"></i>Chamados abertos</span>
-                <span class="cha-section-count" id="cha-count">Carregando…</span>
-                <div class="cha-header-filters" id="cha-filtro-tipos" onclick="event.stopPropagation()"></div>
-                <i class="fas fa-chevron-down mon-accordion-chevron"></i>
+        <div class="mon-tabs-section">
+            <div class="mon-tabs-bar">
+                <div class="mon-tab active" id="mon-tab-cha" onclick="monTrocarAba('cha')">
+                    <span class="mon-tab-title"><i class="fas fa-inbox"></i>Chamados abertos</span>
+                    <span class="mon-tab-count" id="cha-count">Carregando…</span>
+                </div>
+                <div class="mon-tab" id="mon-tab-tsk" onclick="monTrocarAba('tsk')">
+                    <span class="mon-tab-title"><i class="fas fa-list-check"></i>Tarefas</span>
+                    <span class="mon-tab-count" id="tsk-count">Carregando…</span>
+                </div>
             </div>
-            <div class="cha-thead">
-                <span></span>
-                <span class="cha-th">Chamado</span>
-                <span class="cha-th cha-th-sort" data-col="tipo" onclick="chaOrdenarPor('tipo')">Tipo<i class="fas fa-sort mon-sort-icon"></i></span>
-                <span class="cha-th cha-th-sort" data-col="etapa" onclick="chaOrdenarPor('etapa')">Etapa<i class="fas fa-sort mon-sort-icon"></i></span>
-                <span class="cha-th">Solicitante</span>
-                <span class="cha-th">Resp.</span>
-                <span></span>
-            </div>
-            <div class="cha-list" id="cha-list">
-                <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
-            </div>
-        </div>
 
-        <div class="tsk-section" id="tsk-section">
-            <div class="tsk-section-header" onclick="monTogglePainel('tsk')">
-                <span class="tsk-section-title"><i class="fas fa-list-check"></i>Tarefas</span>
-                <span class="tsk-section-count" id="tsk-count">Carregando…</span>
-                <div class="tsk-header-filters" id="tsk-filter-row" onclick="event.stopPropagation()"></div>
-                <i class="fas fa-chevron-down mon-accordion-chevron"></i>
+            <div class="mon-tab-content" id="mon-tab-content-cha">
+                <div class="mon-tab-filters" id="cha-filtro-tipos"></div>
+                <div class="cha-thead">
+                    <span></span>
+                    <span class="cha-th">Chamado</span>
+                    <span class="cha-th cha-th-sort" data-col="tipo" onclick="chaOrdenarPor('tipo')">Tipo<i class="fas fa-sort mon-sort-icon"></i></span>
+                    <span class="cha-th cha-th-sort" data-col="etapa" onclick="chaOrdenarPor('etapa')">Etapa<i class="fas fa-sort mon-sort-icon"></i></span>
+                    <span class="cha-th">Solicitante</span>
+                    <span class="cha-th">Resp.</span>
+                    <span></span>
+                </div>
+                <div class="cha-list" id="cha-list">
+                    <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+                </div>
             </div>
-            <div class="tsk-thead">
-                <span></span>
-                <span></span>
-                <span class="tsk-th">Tarefa</span>
-                <span class="tsk-th tsk-th-sort" data-col="criador" onclick="tskOrdenarPor('criador')">Criador<i class="fas fa-sort mon-sort-icon"></i></span>
-                <span class="tsk-th tsk-th-sort" data-col="responsavel" onclick="tskOrdenarPor('responsavel')">Responsável<i class="fas fa-sort mon-sort-icon"></i></span>
-                <span class="tsk-th tsk-th-sort" data-col="participantes" onclick="tskOrdenarPor('participantes')">Participantes<i class="fas fa-sort mon-sort-icon"></i></span>
-                <span class="tsk-th tsk-th-sort" data-col="observadores" onclick="tskOrdenarPor('observadores')">Observadores<i class="fas fa-sort mon-sort-icon"></i></span>
-                <span class="tsk-th tsk-th-sort tsk-th-prazo" data-col="prazo" onclick="tskOrdenarPor('prazo')">Prazo<i class="fas fa-sort mon-sort-icon"></i></span>
-                <span></span>
-            </div>
-            <div class="tsk-list" id="tsk-list">
-                <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+
+            <div class="mon-tab-content" id="mon-tab-content-tsk" style="display:none">
+                <div class="mon-tab-filters" id="tsk-filter-row"></div>
+                <div class="tsk-thead">
+                    <span></span>
+                    <span></span>
+                    <span class="tsk-th">Tarefa</span>
+                    <span class="tsk-th tsk-th-sort" data-col="criador" onclick="tskOrdenarPor('criador')">Criador<i class="fas fa-sort mon-sort-icon"></i></span>
+                    <span class="tsk-th tsk-th-sort" data-col="responsavel" onclick="tskOrdenarPor('responsavel')">Responsável<i class="fas fa-sort mon-sort-icon"></i></span>
+                    <span class="tsk-th tsk-th-sort" data-col="participantes" onclick="tskOrdenarPor('participantes')">Participantes<i class="fas fa-sort mon-sort-icon"></i></span>
+                    <span class="tsk-th tsk-th-sort" data-col="observadores" onclick="tskOrdenarPor('observadores')">Observadores<i class="fas fa-sort mon-sort-icon"></i></span>
+                    <span class="tsk-th tsk-th-sort tsk-th-prazo" data-col="prazo" onclick="tskOrdenarPor('prazo')">Prazo<i class="fas fa-sort mon-sort-icon"></i></span>
+                    <span></span>
+                </div>
+                <div class="tsk-list" id="tsk-list">
+                    <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+                </div>
             </div>
         </div>
     </div>
@@ -1065,25 +1027,30 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     var AUTO_REFRESH_MS = 30 * 60 * 1000; // 30 minutos
     var lastData = null;
 
-    // ── Accordion Chamados abertos/Tarefas — só um expandido por vez ──────────────
-    // Padrão: Chamados abertos aberto, Tarefas colapsado (o mais checado com mais frequência).
-    var monPainelAberto = 'cha';
+    // ── Abas Chamados abertos/Tarefas — painel único, só uma aba visível por vez ──
+    // Padrão: Chamados abertos (o mais checado com mais frequência).
+    var monAbaAtiva = 'cha';
 
-    function monAtualizarAccordion() {
-        var chaSec = document.getElementById('cha-section');
-        var tskSec = document.getElementById('tsk-section');
-        if (!chaSec || !tskSec) return;
-        chaSec.classList.toggle('collapsed', monPainelAberto !== 'cha');
-        tskSec.classList.toggle('collapsed', monPainelAberto !== 'tsk');
+    function monAtualizarAbas() {
+        var tabCha  = document.getElementById('mon-tab-cha');
+        var tabTsk  = document.getElementById('mon-tab-tsk');
+        var contCha = document.getElementById('mon-tab-content-cha');
+        var contTsk = document.getElementById('mon-tab-content-tsk');
+        if (!tabCha || !tabTsk || !contCha || !contTsk) return;
+
+        tabCha.classList.toggle('active', monAbaAtiva === 'cha');
+        tabTsk.classList.toggle('active', monAbaAtiva === 'tsk');
+        contCha.style.display = monAbaAtiva === 'cha' ? 'flex' : 'none';
+        contTsk.style.display = monAbaAtiva === 'tsk' ? 'flex' : 'none';
     }
 
-    window.monTogglePainel = function (painel) {
-        if (monPainelAberto === painel) return;
-        monPainelAberto = painel;
-        monAtualizarAccordion();
+    window.monTrocarAba = function (aba) {
+        if (monAbaAtiva === aba) return;
+        monAbaAtiva = aba;
+        monAtualizarAbas();
     };
 
-    monAtualizarAccordion();
+    monAtualizarAbas();
 
     function escHtml(s) {
         return String(s)
@@ -1399,7 +1366,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     }
 
     function tskAtualizarIconesOrdenacao() {
-        document.querySelectorAll('#tsk-section .tsk-th-sort').forEach(function (el) {
+        document.querySelectorAll('#mon-tab-content-tsk .tsk-th-sort').forEach(function (el) {
             var icon = el.querySelector('.mon-sort-icon');
             if (!icon) return;
             if (tskSortColuna === el.getAttribute('data-col')) {
@@ -1633,7 +1600,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     }
 
     function chaAtualizarIconesOrdenacao() {
-        document.querySelectorAll('#cha-section .cha-th-sort').forEach(function (el) {
+        document.querySelectorAll('#mon-tab-content-cha .cha-th-sort').forEach(function (el) {
             var icon = el.querySelector('.mon-sort-icon');
             if (!icon) return;
             if (chaSortColuna === el.getAttribute('data-col')) {
