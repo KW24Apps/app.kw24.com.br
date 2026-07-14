@@ -17,6 +17,25 @@ class MonitoramentoFunilService {
     // Mesmo campo de "data de finalização" usado pelo painel Equipe.
     private const F_DATA_FIN = 'ufCrm41_1778777816';
 
+    // Estágios não-terminais do Funil 208 — mesmo mapa/critério de "aberto" já validado em
+    // MonitoramentoChamadosService (soma bate com o total bruto do funil, sem estágio
+    // esquecido). Duplicado aqui (não reaproveita a outra classe) pela mesma convenção já
+    // usada no resto do código pra esse tipo de mapa pequeno e autocontido.
+    private const STAGE_DEV       = 'DT1054_208:NEW';
+    private const STAGE_SUPORTE   = 'DT1054_208:PREPARATION';
+    private const STAGE_KW24      = 'DT1054_208:UC_ZZ9RPV';
+    private const STAGE_CLIENTE   = 'DT1054_208:UC_UNOPWM';
+    private const STAGE_TREINO    = 'DT1054_208:UC_NUJRTQ';
+    private const STAGE_PROGRAMADAS = 'DT1054_208:CLIENT'; // não pedido como bucket próprio — cai em "Outros"
+    private const STAGES_PESSOA   = [
+        'DT1054_208:UC_1GHUI5', 'DT1054_208:UC_ASEGSF', 'DT1054_208:UC_DBW95I', 'DT1054_208:UC_F3HI83',
+    ];
+    private const STAGES_ABERTOS = [
+        self::STAGE_DEV, self::STAGE_SUPORTE, self::STAGE_KW24, self::STAGE_PROGRAMADAS, self::STAGE_CLIENTE,
+        'DT1054_208:UC_1GHUI5', 'DT1054_208:UC_ASEGSF', 'DT1054_208:UC_DBW95I', 'DT1054_208:UC_F3HI83',
+        self::STAGE_TREINO,
+    ];
+
     private BitrixService $bitrix;
 
     public function __construct() {
@@ -48,6 +67,54 @@ class MonitoramentoFunilService {
                 'semana'  => $this->contarFinalizados($semana['inicio'], $semana['fim']),
                 'periodo' => $this->contarFinalizados($periodo['inicio'], $periodo['fim']),
             ],
+            'distribuicaoAbertos' => $this->distribuicaoAbertos(),
+        ];
+    }
+
+    /**
+     * Distribuição dos chamados ABERTOS (estágios não-terminais) por bucket — pra preencher o
+     * espaço do card Funil com algo além dos 2 números de volume. NÃO é o critério de "cards em
+     * atenção" (idade/estágio parado) — isso continua fora de escopo, aguardando os campos que o
+     * usuário vai trazer depois. Aqui é só a foto atual de "quanto tem em cada fila".
+     *
+     * Os 4 estágios por pessoa (Equipe) são somados num único bucket "Atribuído a um
+     * colaborador" — o detalhe por pessoa já vive no painel Equipe, sem necessidade de duplicar
+     * aqui. "Outros" pega qualquer estágio aberto não nomeado explicitamente (hoje só
+     * "Fila - Demandas Programadas"), garantindo que a soma dos buckets sempre bata com o total
+     * de chamados abertos mostrado no painel Chamados abertos — nunca deve ficar de fora
+     * silenciosamente.
+     */
+    private function distribuicaoAbertos(): array {
+        $items = $this->bitrix->listItems(
+            self::ENTITY_TYPE,
+            ['categoryId' => self::CAT_DEMANDAS, 'stageId' => self::STAGES_ABERTOS],
+            ['id', 'stageId'],
+            0
+        );
+
+        $contagem = array_fill_keys(self::STAGES_ABERTOS, 0);
+        foreach ($items as $it) {
+            $stage = $it['stageId'] ?? '';
+            if (isset($contagem[$stage])) $contagem[$stage]++;
+        }
+
+        $atribuido = 0;
+        foreach (self::STAGES_PESSOA as $s) $atribuido += $contagem[$s];
+
+        $nomeados = array_merge(
+            [self::STAGE_DEV, self::STAGE_SUPORTE, self::STAGE_CLIENTE, self::STAGE_TREINO, self::STAGE_KW24],
+            self::STAGES_PESSOA
+        );
+        $outros = array_sum($contagem) - array_sum(array_intersect_key($contagem, array_flip($nomeados)));
+
+        return [
+            ['label' => 'Fila - Desenvolvimento',       'total' => $contagem[self::STAGE_DEV]],
+            ['label' => 'Fila - Suporte',                'total' => $contagem[self::STAGE_SUPORTE]],
+            ['label' => 'Pendente Cliente',              'total' => $contagem[self::STAGE_CLIENTE]],
+            ['label' => 'Treinamento/Validação',         'total' => $contagem[self::STAGE_TREINO]],
+            ['label' => 'Demandas - KW24',                'total' => $contagem[self::STAGE_KW24]],
+            ['label' => 'Atribuído a um colaborador',    'total' => $atribuido],
+            ['label' => 'Outros',                        'total' => $outros],
         ];
     }
 

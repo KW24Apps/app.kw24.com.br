@@ -9,7 +9,16 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 }
 ?>
 <style>
-/* ===== MONITORAMENTO KW24 — layout geral ===== */
+/* ===== MONITORAMENTO KW24 — layout geral =====
+ * Sidebar e topbar já são fixos por natureza do shell (.app-layout é grid de 100vh,
+ * .content-area é quem clipa o overflow por padrão em toda a aplicação). Essa página
+ * precisa de mais altura que uma tela só (painéis bem maiores — ver .mon-panels-row),
+ * então sobrescrevemos .content-area SÓ quando esta tela está montada (seletor escopado
+ * por :has(.mon-updated), não uma mudança global em layout.css) pra virar a área que
+ * rola, mantendo sidebar/topbar intocados (eles ficam fora de .content-area). */
+.content-area:has(.mon-updated) {
+    overflow-y: auto;
+}
 .mon-updated {
     font-size: .72rem;
     color: rgba(255,255,255,.35);
@@ -18,8 +27,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     display: flex;
     gap: 1.25rem;
     align-items: stretch;
-    flex: 1;
-    min-height: 0;
+    min-height: 800px;
 }
 .mon-right-col {
     display: flex;
@@ -27,10 +35,9 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     gap: 1.25rem;
     flex: 1 1 auto;
     min-width: 320px;
-    min-height: 0;
 }
 @media (max-width: 1024px) {
-    .mon-panels-row { flex-direction: column; }
+    .mon-panels-row { flex-direction: column; min-height: 0; }
     .mon-equipe-card { flex: 0 0 auto !important; max-height: 45vh; }
     .mon-right-col { flex: 1 1 auto; min-height: 560px; }
     .cha-section { flex: 0 0 260px !important; }
@@ -708,8 +715,50 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     letter-spacing: .06em;
     color: rgba(255,255,255,.4);
 }
-@media (max-width: 1024px) {
-    .fun-section { flex-direction: column; }
+.fun-dist {
+    padding: .9rem 1.25rem 1.1rem;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0;
+}
+.fun-dist-header {
+    font-size: .67rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: rgba(255,255,255,.4);
+    margin-bottom: .65rem;
+}
+.fun-dist-row {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    margin-bottom: .4rem;
+}
+.fun-dist-row:last-child { margin-bottom: 0; }
+.fun-dist-label {
+    flex: 0 0 150px;
+    min-width: 0;
+    font-size: .72rem;
+    color: rgba(255,255,255,.65);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.fun-dist-track {
+    flex: 1;
+    height: 10px;
+    background: rgba(255,255,255,.06);
+    border-radius: 5px;
+    overflow: hidden;
+}
+.fun-dist-fill { height: 100%; border-radius: 5px; }
+.fun-dist-value {
+    flex: 0 0 26px;
+    text-align: right;
+    font-size: .72rem;
+    font-weight: 700;
+    color: #fff;
+    font-family: 'Inter', monospace;
 }
 
 /* ===== MONITORAMENTO KW24 — Atendimento (Contact Center / Open Lines, fila "Geral KW24 - Suporte") ===== */
@@ -833,6 +882,10 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                     <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
                 </div>
             </div>
+        </div>
+        <div class="fun-dist">
+            <div class="fun-dist-header">Distribuição dos chamados abertos</div>
+            <div id="fun-dist-rows"></div>
         </div>
     </div>
 </div>
@@ -1367,6 +1420,36 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         return p.length === 3 ? (p[2] + '/' + p[1]) : '';
     }
 
+    var FUN_DIST_CORES = {
+        'Fila - Desenvolvimento':      '#b794f4',
+        'Fila - Suporte':              '#0DC2FF',
+        'Pendente Cliente':            '#f6ad55',
+        'Treinamento/Validação':       '#a0aec0',
+        'Demandas - KW24':             '#26FF93',
+        'Atribuído a um colaborador': '#ecc94b',
+        'Outros':                      '#718096',
+    };
+
+    function funDistRowHtml(bucket, maxTotal) {
+        var cor    = FUN_DIST_CORES[bucket.label] || '#a0aec0';
+        var largura = maxTotal > 0 ? Math.round((bucket.total / maxTotal) * 100) : 0;
+        return '<div class="fun-dist-row">'
+            + '<span class="fun-dist-label" title="' + escHtml(bucket.label) + '">' + escHtml(bucket.label) + '</span>'
+            + '<span class="fun-dist-track"><span class="fun-dist-fill" style="width:' + largura + '%;background:' + cor + '"></span></span>'
+            + '<span class="fun-dist-value">' + bucket.total + '</span>'
+            + '</div>';
+    }
+
+    function renderFunilDistribuicao(buckets) {
+        var el = document.getElementById('fun-dist-rows');
+        if (!el) return;
+
+        var visiveis = (buckets || []).filter(function (b) { return b.label !== 'Outros' || b.total > 0; });
+        var maxTotal = visiveis.reduce(function (m, b) { return Math.max(m, b.total); }, 0);
+
+        el.innerHTML = visiveis.map(function (b) { return funDistRowHtml(b, maxTotal); }).join('');
+    }
+
     function renderFunil(data) {
         var cicloEl          = document.getElementById('fun-ciclo');
         var criadosBody     = document.getElementById('fun-criados-body');
@@ -1378,6 +1461,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             var avisoHtml = '<div class="mon-empty"><i class="fas fa-plug"></i><div>' + escHtml(data.aviso) + '</div></div>';
             criadosBody.innerHTML     = avisoHtml;
             finalizadosBody.innerHTML = avisoHtml;
+            renderFunilDistribuicao([]);
             return;
         }
 
@@ -1392,6 +1476,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             funStatHtml(criados.semana, 'Nesta semana') + funStatHtml(criados.periodo, 'No período');
         finalizadosBody.innerHTML =
             funStatHtml(finalizados.semana, 'Nesta semana') + funStatHtml(finalizados.periodo, 'No período');
+
+        renderFunilDistribuicao(data.distribuicaoAbertos || []);
     }
 
     function carregarFunil() {
