@@ -555,7 +555,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .tsk-thead {
     display: grid;
     grid-template-columns: 26px 70px minmax(110px,1.6fr) minmax(70px,0.8fr) minmax(70px,0.8fr) minmax(60px,0.7fr) minmax(60px,0.7fr) minmax(80px,0.7fr) 20px;
-    gap: .5rem;
+    gap: .65rem;
     align-items: center;
     padding: .5rem 1.25rem;
     border-bottom: 1px solid rgba(255,255,255,0.08);
@@ -622,7 +622,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .tsk-row-main {
     display: grid;
     grid-template-columns: 26px 70px minmax(110px,1.6fr) minmax(70px,0.8fr) minmax(70px,0.8fr) minmax(60px,0.7fr) minmax(60px,0.7fr) minmax(80px,0.7fr) 20px;
-    gap: .5rem;
+    gap: .65rem;
     align-items: center;
     padding: .8rem 1.25rem;
     cursor: pointer;
@@ -656,7 +656,9 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    padding-right: .9rem; /* respiro fixo antes de Criador — não tira largura da coluna vizinha */
 }
+.tsk-th-prazo { justify-content: flex-end; } /* alinha com .tsk-deadline (text-align:right) */
 .tsk-pessoa-cell { min-width: 0; overflow: hidden; }
 .tsk-outros { display: flex; flex-wrap: wrap; gap: .3rem; min-width: 0; }
 .tsk-badge {
@@ -1022,7 +1024,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                 <span class="tsk-th tsk-th-sort" data-col="responsavel" onclick="tskOrdenarPor('responsavel')">Responsável<i class="fas fa-sort mon-sort-icon"></i></span>
                 <span class="tsk-th tsk-th-sort" data-col="participantes" onclick="tskOrdenarPor('participantes')">Participantes<i class="fas fa-sort mon-sort-icon"></i></span>
                 <span class="tsk-th tsk-th-sort" data-col="observadores" onclick="tskOrdenarPor('observadores')">Observadores<i class="fas fa-sort mon-sort-icon"></i></span>
-                <span class="tsk-th">Prazo</span>
+                <span class="tsk-th tsk-th-sort tsk-th-prazo" data-col="prazo" onclick="tskOrdenarPor('prazo')">Prazo<i class="fas fa-sort mon-sort-icon"></i></span>
                 <span></span>
             </div>
             <div class="tsk-list" id="tsk-list">
@@ -1379,8 +1381,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         return (t.badges || []).some(function (b) { return tskSelectedUids.has(b.bitrixUserId); });
     }
 
-    // ── Ordenação por coluna (Criador/Responsável/Participantes/Observadores) ─────
-    var tskSortColuna = null; // 'criador' | 'responsavel' | 'participantes' | 'observadores' | null
+    // ── Ordenação por coluna (Criador/Responsável/Participantes/Observadores/Prazo) ──
+    var tskSortColuna = null; // 'criador' | 'responsavel' | 'participantes' | 'observadores' | 'prazo' | null
     var tskSortAsc    = true;
 
     function tskPrimeiroPorPapel(t, papel) {
@@ -1419,8 +1421,28 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         if (lastTarefas) renderTarefas(lastTarefas);
     };
 
+    // Prazo ordena por timestamp (não string) — 1º clique = mais cedo/mais atrasado primeiro,
+    // já que isso é o que mais importa pra decidir o que olhar primeiro.
+    function tskTimestampPrazo(t) {
+        if (!t.deadline) return null;
+        var ts = Date.parse(t.deadline);
+        return isNaN(ts) ? null : ts;
+    }
+
     function tskAplicarOrdenacao(tarefas) {
         if (!tskSortColuna) return tarefas; // padrão: mantém a ordem original (atrasada/prazo)
+
+        if (tskSortColuna === 'prazo') {
+            return tarefas.slice().sort(function (a, b) {
+                var va = tskTimestampPrazo(a);
+                var vb = tskTimestampPrazo(b);
+                if (va === null && vb === null) return 0;
+                if (va === null) return 1;  // sem prazo sempre vai pro fim
+                if (vb === null) return -1;
+                var cmp = va - vb;
+                return tskSortAsc ? cmp : -cmp;
+            });
+        }
 
         return tarefas.slice().sort(function (a, b) {
             var va = tskValorOrdenacao(a, tskSortColuna).toLowerCase();
