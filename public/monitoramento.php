@@ -762,7 +762,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     border-radius: 5px;
     overflow: hidden;
 }
-.fun-dist-fill { height: 100%; border-radius: 5px; }
+.fun-dist-fill { display: block; height: 100%; border-radius: 5px; }
 .fun-dist-value {
     flex: 0 0 26px;
     text-align: right;
