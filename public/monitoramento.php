@@ -382,6 +382,18 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     color: rgba(255,255,255,.35);
     white-space: nowrap;
 }
+/* Cabeçalhos de coluna clicáveis (ordenação) — reutilizado por Chamados abertos e Tarefas,
+ * ver .mon-sort-icon e chaOrdenarPor()/tskOrdenarPor(). */
+.cha-th-sort, .tsk-th-sort {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    cursor: pointer;
+    user-select: none;
+}
+.cha-th-sort:hover, .tsk-th-sort:hover { color: rgba(255,255,255,.6); }
+.mon-sort-icon { font-size: .6rem; color: rgba(255,255,255,.25); }
+.mon-sort-icon.active { color: #0DC2FF; }
 .cha-list {
     display: flex;
     flex-direction: column;
@@ -581,6 +593,15 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .tsk-filter-pill.pessoa:hover { border-color: rgba(38,255,147,.6); color: rgba(255,255,255,.8); }
 .tsk-filter-pill.pessoa.active {
     background: linear-gradient(90deg,#26FF93,#1a9c5a);
+    color: #061920;
+    border-color: transparent;
+}
+/* Pills de filtro por Tipo (Chamados abertos) — mesmo padrão/interação das pills de pessoa
+ * do Tarefas acima, só que ciano (tema já usado no resto do painel Chamados abertos). */
+.tsk-filter-pill.tipo { border-color: rgba(13,194,255,.35); }
+.tsk-filter-pill.tipo:hover { border-color: rgba(13,194,255,.6); color: rgba(255,255,255,.8); }
+.tsk-filter-pill.tipo.active {
+    background: linear-gradient(90deg,#0DC2FF,#0080aa);
     color: #061920;
     border-color: transparent;
 }
@@ -969,16 +990,14 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             <div class="cha-section-header" onclick="monTogglePainel('cha')">
                 <span class="cha-section-title"><i class="fas fa-inbox"></i>Chamados abertos</span>
                 <span class="cha-section-count" id="cha-count">Carregando…</span>
-                <div class="cha-header-filters">
-                    <span class="tsk-filter-pill" id="cha-toggle-tipos" onclick="event.stopPropagation();chaToggleTipos()">Mostrar todos os tipos</span>
-                </div>
+                <div class="cha-header-filters" id="cha-filtro-tipos" onclick="event.stopPropagation()"></div>
                 <i class="fas fa-chevron-down mon-accordion-chevron"></i>
             </div>
             <div class="cha-thead">
                 <span></span>
                 <span class="cha-th">Chamado</span>
-                <span class="cha-th">Tipo</span>
-                <span class="cha-th">Etapa</span>
+                <span class="cha-th cha-th-sort" data-col="tipo" onclick="chaOrdenarPor('tipo')">Tipo<i class="fas fa-sort mon-sort-icon"></i></span>
+                <span class="cha-th cha-th-sort" data-col="etapa" onclick="chaOrdenarPor('etapa')">Etapa<i class="fas fa-sort mon-sort-icon"></i></span>
                 <span class="cha-th">Solicitante</span>
                 <span class="cha-th">Resp.</span>
                 <span></span>
@@ -999,10 +1018,10 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                 <span></span>
                 <span></span>
                 <span class="tsk-th">Tarefa</span>
-                <span class="tsk-th">Criador</span>
-                <span class="tsk-th">Responsável</span>
-                <span class="tsk-th">Participantes</span>
-                <span class="tsk-th">Observadores</span>
+                <span class="tsk-th tsk-th-sort" data-col="criador" onclick="tskOrdenarPor('criador')">Criador<i class="fas fa-sort mon-sort-icon"></i></span>
+                <span class="tsk-th tsk-th-sort" data-col="responsavel" onclick="tskOrdenarPor('responsavel')">Responsável<i class="fas fa-sort mon-sort-icon"></i></span>
+                <span class="tsk-th tsk-th-sort" data-col="participantes" onclick="tskOrdenarPor('participantes')">Participantes<i class="fas fa-sort mon-sort-icon"></i></span>
+                <span class="tsk-th tsk-th-sort" data-col="observadores" onclick="tskOrdenarPor('observadores')">Observadores<i class="fas fa-sort mon-sort-icon"></i></span>
                 <span class="tsk-th">Prazo</span>
                 <span></span>
             </div>
@@ -1360,6 +1379,60 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         return (t.badges || []).some(function (b) { return tskSelectedUids.has(b.bitrixUserId); });
     }
 
+    // ── Ordenação por coluna (Criador/Responsável/Participantes/Observadores) ─────
+    var tskSortColuna = null; // 'criador' | 'responsavel' | 'participantes' | 'observadores' | null
+    var tskSortAsc    = true;
+
+    function tskPrimeiroPorPapel(t, papel) {
+        var lista = (t.badges || []).filter(function (b) { return (b.papeis || []).indexOf(papel) !== -1; });
+        return lista.length ? lista[0].nome : '';
+    }
+
+    function tskValorOrdenacao(t, coluna) {
+        if (coluna === 'criador')       return (t.criador && t.criador.nome) || '';
+        if (coluna === 'responsavel')   return (t.responsavel && t.responsavel.nome) || '';
+        if (coluna === 'participantes') return tskPrimeiroPorPapel(t, 'Participante');
+        if (coluna === 'observadores')  return tskPrimeiroPorPapel(t, 'Observador');
+        return '';
+    }
+
+    function tskAtualizarIconesOrdenacao() {
+        document.querySelectorAll('#tsk-section .tsk-th-sort').forEach(function (el) {
+            var icon = el.querySelector('.mon-sort-icon');
+            if (!icon) return;
+            if (tskSortColuna === el.getAttribute('data-col')) {
+                icon.className = 'fas ' + (tskSortAsc ? 'fa-sort-up' : 'fa-sort-down') + ' mon-sort-icon active';
+            } else {
+                icon.className = 'fas fa-sort mon-sort-icon';
+            }
+        });
+    }
+
+    window.tskOrdenarPor = function (coluna) {
+        if (tskSortColuna === coluna) {
+            tskSortAsc = !tskSortAsc;
+        } else {
+            tskSortColuna = coluna;
+            tskSortAsc = true;
+        }
+        tskAtualizarIconesOrdenacao();
+        if (lastTarefas) renderTarefas(lastTarefas);
+    };
+
+    function tskAplicarOrdenacao(tarefas) {
+        if (!tskSortColuna) return tarefas; // padrão: mantém a ordem original (atrasada/prazo)
+
+        return tarefas.slice().sort(function (a, b) {
+            var va = tskValorOrdenacao(a, tskSortColuna).toLowerCase();
+            var vb = tskValorOrdenacao(b, tskSortColuna).toLowerCase();
+            if (va === '' && vb === '') return 0;
+            if (va === '') return 1;  // sem pessoa nessa coluna sempre vai pro fim
+            if (vb === '') return -1;
+            var cmp = va < vb ? -1 : (va > vb ? 1 : 0);
+            return tskSortAsc ? cmp : -cmp;
+        });
+    }
+
     function renderTarefas(data) {
         var listEl  = document.getElementById('tsk-list');
         var countEl = document.getElementById('tsk-count');
@@ -1376,6 +1449,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         var tarefas = (tskSelectedUids && tskSelectedUids.size)
             ? todasTarefas.filter(tskEnvolveSelecionados)
             : todasTarefas;
+        tarefas = tskAplicarOrdenacao(tarefas);
 
         countEl.textContent = tarefas.length + ' em aberto';
 
@@ -1417,8 +1491,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     }
 
     // ── Painel Chamados abertos (SPA 1054 / Funil 208 — fila inteira, sem escopo de equipe) ──
-    var lastChamados     = null;
-    var chaMostrarTodos  = false;
+    var lastChamados    = null;
+    var chaSelectedTipos = null; // Set — inicializado no primeiro carregamento (todos selecionados)
 
     function iniciais(nome) {
         var partes = (nome || '').trim().split(/\s+/).filter(Boolean);
@@ -1480,6 +1554,91 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         if (btn) btn.classList.toggle('open', !isOpen);
     };
 
+    // ── Filtro por Tipo (pills multi-select, mesmo padrão do filtro por pessoa do Tarefas) ──
+    function chaTiposDisponiveis(chamados) {
+        var vistos = {};
+        var lista  = [];
+        chamados.forEach(function (c) {
+            if (!vistos[c.tipo]) {
+                vistos[c.tipo] = true;
+                lista.push({ tipo: c.tipo, label: c.tipoLabel, cor: c.tipoCor });
+            }
+        });
+        lista.sort(function (a, b) { return a.label < b.label ? -1 : (a.label > b.label ? 1 : 0); });
+        return lista;
+    }
+
+    function chaRenderFiltroTipos(tipos) {
+        var el = document.getElementById('cha-filtro-tipos');
+        if (!el) return;
+        if (!tipos.length) { el.innerHTML = ''; return; }
+
+        if (chaSelectedTipos === null) {
+            chaSelectedTipos = new Set(tipos.map(function (t) { return t.tipo; }));
+        }
+
+        el.innerHTML = tipos.map(function (t) {
+            var ativo = chaSelectedTipos.has(t.tipo);
+            return '<span class="tsk-filter-pill tipo' + (ativo ? ' active' : '') + '" onclick="chaToggleTipoFiltro(' + t.tipo + ')">'
+                + escHtml(t.label) + '</span>';
+        }).join('');
+    }
+
+    window.chaToggleTipoFiltro = function (tipo) {
+        if (!chaSelectedTipos) return;
+        if (chaSelectedTipos.has(tipo)) {
+            if (chaSelectedTipos.size <= 1) return; // nunca deixa ficar com 0 selecionados
+            chaSelectedTipos.delete(tipo);
+        } else {
+            chaSelectedTipos.add(tipo);
+        }
+        if (lastChamados) renderChamados(lastChamados);
+    };
+
+    // ── Ordenação por coluna (Tipo/Etapa) ─────────────────────────────────────────
+    var chaSortColuna = null; // 'tipo' | 'etapa' | null
+    var chaSortAsc    = true;
+
+    function chaValorOrdenacao(c, coluna) {
+        if (coluna === 'tipo')  return c.tipoLabel  || '';
+        if (coluna === 'etapa') return c.etapaLabel || '';
+        return '';
+    }
+
+    function chaAtualizarIconesOrdenacao() {
+        document.querySelectorAll('#cha-section .cha-th-sort').forEach(function (el) {
+            var icon = el.querySelector('.mon-sort-icon');
+            if (!icon) return;
+            if (chaSortColuna === el.getAttribute('data-col')) {
+                icon.className = 'fas ' + (chaSortAsc ? 'fa-sort-up' : 'fa-sort-down') + ' mon-sort-icon active';
+            } else {
+                icon.className = 'fas fa-sort mon-sort-icon';
+            }
+        });
+    }
+
+    window.chaOrdenarPor = function (coluna) {
+        if (chaSortColuna === coluna) {
+            chaSortAsc = !chaSortAsc;
+        } else {
+            chaSortColuna = coluna;
+            chaSortAsc = true;
+        }
+        chaAtualizarIconesOrdenacao();
+        if (lastChamados) renderChamados(lastChamados);
+    };
+
+    function chaAplicarOrdenacao(chamados) {
+        if (!chaSortColuna) return chamados; // padrão: mantém a ordem original (mais antigo primeiro)
+
+        return chamados.slice().sort(function (a, b) {
+            var va = chaValorOrdenacao(a, chaSortColuna).toLowerCase();
+            var vb = chaValorOrdenacao(b, chaSortColuna).toLowerCase();
+            var cmp = va < vb ? -1 : (va > vb ? 1 : 0);
+            return chaSortAsc ? cmp : -cmp;
+        });
+    }
+
     function renderChamados(data) {
         var listEl  = document.getElementById('cha-list');
         var countEl = document.getElementById('cha-count');
@@ -1490,8 +1649,13 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             return;
         }
 
-        var todos    = data.chamados || [];
-        var visiveis = chaMostrarTodos ? todos : todos.filter(function (c) { return c.tipoPadrao; });
+        var todos = data.chamados || [];
+        chaRenderFiltroTipos(chaTiposDisponiveis(todos));
+
+        var visiveis = (chaSelectedTipos && chaSelectedTipos.size)
+            ? todos.filter(function (c) { return chaSelectedTipos.has(c.tipo); })
+            : todos;
+        visiveis = chaAplicarOrdenacao(visiveis);
 
         countEl.textContent = visiveis.length + ' em aberto';
 
@@ -1502,13 +1666,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 
         listEl.innerHTML = visiveis.map(chaRowHtml).join('');
     }
-
-    window.chaToggleTipos = function () {
-        chaMostrarTodos = !chaMostrarTodos;
-        var btn = document.getElementById('cha-toggle-tipos');
-        if (btn) btn.classList.toggle('active', chaMostrarTodos);
-        if (lastChamados) renderChamados(lastChamados);
-    };
 
     function carregarChamados() {
         return fetch('/api/monitoramento-chamados-cards.php', { credentials: 'same-origin' })
