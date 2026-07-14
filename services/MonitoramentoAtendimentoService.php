@@ -105,16 +105,23 @@ class MonitoramentoAtendimentoService {
             $it        = $entrada['item'];
             $sessionId = $it['lines']['id'] ?? null;
             $msgs      = $historicos[$sessionId] ?? [];
+            $titulo    = $it['title'] ?? '(sem título)';
+            $ehGrupo   = $this->ehGrupo($titulo);
 
             $ultima     = end($msgs) ?: null;
             $aguardando = $ultima === null || !isset($nomesInternos[(int)$ultima['senderid']]);
             $ultimaData = $ultima['date'] ?? ($it['lines']['date_create'] ?? null);
 
-            foreach ($this->paresClienteAtendente($msgs, $nomesInternos) as $par) {
-                $amostrasResposta[] = $this->minutosUteisEntre(
-                    new DateTime($par['clienteData']),
-                    new DateTime($par['atendenteData'])
-                );
+            // Grupo de WhatsApp não é atendimento 1:1 — mensagens de vários membros externos
+            // inflam o tempo de resposta com números irreais (ex.: 430h). Fica de fora das
+            // amostras e das métricas do painel, só aparece na aba "Grupos" (ver getDados()).
+            if (!$ehGrupo) {
+                foreach ($this->paresClienteAtendente($msgs, $nomesInternos) as $par) {
+                    $amostrasResposta[] = $this->minutosUteisEntre(
+                        new DateTime($par['clienteData']),
+                        new DateTime($par['atendenteData'])
+                    );
+                }
             }
 
             // Reclamada = só uma identidade viu essa sessão (ela pegou o atendimento);
@@ -135,7 +142,8 @@ class MonitoramentoAtendimentoService {
 
             $conversas[] = [
                 'sessionId'                   => (int)$sessionId,
-                'titulo'                      => $it['title'] ?? '(sem título)',
+                'titulo'                      => $titulo,
+                'ehGrupo'                     => $ehGrupo,
                 'aguardando'                  => $aguardando,
                 'ultimaMensagemTexto'         => $ultima ? $this->limparBBCode((string)$ultima['text']) : null,
                 'ultimaMensagemData'          => $ultimaData,
@@ -157,19 +165,32 @@ class MonitoramentoAtendimentoService {
             return ($b['minutosDesdeUltimaAtividade'] ?? 0) <=> ($a['minutosDesdeUltimaAtividade'] ?? 0);
         });
 
+        // "Conversas" nunca inclui grupo (nem nas métricas, nem na lista) — grupo só existe
+        // na aba "Grupos", separada e sem métricas agregadas (ver monitoramento.php).
+        $conversasSemGrupo = array_values(array_filter($conversas, fn($c) => !$c['ehGrupo']));
+        $grupos             = array_values(array_filter($conversas, fn($c) => $c['ehGrupo']));
+
         return [
             'bitrixBase'              => $bitrixBase,
             'identidades'             => array_column($identidades, 'nome'), // diagnóstico — quais webhooks foram consultados
             'agrupamentoPorResponsavel' => $multiIdentidade, // se true, front separa em "Aguardando atendimento" / "Sendo atendida"
             'conversasAtivas' => [
-                'total'      => count($conversas),
-                'aguardando' => count(array_filter($conversas, fn($c) => $c['aguardando'])),
+                'total'      => count($conversasSemGrupo),
+                'aguardando' => count(array_filter($conversasSemGrupo, fn($c) => $c['aguardando'])),
             ],
             'tempoMedioRespostaMinutos' => $amostrasResposta
                 ? round(array_sum($amostrasResposta) / count($amostrasResposta))
                 : null,
-            'conversas' => $conversas,
+            'conversas' => $conversasSemGrupo,
+            'grupos'    => $grupos,
         ];
+    }
+
+    /** Detecta conversas de grupo de WhatsApp (não são atendimento 1:1) — confirmado ao vivo
+     *  que o título vem no formato "WA: WhatsApp group - {nome do grupo} - {fila}". Case
+     *  insensitive por segurança (o conector pode variar capitalização entre canais). */
+    private function ehGrupo(string $titulo): bool {
+        return stripos($titulo, 'whatsapp group') !== false;
     }
 
     /** Uma identidade por webhook pessoal cadastrado (ver WebhooksPessoaisAtendimento) — se

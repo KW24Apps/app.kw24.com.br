@@ -1081,6 +1081,14 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     font-weight: 600;
     white-space: nowrap;
 }
+/* Abas "Conversas" / "Grupos" dentro do Atendimento — mesmo padrão visual/interação de
+ * .mon-tabs-bar/.mon-tab (Chamados abertos/Tarefas), reaproveitado aqui via IDs próprios
+ * (ateTrocarAba(), independente de monTrocarAba()). Grupo de WhatsApp fica isolado das
+ * métricas de "Conversas" — ver ehGrupo() em MonitoramentoAtendimentoService. */
+#mon-tab-ate-conv.active  { border-bottom-color: #26FF93; }
+#mon-tab-ate-grupo.active { border-bottom-color: #25D366; }
+#mon-tab-ate-conv .mon-tab-title i  { color: #26FF93; }
+#mon-tab-ate-grupo .mon-tab-title i { color: #25D366; }
 </style>
 
 <div class="page-header">
@@ -1099,9 +1107,25 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 <div class="topo-row">
     <div class="ate-section">
         <div class="ate-header"><i class="fas fa-headset"></i>Atendimento</div>
-        <div class="ate-kpis" id="ate-kpis"></div>
-        <div class="ate-list" id="ate-list">
-            <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+        <div class="mon-tabs-bar">
+            <div class="mon-tab active" id="mon-tab-ate-conv" onclick="ateTrocarAba('conv')">
+                <span class="mon-tab-title"><i class="fas fa-comments"></i>Conversas</span>
+            </div>
+            <div class="mon-tab" id="mon-tab-ate-grupo" onclick="ateTrocarAba('grupo')">
+                <span class="mon-tab-title"><i class="fab fa-whatsapp"></i>Grupos</span>
+                <span class="mon-tab-count" id="ate-grupo-count">0</span>
+            </div>
+        </div>
+        <div class="mon-tab-content" id="ate-tab-content-conv">
+            <div class="ate-kpis" id="ate-kpis"></div>
+            <div class="ate-list" id="ate-list">
+                <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+            </div>
+        </div>
+        <div class="mon-tab-content" id="ate-tab-content-grupo" style="display:none">
+            <div class="ate-list" id="ate-grupo-list">
+                <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+            </div>
         </div>
     </div>
 
@@ -2136,15 +2160,51 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             : '<div class="ate-row">' + body + '</div>';
     }
 
+    // Abas "Conversas" / "Grupos" — mesmo padrão de monTrocarAba(), independente dele.
+    var ateAbaAtiva = 'conv';
+
+    function ateAtualizarAbas() {
+        var tabConv  = document.getElementById('mon-tab-ate-conv');
+        var tabGrupo = document.getElementById('mon-tab-ate-grupo');
+        var contConv  = document.getElementById('ate-tab-content-conv');
+        var contGrupo = document.getElementById('ate-tab-content-grupo');
+        if (!tabConv || !tabGrupo || !contConv || !contGrupo) return;
+
+        tabConv.classList.toggle('active', ateAbaAtiva === 'conv');
+        tabGrupo.classList.toggle('active', ateAbaAtiva === 'grupo');
+        contConv.style.display  = ateAbaAtiva === 'conv'  ? 'flex' : 'none';
+        contGrupo.style.display = ateAbaAtiva === 'grupo' ? 'flex' : 'none';
+    }
+
+    window.ateTrocarAba = function (aba) {
+        if (ateAbaAtiva === aba) return;
+        ateAbaAtiva = aba;
+        ateAtualizarAbas();
+    };
+
+    ateAtualizarAbas();
+
     function renderAtendimento(data) {
-        var kpisEl = document.getElementById('ate-kpis');
-        var listEl = document.getElementById('ate-list');
+        var kpisEl      = document.getElementById('ate-kpis');
+        var listEl      = document.getElementById('ate-list');
+        var grupoListEl = document.getElementById('ate-grupo-list');
+        var grupoCntEl  = document.getElementById('ate-grupo-count');
         if (!kpisEl || !listEl) return;
 
         if (data.aviso) {
             kpisEl.innerHTML = '';
             listEl.innerHTML = '<div class="mon-empty"><i class="fas fa-plug"></i><div>' + escHtml(data.aviso) + '</div></div>';
+            if (grupoListEl) grupoListEl.innerHTML = '';
+            if (grupoCntEl) grupoCntEl.textContent = '0';
             return;
+        }
+
+        var grupos = data.grupos || [];
+        if (grupoCntEl) grupoCntEl.textContent = grupos.length;
+        if (grupoListEl) {
+            grupoListEl.innerHTML = grupos.length
+                ? grupos.map(ateRowHtml).join('')
+                : '<div class="mon-empty"><i class="fas fa-check-circle"></i><div>Nenhum grupo de WhatsApp ativo no momento.</div></div>';
         }
 
         var ativas   = data.conversasAtivas || { total: 0, aguardando: 0 };
@@ -2195,6 +2255,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                     document.getElementById('ate-list').innerHTML =
                         '<div class="mon-empty" style="color:#fc8181"><i class="fas fa-exclamation-circle"></i><div>'
                         + escHtml(data.erro) + '</div></div>';
+                    document.getElementById('ate-grupo-list').innerHTML = '';
                     return;
                 }
                 renderAtendimento(data);
@@ -2203,6 +2264,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                 document.getElementById('ate-kpis').innerHTML = '';
                 document.getElementById('ate-list').innerHTML =
                     '<div class="mon-empty" style="color:#fc8181"><i class="fas fa-exclamation-circle"></i><div>Erro de comunicação.</div></div>';
+                document.getElementById('ate-grupo-list').innerHTML = '';
             });
     }
 
