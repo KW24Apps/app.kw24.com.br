@@ -27,7 +27,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     display: flex;
     gap: 1.25rem;
     align-items: stretch;
-    min-height: 800px;
+    min-height: 1600px;
 }
 .mon-right-col {
     display: flex;
@@ -685,26 +685,18 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     color: rgba(255,255,255,.4);
     font-family: 'Inter', monospace;
 }
-.fun-body {
-    display: flex;
-    flex: 1;
-    min-height: 0;
-}
 .fun-cards {
     display: flex;
-    flex-direction: column;
-    flex: 1 1 0;
-    min-width: 0;
-    border-right: 1px solid rgba(255,255,255,0.08);
+    flex-direction: row;
 }
 .fun-card {
     flex: 1 1 0;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
+    border-right: 1px solid rgba(255,255,255,0.08);
 }
-.fun-card:last-child { border-bottom: none; }
+.fun-card:last-child { border-right: none; }
 .fun-card-header {
     padding: .7rem 1.25rem;
     font-family: 'Rubik', sans-serif;
@@ -716,51 +708,48 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .fun-card-header.criados i { color: #0DC2FF; }
 .fun-card-header.finalizados i { color: #48bb78; }
 .fun-card-body {
-    padding: 1.1rem 1.25rem;
+    padding: .9rem 1.25rem 1.1rem;
     display: flex;
-    gap: 2rem;
+    flex-wrap: wrap;
+    gap: 1.25rem;
 }
 .fun-stat { display: flex; flex-direction: column; gap: .25rem; }
 .fun-stat-value {
-    font-size: 1.6rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: #fff;
     font-family: 'Inter', monospace;
 }
 .fun-stat-label {
-    font-size: .67rem;
+    font-size: .64rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .06em;
     color: rgba(255,255,255,.4);
 }
 .fun-dist {
-    flex: 1 1 0;
-    min-width: 0;
-    padding: .8rem 1rem;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+    padding: .8rem 1.25rem 1rem;
+    border-top: 1px solid rgba(255,255,255,0.08);
 }
 .fun-dist-header {
-    font-size: .64rem;
+    font-size: .67rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: .05em;
+    letter-spacing: .06em;
     color: rgba(255,255,255,.4);
-    margin-bottom: .55rem;
+    margin-bottom: .65rem;
 }
 .fun-dist-row {
     display: flex;
     align-items: center;
-    gap: .4rem;
-    margin-bottom: .32rem;
+    gap: .6rem;
+    margin-bottom: .4rem;
 }
 .fun-dist-row:last-child { margin-bottom: 0; }
 .fun-dist-label {
-    flex: 0 0 92px;
+    flex: 0 0 150px;
     min-width: 0;
-    font-size: .66rem;
+    font-size: .72rem;
     color: rgba(255,255,255,.65);
     white-space: nowrap;
     overflow: hidden;
@@ -768,16 +757,16 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 }
 .fun-dist-track {
     flex: 1;
-    height: 8px;
+    height: 10px;
     background: rgba(255,255,255,.06);
-    border-radius: 4px;
+    border-radius: 5px;
     overflow: hidden;
 }
-.fun-dist-fill { height: 100%; border-radius: 4px; }
+.fun-dist-fill { height: 100%; border-radius: 5px; }
 .fun-dist-value {
-    flex: 0 0 18px;
+    flex: 0 0 26px;
     text-align: right;
-    font-size: .66rem;
+    font-size: .72rem;
     font-weight: 700;
     color: #fff;
     font-family: 'Inter', monospace;
@@ -891,25 +880,23 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 
     <div class="fun-box" id="fun-section">
         <div class="fun-box-header"><i class="fas fa-filter"></i>Funil<span class="fun-box-ciclo" id="fun-ciclo"></span></div>
-        <div class="fun-body">
-            <div class="fun-cards">
-                <div class="fun-card">
-                    <div class="fun-card-header criados"><i class="fas fa-inbox"></i>Chamados criados</div>
-                    <div class="fun-card-body" id="fun-criados-body">
-                        <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
-                    </div>
-                </div>
-                <div class="fun-card">
-                    <div class="fun-card-header finalizados"><i class="fas fa-check-circle"></i>Chamados finalizados</div>
-                    <div class="fun-card-body" id="fun-finalizados-body">
-                        <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
-                    </div>
+        <div class="fun-cards">
+            <div class="fun-card">
+                <div class="fun-card-header criados"><i class="fas fa-inbox"></i>Chamados criados</div>
+                <div class="fun-card-body" id="fun-criados-body">
+                    <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
                 </div>
             </div>
-            <div class="fun-dist">
-                <div class="fun-dist-header">Distribuição dos abertos</div>
-                <div id="fun-dist-rows"></div>
+            <div class="fun-card">
+                <div class="fun-card-header finalizados"><i class="fas fa-check-circle"></i>Chamados finalizados</div>
+                <div class="fun-card-body" id="fun-finalizados-body">
+                    <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
+                </div>
             </div>
+        </div>
+        <div class="fun-dist">
+            <div class="fun-dist-header">Distribuição dos chamados abertos</div>
+            <div id="fun-dist-rows"></div>
         </div>
     </div>
 </div>
