@@ -563,9 +563,65 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     margin-left: auto;
     padding: 0 var(--mon-sp-lg);
 }
+/* Dropdowns de filtro (Tipo/Responsável) do Chamados abertos — trigger compacto "Rótulo · N"
+ * + painel flutuante com checkboxes, ver chaToggleDropdown()/chaRenderFiltroTipos()/
+ * chaRenderFiltroPessoas(). Reaproveita o mesmo Set multi-select de sempre por baixo — só a
+ * apresentação virou dropdown em vez de uma linha de pills, pra não competir por espaço
+ * horizontal com as abas Chamados abertos/Tarefas. */
+.cha-dropdown { position: relative; }
+.cha-dropdown-trigger {
+    display: flex;
+    align-items: center;
+    gap: var(--mon-sp-2xs);
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    padding: var(--mon-sp-3xs) var(--mon-sp-sm);
+    color: rgba(255,255,255,.75);
+    font-size: var(--mon-fs-2xs);
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+}
+.cha-dropdown-trigger:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.cha-dropdown.open .cha-dropdown-trigger { background: rgba(13,194,255,0.12); border-color: rgba(13,194,255,0.4); color: #fff; }
+.cha-dropdown-trigger i { font-size: .55rem; color: rgba(255,255,255,.4); transition: transform .15s; }
+.cha-dropdown.open .cha-dropdown-trigger i { transform: rotate(180deg); }
+.cha-dropdown-panel {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + var(--mon-sp-2xs));
+    background: #0d1e2d;
+    border: 1.5px solid rgba(255,255,255,.12);
+    border-radius: 10px;
+    padding: var(--mon-sp-xs);
+    min-width: 200px;
+    max-height: 280px;
+    overflow-y: auto;
+    z-index: 60;
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+}
+.cha-dropdown.open .cha-dropdown-panel { display: block; }
+.cha-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: var(--mon-sp-xs);
+    padding: var(--mon-sp-2xs) var(--mon-sp-xs);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: var(--mon-fs-sm);
+    color: rgba(255,255,255,.8);
+    white-space: nowrap;
+}
+.cha-dropdown-item:hover { background: rgba(255,255,255,.06); }
+.cha-dropdown-item input[type="checkbox"] { accent-color: #0DC2FF; cursor: pointer; flex-shrink: 0; }
+.cha-dropdown-item .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.cha-dropdown-empty { padding: var(--mon-sp-sm); font-size: var(--mon-fs-sm); color: rgba(255,255,255,.35); white-space: normal; }
 .cha-thead {
     display: grid;
-    grid-template-columns: clamp(21px,1.54vw,26px) minmax(clamp(112px,8.2vw,140px),1.4fr) minmax(clamp(88px,6.44vw,110px),0.9fr) minmax(clamp(80px,5.86vw,100px),0.8fr) minmax(clamp(72px,5.27vw,90px),0.8fr) clamp(62px,4.54vw,78px) clamp(40px,2.93vw,50px);
+    grid-template-columns: clamp(21px,1.54vw,26px) minmax(clamp(112px,8.2vw,140px),1.4fr) minmax(clamp(88px,6.44vw,110px),0.9fr) minmax(clamp(64px,4.69vw,82px),0.6fr) minmax(clamp(80px,5.86vw,100px),0.8fr) minmax(clamp(72px,5.27vw,90px),0.8fr) clamp(62px,4.54vw,78px) clamp(40px,2.93vw,50px);
     gap: var(--mon-sp-base);
     align-items: center;
     padding: var(--mon-sp-sm) var(--mon-sp-lg);
@@ -606,7 +662,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .cha-row:last-child { border-bottom: none; }
 .cha-row-main {
     display: grid;
-    grid-template-columns: clamp(21px,1.54vw,26px) minmax(clamp(112px,8.2vw,140px),1.4fr) minmax(clamp(88px,6.44vw,110px),0.9fr) minmax(clamp(80px,5.86vw,100px),0.8fr) minmax(clamp(72px,5.27vw,90px),0.8fr) clamp(62px,4.54vw,78px) clamp(40px,2.93vw,50px);
+    grid-template-columns: clamp(21px,1.54vw,26px) minmax(clamp(112px,8.2vw,140px),1.4fr) minmax(clamp(88px,6.44vw,110px),0.9fr) minmax(clamp(64px,4.69vw,82px),0.6fr) minmax(clamp(80px,5.86vw,100px),0.8fr) minmax(clamp(72px,5.27vw,90px),0.8fr) clamp(62px,4.54vw,78px) clamp(40px,2.93vw,50px);
     gap: var(--mon-sp-base);
     align-items: center;
     padding: var(--mon-sp-xs) var(--mon-sp-lg);
@@ -745,21 +801,12 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     color: #fff;
     border-color: transparent;
 }
-/* Pills de filtro por pessoa (Tarefas) — verde, para diferenciar do toggle "Mostrar todos os
- * tipos" de Chamados abertos, que reaproveita a classe base .tsk-filter-pill sem esse modificador. */
+/* Pills de filtro por pessoa (Tarefas) — verde. O filtro por Tipo/Responsável de Chamados
+ * abertos usa outro componente (dropdown com checkboxes, ver .cha-dropdown-*), não pills. */
 .tsk-filter-pill.pessoa { border-color: rgba(38,255,147,.35); }
 .tsk-filter-pill.pessoa:hover { border-color: rgba(38,255,147,.6); color: rgba(255,255,255,.8); }
 .tsk-filter-pill.pessoa.active {
     background: linear-gradient(90deg,#26FF93,#1a9c5a);
-    color: #061920;
-    border-color: transparent;
-}
-/* Pills de filtro por Tipo (Chamados abertos) — mesmo padrão/interação das pills de pessoa
- * do Tarefas acima, só que ciano (tema já usado no resto do painel Chamados abertos). */
-.tsk-filter-pill.tipo { border-color: rgba(13,194,255,.35); }
-.tsk-filter-pill.tipo:hover { border-color: rgba(13,194,255,.6); color: rgba(255,255,255,.8); }
-.tsk-filter-pill.tipo.active {
-    background: linear-gradient(90deg,#0DC2FF,#0080aa);
     color: #061920;
     border-color: transparent;
 }
@@ -1216,7 +1263,22 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                     <span class="mon-tab-title"><i class="fas fa-list-check"></i>Tarefas</span>
                     <span class="mon-tab-count" id="tsk-count">Carregando…</span>
                 </div>
-                <div class="mon-tab-filters" id="cha-filtro-tipos"></div>
+                <div class="mon-tab-filters" id="cha-filtros">
+                    <div class="cha-dropdown" id="cha-dropdown-tipo">
+                        <button class="cha-dropdown-trigger" onclick="chaToggleDropdown('tipo')">
+                            <span>Tipo · <span id="cha-dropdown-tipo-count">0</span></span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="cha-dropdown-panel" id="cha-dropdown-tipo-panel"></div>
+                    </div>
+                    <div class="cha-dropdown" id="cha-dropdown-pessoa">
+                        <button class="cha-dropdown-trigger" onclick="chaToggleDropdown('pessoa')">
+                            <span>Responsável · <span id="cha-dropdown-pessoa-count">0</span></span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="cha-dropdown-panel" id="cha-dropdown-pessoa-panel"></div>
+                    </div>
+                </div>
                 <div class="mon-tab-filters" id="tsk-filter-row" style="display:none"></div>
             </div>
 
@@ -1225,6 +1287,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                     <span></span>
                     <span class="cha-th">Chamado</span>
                     <span class="cha-th cha-th-sort" data-col="tipo" onclick="chaOrdenarPor('tipo')">Tipo<i class="fas fa-sort mon-sort-icon"></i></span>
+                    <span class="cha-th cha-th-sort" data-col="prioridade" onclick="chaOrdenarPor('prioridade')">Prior.<i class="fas fa-sort mon-sort-icon"></i></span>
                     <span class="cha-th cha-th-sort" data-col="etapa" onclick="chaOrdenarPor('etapa')">Etapa<i class="fas fa-sort mon-sort-icon"></i></span>
                     <span class="cha-th">Solicitante</span>
                     <span class="cha-th">Resp.</span>
@@ -1316,7 +1379,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         var tabTsk  = document.getElementById('mon-tab-tsk');
         var contCha = document.getElementById('mon-tab-content-cha');
         var contTsk = document.getElementById('mon-tab-content-tsk');
-        var filCha  = document.getElementById('cha-filtro-tipos');
+        var filCha  = document.getElementById('cha-filtros');
         var filTsk  = document.getElementById('tsk-filter-row');
         if (!tabCha || !tabTsk || !contCha || !contTsk) return;
 
@@ -1944,6 +2007,9 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                 + '<button class="cha-chevron-btn" id="cha-btn-' + c.id + '"><i class="fas fa-chevron-right" style="font-size:.7rem"></i></button>'
                 + '<div class="cha-row-chamado">' + idHtml + '<span class="cha-row-title" title="' + escHtml(c.titulo) + '">' + escHtml(c.titulo) + '</span></div>'
                 + '<span class="cha-badge" title="' + escHtml(c.tipoLabel) + '" style="background:' + c.tipoCor + '22;color:' + c.tipoCor + ';border:1px solid ' + c.tipoCor + '55">' + escHtml(c.tipoLabel) + '</span>'
+                + (c.prioridadeLabel
+                    ? '<span class="cha-badge" title="' + escHtml(c.prioridadeLabel) + '" style="background:' + c.prioridadeCor + '22;color:' + c.prioridadeCor + ';border:1px solid ' + c.prioridadeCor + '55">' + escHtml(c.prioridadeLabel) + '</span>'
+                    : '<span class="cha-etapa">—</span>')
                 + '<span class="cha-etapa" title="' + escHtml(c.etapaLabel) + '">' + escHtml(c.etapaLabel) + '</span>'
                 + '<span class="cha-solicitante" title="' + escHtml(c.solicitante || '') + '">' + escHtml(c.solicitante || '—') + '</span>'
                 + '<span class="cha-avatares">' + avatares + '</span>'
@@ -1967,12 +2033,28 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         if (btn) btn.classList.toggle('open', !isOpen);
     };
 
-    // ── Filtro por Tipo (pills multi-select, mesmo padrão do filtro por pessoa do Tarefas) ──
-    // Cada tipo nomeado vem do backend (TipoChamadoCatalogo::paraPills(), fonte única de
-    // verdade compartilhada com a classificação Suporte/Desenvolvimento do painel Equipe) —
-    // nada de mapa duplicado aqui. "Outros" é um bucket catch-all (chave especial, não um
-    // tipo real) que cobre qualquer tipo fora da lista vinda do backend, incluindo tipos
-    // novos que apareçam no futuro sem precisar mexer neste código.
+    // ── Dropdowns de filtro (Tipo / Responsável) — trigger "Rótulo · N" + painel com
+    // checkboxes, mesmo Set multi-select de sempre por baixo (só a apresentação virou dropdown
+    // em vez de pills, pra não ocupar a linha inteira de largura). Só um aberto por vez;
+    // fecha ao clicar fora. ──────────────────────────────────────────────────────────
+    window.chaToggleDropdown = function (nome) {
+        ['tipo', 'pessoa'].forEach(function (n) {
+            var el = document.getElementById('cha-dropdown-' + n);
+            if (!el) return;
+            el.classList.toggle('open', n === nome ? !el.classList.contains('open') : false);
+        });
+    };
+
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('.cha-dropdown')) return;
+        document.querySelectorAll('.cha-dropdown.open').forEach(function (el) { el.classList.remove('open'); });
+    });
+
+    // ── Filtro por Tipo — cada tipo nomeado vem do backend (TipoChamadoCatalogo::paraPills(),
+    // fonte única de verdade compartilhada com a classificação Suporte/Desenvolvimento do
+    // painel Equipe) — nada de mapa duplicado aqui. "Outros" é um bucket catch-all (chave
+    // especial, não um tipo real) que cobre qualquer tipo fora da lista vinda do backend,
+    // incluindo tipos novos que apareçam no futuro sem precisar mexer neste código.
     var chaCatalogoTipos = null; // [{tipo, label, ativoPadrao}] — vem de data.catalogoTipos
 
     function chaChaveTipo(c) {
@@ -1982,11 +2064,14 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     }
 
     function chaRenderFiltroTipos(catalogo) {
-        var el = document.getElementById('cha-filtro-tipos');
-        if (!el) return;
+        var painel  = document.getElementById('cha-dropdown-tipo-panel');
+        var badgeEl = document.getElementById('cha-dropdown-tipo-count');
+        if (!painel) return;
 
         chaCatalogoTipos = catalogo || [];
 
+        // Default idêntico ao das pills de antes — mesmos tipos pré-selecionados, mesmos
+        // excluídos por padrão. Só calculado uma vez (primeiro carregamento).
         if (chaSelectedTipos === null) {
             chaSelectedTipos = new Set(
                 chaCatalogoTipos.filter(function (p) { return p.ativoPadrao; })
@@ -1994,34 +2079,110 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             );
         }
 
-        var pills = chaCatalogoTipos.map(function (p) { return { key: String(p.tipo), label: p.label }; });
-        pills.push({ key: 'outros', label: 'Outros' });
+        var itens = chaCatalogoTipos.map(function (p) { return { key: String(p.tipo), label: p.label, cor: p.cor }; });
+        itens.push({ key: 'outros', label: 'Outros', cor: '#a0aec0' });
 
-        el.innerHTML = pills.map(function (p) {
+        painel.innerHTML = itens.map(function (p) {
             var ativo = chaSelectedTipos.has(p.key);
-            return '<span class="tsk-filter-pill tipo' + (ativo ? ' active' : '') + '" onclick="chaToggleTipoFiltro(\'' + p.key + '\')">'
-                + escHtml(p.label) + '</span>';
+            return '<label class="cha-dropdown-item">'
+                + '<input type="checkbox"' + (ativo ? ' checked' : '') + ' onchange="chaToggleTipoFiltro(\'' + p.key + '\')">'
+                + '<span class="dot" style="background:' + (p.cor || '#a0aec0') + '"></span>'
+                + escHtml(p.label)
+                + '</label>';
         }).join('');
+
+        if (badgeEl) badgeEl.textContent = chaSelectedTipos.size;
     }
 
     window.chaToggleTipoFiltro = function (tipo) {
         if (!chaSelectedTipos) return;
         if (chaSelectedTipos.has(tipo)) {
-            if (chaSelectedTipos.size <= 1) return; // nunca deixa ficar com 0 selecionados
+            if (chaSelectedTipos.size <= 1) { chaRenderFiltroTipos(chaCatalogoTipos); return; } // nunca deixa ficar com 0 selecionados
             chaSelectedTipos.delete(tipo);
         } else {
             chaSelectedTipos.add(tipo);
         }
+        chaRenderFiltroTipos(chaCatalogoTipos);
         if (lastChamados) renderChamados(lastChamados);
     };
 
-    // ── Ordenação por coluna (Tipo/Etapa) ─────────────────────────────────────────
-    var chaSortColuna = null; // 'tipo' | 'etapa' | null
+    // ── Filtro por Responsável — roster dinâmico (qualquer colaborador que apareça em
+    // F_RESP dos chamados visíveis, não uma lista fixa) — default: todos marcados. Pessoas
+    // novas que apareçam num recarregamento entram já marcadas (mesma semântica do default:
+    // "mostrar todo mundo" se aplica também a quem aparece depois do primeiro carregamento).
+    var chaSelectedPessoas   = null;          // Set de bitrixUserId (string) — null = ainda não inicializado
+    var chaPessoasConhecidas = new Set();     // uids já vistos em qualquer carregamento anterior
+
+    function chaRenderFiltroPessoas(chamados) {
+        var painel  = document.getElementById('cha-dropdown-pessoa-panel');
+        var badgeEl = document.getElementById('cha-dropdown-pessoa-count');
+        if (!painel) return;
+
+        var porUid = {};
+        (chamados || []).forEach(function (c) {
+            (c.responsaveis || []).forEach(function (r) { porUid[String(r.bitrixUserId)] = r.nome; });
+        });
+
+        if (chaSelectedPessoas === null) chaSelectedPessoas = new Set();
+
+        // Uid genuinamente novo (nunca visto antes) entra marcado por padrão — "mostrar todo
+        // mundo" também vale pra quem aparece só depois do primeiro carregamento; uid que o
+        // usuário desmarcou manualmente não volta a ser marcado nos recarregamentos seguintes.
+        Object.keys(porUid).forEach(function (uid) {
+            if (!chaPessoasConhecidas.has(uid)) {
+                chaPessoasConhecidas.add(uid);
+                chaSelectedPessoas.add(uid);
+            }
+        });
+
+        var pessoas = Object.keys(porUid)
+            .map(function (uid) { return { uid: uid, nome: porUid[uid] }; })
+            .sort(function (a, b) { return a.nome.localeCompare(b.nome); });
+
+        painel.innerHTML = pessoas.length
+            ? pessoas.map(function (p) {
+                var ativo = chaSelectedPessoas.has(p.uid);
+                return '<label class="cha-dropdown-item">'
+                    + '<input type="checkbox"' + (ativo ? ' checked' : '') + ' onchange="chaTogglePessoaFiltro(\'' + p.uid + '\')">'
+                    + escHtml(p.nome)
+                    + '</label>';
+            }).join('')
+            : '<div class="cha-dropdown-empty">Nenhum responsável nos chamados visíveis.</div>';
+
+        if (badgeEl) badgeEl.textContent = chaSelectedPessoas.size;
+    }
+
+    window.chaTogglePessoaFiltro = function (uid) {
+        if (!chaSelectedPessoas) return;
+        if (chaSelectedPessoas.has(uid)) {
+            if (chaSelectedPessoas.size <= 1) { chaRenderFiltroPessoas(lastChamados && lastChamados.chamados); return; }
+            chaSelectedPessoas.delete(uid);
+        } else {
+            chaSelectedPessoas.add(uid);
+        }
+        chaRenderFiltroPessoas(lastChamados && lastChamados.chamados);
+        if (lastChamados) renderChamados(lastChamados);
+    };
+
+    function chaPassaFiltroPessoa(c) {
+        if (!chaSelectedPessoas || !chaSelectedPessoas.size) return true;
+        var resp = c.responsaveis || [];
+        if (!resp.length) return true; // sem responsável nenhum — não é escondido por este filtro
+        return resp.some(function (r) { return chaSelectedPessoas.has(String(r.bitrixUserId)); });
+    }
+
+    // ── Ordenação por coluna (Tipo/Prioridade/Etapa) ──────────────────────────────
+    var chaSortColuna = null; // 'tipo' | 'prioridade' | 'etapa' | null
     var chaSortAsc    = true;
 
+    // Ordena por urgência real (Urgente primeiro), não alfabética — "Alta" não pode vir antes
+    // de "Urgente" só porque a letra A é menor que U.
+    var CHA_PRIORIDADE_RANK = { 'Urgente': 1, 'Alta': 2, 'Média': 3, 'Baixa': 4 };
+
     function chaValorOrdenacao(c, coluna) {
-        if (coluna === 'tipo')  return c.tipoLabel  || '';
-        if (coluna === 'etapa') return c.etapaLabel || '';
+        if (coluna === 'tipo')       return c.tipoLabel  || '';
+        if (coluna === 'etapa')      return c.etapaLabel || '';
+        if (coluna === 'prioridade') return String(CHA_PRIORIDADE_RANK[c.prioridadeLabel] || 9);
         return '';
     }
 
@@ -2071,8 +2232,11 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 
         var todos = data.chamados || [];
         chaRenderFiltroTipos(data.catalogoTipos);
+        chaRenderFiltroPessoas(todos);
 
-        var visiveis = todos.filter(function (c) { return chaSelectedTipos.has(chaChaveTipo(c)); });
+        var visiveis = todos.filter(function (c) {
+            return chaSelectedTipos.has(chaChaveTipo(c)) && chaPassaFiltroPessoa(c);
+        });
         visiveis = chaAplicarOrdenacao(visiveis);
 
         countEl.textContent = visiveis.length + ' em aberto';

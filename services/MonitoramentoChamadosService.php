@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../helpers/Database.php';
 require_once __DIR__ . '/../services/BitrixService.php';
 require_once __DIR__ . '/../services/TipoChamadoCatalogo.php';
+require_once __DIR__ . '/../services/WebhooksPessoaisAtendimento.php';
 
 /**
  * Agregação do painel "Chamados abertos" — Monitoramento KW24.
@@ -24,6 +25,17 @@ class MonitoramentoChamadosService {
     private const F_RESP        = 'ufCrm41_1727877194'; // Responsável pelo Chamado (array de user IDs)
     private const F_SOLICITANTE = 'ufCrm41_1737477724'; // Solicitante (texto livre, não é usuário Bitrix)
     private const F_RESUMO      = 'ufCrm41_1727788277'; // Comentário Resumo (texto longo, exibido só ao expandir)
+    private const F_PRIORIDADE  = 'ufCrm41_1742220550'; // Prioridade
+
+    // Cores reaproveitadas da paleta já usada em Tipo/Equipe (nenhuma cor nova) — ordenadas por
+    // urgência visual: Urgente o mais alarmante (vermelho, mesmo tom de erro/atrasada), Baixa a
+    // mais neutra (cinza, mesmo tom de "Outros").
+    private const PRIORIDADES = [
+        21886 => ['label' => 'Urgente', 'cor' => '#fc8181'],
+        21812 => ['label' => 'Alta',    'cor' => '#f6ad55'],
+        21814 => ['label' => 'Média',   'cor' => '#0DC2FF'],
+        21816 => ['label' => 'Baixa',   'cor' => '#a0aec0'],
+    ];
 
     private const ETAPAS = [
         'DT1054_208:NEW'         => 'Fila - Desenvolvimento',
@@ -63,7 +75,7 @@ class MonitoramentoChamadosService {
         // Sem filtro por Tipo aqui de propósito — um tipo novo que apareça no futuro (fora do
         // catálogo conhecido) deve continuar aparecendo no painel (cai em "Outros" no
         // frontend), não desaparecer silenciosamente por não estar numa lista fixa.
-        $selectFields = ['id', self::F_NOME, 'title', self::F_TIPO, 'stageId', self::F_RESP, 'createdTime', self::F_SOLICITANTE];
+        $selectFields = ['id', self::F_NOME, 'title', self::F_TIPO, self::F_PRIORIDADE, 'stageId', self::F_RESP, 'createdTime', self::F_SOLICITANTE];
         if ($detalheCompleto) $selectFields[] = self::F_RESUMO;
 
         $items = $this->bitrix->listItems(
@@ -84,20 +96,48 @@ class MonitoramentoChamadosService {
         }
         $nomesUsuarios = $respIds ? $this->bitrix->getUserNames($respIds) : [];
 
-        // Chat: resolve o chat vinculado de cada card (sempre — é o que define 'temChat'),
-        // depois busca mensagens recentes dos chats encontrados (só em modo detalhado — ver
-        // docblock acima). ACCESS_ERROR é esperado e comum aqui — ver BitrixService::getCrmChatMessages().
-        $itemIds          = array_column($items, 'id');
-        $chatIdsPorItem   = $itemIds ? $this->bitrix->getCrmChatIds(self::ENTITY_TYPE, $itemIds) : [];
-        $mensagensPorChat = ($detalheCompleto && $chatIdsPorItem)
-            ? $this->bitrix->getCrmChatMessages(array_values($chatIdsPorItem), $mensagensPorChamado)
-            : [];
+        // Chat: resolve o chat vinculado de cada card (sempre — é o que define 'temChat'), depois
+        // busca mensagens recentes dos chats encontrados (só em modo detalhado — ver docblock
+        // acima). O webhook de automação frequentemente não é participante do chat de um card
+        // (ACCESS_ERROR) — quando o(s) responsável(is) do card têm webhook pessoal cadastrado
+        // (ver WebhooksPessoaisAtendimento, mesmo registro usado pelo painel Atendimento), usa o
+        // webhook do primeiro responsável cadastrado pra esse card específico, evitando o erro.
+        // Sem nenhum responsável cadastrado, cai no comportamento de sempre (webhook de
+        // automação, mesma chance de ACCESS_ERROR de hoje — caso esperado, não é bug).
+        $itemIds        = array_column($items, 'id');
+        $chatIdsPorItem = $itemIds ? $this->bitrix->getCrmChatIds(self::ENTITY_TYPE, $itemIds) : [];
+
+        $mensagensPorChat = [];
+        if ($detalheCompleto && $chatIdsPorItem) {
+            $webhookPorUid = (new WebhooksPessoaisAtendimento())->mapaWebhookPorUid();
+
+            // Agrupa chatIds por identidade (automação vs. cada webhook pessoal) — 1 chamada
+            // batch por identidade, não 1 por chamado.
+            $chatIdsPorIdentidade = []; // chave: '' (automação) ou webhookUrl => [chatId, ...]
+            foreach ($items as $it) {
+                $id     = (int)$it['id'];
+                $chatId = $chatIdsPorItem[$id] ?? null;
+                if ($chatId === null) continue;
+
+                $webhookUrl = '';
+                foreach ((array)($it[self::F_RESP] ?? []) as $uid) {
+                    if (isset($webhookPorUid[(int)$uid])) { $webhookUrl = $webhookPorUid[(int)$uid]; break; }
+                }
+                $chatIdsPorIdentidade[$webhookUrl][] = $chatId;
+            }
+
+            foreach ($chatIdsPorIdentidade as $webhookUrl => $chatIds) {
+                $bitrixIdentidade = $webhookUrl === '' ? $this->bitrix : new BitrixService($webhookUrl);
+                $mensagensPorChat += $bitrixIdentidade->getCrmChatMessages($chatIds, $mensagensPorChamado);
+            }
+        }
 
         $chamados = [];
         foreach ($items as $it) {
-            $id      = (int)$it['id'];
-            $tipo    = (int)($it[self::F_TIPO] ?? 0);
-            $stageId = $it['stageId'] ?? '';
+            $id         = (int)$it['id'];
+            $tipo       = (int)($it[self::F_TIPO] ?? 0);
+            $prioridade = (int)($it[self::F_PRIORIDADE] ?? 0);
+            $stageId    = $it['stageId'] ?? '';
 
             $responsaveis = [];
             foreach ((array)($it[self::F_RESP] ?? []) as $uid) {
@@ -129,17 +169,20 @@ class MonitoramentoChamadosService {
             }
 
             $chamado = [
-                'id'           => $id,
-                'titulo'       => $it[self::F_NOME] ?: ($it['title'] ?? ''),
-                'tipo'         => $tipo,
-                'tipoLabel'    => TipoChamadoCatalogo::label($tipo),
-                'tipoCor'      => TipoChamadoCatalogo::cor($tipo),
-                'etapaLabel'   => self::ETAPAS[$stageId] ?? $stageId, // defensivo — não deveria faltar (ver nota da classe)
-                'responsaveis' => $responsaveis,
-                'solicitante'  => trim((string)($it[self::F_SOLICITANTE] ?? '')),
-                'createdTime'  => $it['createdTime'] ?? null,
-                'temChat'      => $chatId !== null,
-                'chatErro'     => $chatErro,
+                'id'             => $id,
+                'titulo'         => $it[self::F_NOME] ?: ($it['title'] ?? ''),
+                'tipo'           => $tipo,
+                'tipoLabel'      => TipoChamadoCatalogo::label($tipo),
+                'tipoCor'        => TipoChamadoCatalogo::cor($tipo),
+                'prioridade'     => $prioridade,
+                'prioridadeLabel'=> self::PRIORIDADES[$prioridade]['label'] ?? null,
+                'prioridadeCor'  => self::PRIORIDADES[$prioridade]['cor'] ?? '#a0aec0',
+                'etapaLabel'     => self::ETAPAS[$stageId] ?? $stageId, // defensivo — não deveria faltar (ver nota da classe)
+                'responsaveis'   => $responsaveis,
+                'solicitante'    => trim((string)($it[self::F_SOLICITANTE] ?? '')),
+                'createdTime'    => $it['createdTime'] ?? null,
+                'temChat'        => $chatId !== null,
+                'chatErro'       => $chatErro,
             ];
             if ($detalheCompleto) {
                 $chamado['resumo']      = trim((string)($it[self::F_RESUMO] ?? ''));

@@ -81,6 +81,7 @@ class TipoChamadoCatalogo {
             $pills[] = [
                 'tipo'        => $tipo,
                 'label'       => $info['pillLabel'],
+                'cor'         => $info['cor'],
                 'ativoPadrao' => in_array(
                     $info['categoria'],
                     [self::CATEGORIA_SUPORTE, self::CATEGORIA_DESENVOLVIMENTO],

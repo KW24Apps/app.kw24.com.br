@@ -64,13 +64,14 @@ try {
                 break;
             }
             // Revalida aqui (não só no modal) — cobre quem pular a validação ao vivo e
-            // garante que nunca é salvo um webhook que não funciona.
+            // garante que nunca é salvo um webhook que não funciona. bitrixUserId vem dessa
+            // mesma chamada (user.current) — ver WebhooksPessoaisAtendimento::mapaWebhookPorUid().
             $validacao = $service->buscarNomeConta($url);
             if (!$validacao['sucesso']) {
                 echo json_encode(['erro' => $validacao['erro']]);
                 break;
             }
-            $service->adicionar($nome, $url);
+            $service->adicionar($nome, $url, $validacao['bitrixUserId'] ?? 0);
             echo json_encode(['sucesso' => true, 'pessoas' => $service->listarMascarado()]);
             break;
 
@@ -82,20 +83,22 @@ try {
                 echo json_encode(['erro' => 'Id e nome são obrigatórios']);
                 break;
             }
+            $bitrixUserId = 0;
             if ($url !== '') {
                 if (strpos($url, 'https://') !== 0) {
                     echo json_encode(['erro' => 'Webhook deve começar com https://']);
                     break;
                 }
                 // Só revalida quando uma URL nova é de fato enviada — editar só o nome,
-                // mantendo o webhook já salvo (URL em branco), não precisa revalidar.
+                // mantendo o webhook (e bitrixUserId) já salvos, não precisa revalidar.
                 $validacao = $service->buscarNomeConta($url);
                 if (!$validacao['sucesso']) {
                     echo json_encode(['erro' => $validacao['erro']]);
                     break;
                 }
+                $bitrixUserId = $validacao['bitrixUserId'] ?? 0;
             }
-            $service->editar($id, $nome, $url !== '' ? $url : null);
+            $service->editar($id, $nome, $url !== '' ? $url : null, $bitrixUserId);
             echo json_encode(['sucesso' => true, 'pessoas' => $service->listarMascarado()]);
             break;
 

@@ -68,30 +68,49 @@ class WebhooksPessoaisAtendimento {
 
         $nome = trim(($usuario['NAME'] ?? '') . ' ' . ($usuario['LAST_NAME'] ?? ''));
         if ($nome === '') $nome = 'Usuário #' . ($usuario['ID'] ?? '?');
-        return ['sucesso' => true, 'nome' => $nome];
+        return ['sucesso' => true, 'nome' => $nome, 'bitrixUserId' => (int)($usuario['ID'] ?? 0)];
     }
 
-    public function adicionar(string $nome, string $webhookUrl): void {
+    /** bitrixUserId (vindo de buscarNomeConta(), ver acima) permite achar o webhook de uma
+     *  pessoa a partir do seu ID Bitrix24 — usado por MonitoramentoChamadosService pra decidir
+     *  qual identidade usar ao buscar mensagens de chat de um card (ver resolverWebhookPorUid()). */
+    public function adicionar(string $nome, string $webhookUrl, int $bitrixUserId = 0): void {
         $lista = $this->listar();
         $lista[] = [
-            'id'         => uniqid('pw_', true),
-            'nome'       => $nome,
-            'webhookUrl' => $webhookUrl,
+            'id'           => uniqid('pw_', true),
+            'nome'         => $nome,
+            'webhookUrl'   => $webhookUrl,
+            'bitrixUserId' => $bitrixUserId,
         ];
         $this->salvar($lista);
     }
 
-    /** $webhookUrl null = mantém a URL já salva (edição só do nome). */
-    public function editar(string $id, string $nome, ?string $webhookUrl): void {
+    /** $webhookUrl null = mantém a URL (e o bitrixUserId) já salvos — edição só do nome. */
+    public function editar(string $id, string $nome, ?string $webhookUrl, int $bitrixUserId = 0): void {
         $lista = $this->listar();
         foreach ($lista as &$p) {
             if (($p['id'] ?? null) === $id) {
                 $p['nome'] = $nome;
-                if ($webhookUrl !== null) $p['webhookUrl'] = $webhookUrl;
+                if ($webhookUrl !== null) {
+                    $p['webhookUrl']   = $webhookUrl;
+                    $p['bitrixUserId'] = $bitrixUserId;
+                }
             }
         }
         unset($p);
         $this->salvar($lista);
+    }
+
+    /** [bitrixUserId => webhookUrl] — só entradas com bitrixUserId confirmado (>0). Usado por
+     *  MonitoramentoChamadosService pra escolher, por chamado, a identidade certa pra ler o
+     *  chat vinculado ao card (ver getDados() lá — evita ACCESS_ERROR do webhook de automação). */
+    public function mapaWebhookPorUid(): array {
+        $mapa = [];
+        foreach ($this->listar() as $p) {
+            $uid = (int)($p['bitrixUserId'] ?? 0);
+            if ($uid > 0 && !empty($p['webhookUrl'])) $mapa[$uid] = $p['webhookUrl'];
+        }
+        return $mapa;
     }
 
     public function remover(string $id): void {
