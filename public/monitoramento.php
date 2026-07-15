@@ -78,13 +78,19 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     transition: background .15s, color .15s;
 }
 .mon-config-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+/* Linha compacta (altura de conteúdo, não flex:1) — Equipe + distribuição do Funil lado a
+ * lado, dividindo a largura ~igualmente (nenhum dos dois precisa de muito espaço, ver
+ * relatório da tarefa). Quem ocupa o espaço vertical que resta na página agora é
+ * .mon-right-col (abaixo), sozinho — antes essa função era desta linha. */
 .mon-panels-row {
     display: flex;
     gap: var(--mon-sp-lg);
     align-items: stretch;
-    flex: 1;
-    min-height: 0;
+    flex-shrink: 0;
+    margin-bottom: var(--mon-sp-lg);
 }
+/* Chamados abertos/Tarefas — linha própria, largura cheia, ocupa todo o espaço vertical que
+ * sobra na página (mesmo papel que .mon-panels-row tinha antes de ganhar o Funil ao lado). */
 .mon-right-col {
     display: flex;
     flex-direction: column;
@@ -96,6 +102,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 @media (max-width: 1024px) {
     .mon-panels-row { flex-direction: column; }
     .mon-equipe-card { flex: 0 0 auto !important; max-height: 45vh; }
+    .fun-dist-card { flex: 0 0 auto !important; max-height: 45vh; }
     .mon-right-col { flex: 1 1 auto; min-height: 560px; }
 }
 
@@ -104,7 +111,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     background: rgba(255,255,255,0.05);
     border: 1.5px solid rgba(255,255,255,0.10);
     border-radius: 12px;
-    flex: 0 0 clamp(280px, 21vw, 400px);
+    flex: 1 1 0;
     min-width: 260px;
     display: flex;
     flex-direction: column;
@@ -955,17 +962,30 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     letter-spacing: .06em;
     color: rgba(255,255,255,.4);
 }
-.fun-dist {
-    padding: var(--mon-sp-sm) var(--mon-sp-lg) var(--mon-sp-sm);
-    border-top: 1px solid rgba(255,255,255,0.08);
+/* Card próprio (antes vivia dentro de .fun-box, abaixo dos KPIs de criados/finalizados) —
+ * agora ao lado de .mon-equipe-card em .mon-panels-row, ver relatório da tarefa. */
+.fun-dist-card {
+    background: rgba(255,255,255,0.05);
+    border: 1.5px solid rgba(255,255,255,0.10);
+    border-radius: 12px;
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
-.fun-dist-header {
-    font-size: var(--mon-fs-xs);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    color: rgba(255,255,255,.4);
-    margin-bottom: .65rem;
+.fun-dist-card-header {
+    padding: var(--mon-sp-base) var(--mon-sp-lg);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-family: 'Rubik', sans-serif;
+    font-size: var(--mon-fs-lg);
+    font-weight: 600;
+    color: #fff;
+}
+.fun-dist-card-header i { color: #0DC2FF; margin-right: .5rem; }
+.fun-dist-card-body {
+    padding: var(--mon-sp-base) var(--mon-sp-lg);
+    overflow-y: auto;
 }
 .fun-dist-row {
     display: flex;
@@ -1165,10 +1185,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                 </div>
             </div>
         </div>
-        <div class="fun-dist">
-            <div class="fun-dist-header">Distribuição dos chamados abertos</div>
-            <div id="fun-dist-rows"></div>
-        </div>
     </div>
 </div>
 
@@ -1183,8 +1199,14 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         </div>
     </div>
 
-    <div class="mon-right-col">
-        <div class="mon-tabs-section">
+    <div class="fun-dist-card" id="fun-dist-card">
+        <div class="fun-dist-card-header"><i class="fas fa-chart-bar"></i>Distribuição dos chamados abertos</div>
+        <div class="fun-dist-card-body" id="fun-dist-rows"></div>
+    </div>
+</div>
+
+<div class="mon-right-col">
+    <div class="mon-tabs-section">
             <div class="mon-tabs-bar">
                 <div class="mon-tab active" id="mon-tab-cha" onclick="monTrocarAba('cha')">
                     <span class="mon-tab-title"><i class="fas fa-inbox"></i>Chamados abertos</span>
@@ -1231,8 +1253,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             </div>
         </div>
     </div>
-</div>
-
 <!-- Drill-down: chamados por trás de um segmento da barra -->
 <div id="mon-drill-overlay" onclick="if(event.target===this) monFecharDrill()">
     <div id="mon-drill-box">
