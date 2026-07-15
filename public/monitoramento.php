@@ -552,6 +552,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     display: flex;
     flex-direction: column;
     flex: 1;
+    min-height: 0;
 }
 .mon-tab-filters {
     display: flex;
@@ -1091,10 +1092,22 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     letter-spacing: .06em;
     color: rgba(255,255,255,.4);
 }
+/* Altura FIXA, igual à do Funil (o vizinho de linha estável, sem novas etapas previstas) —
+ * não à toa, sem nenhum valor hardcoded: .topo-row usa align-items:stretch (default) e o
+ * Funil já é naturalmente mais alto que o conteúdo mínimo do Atendimento (tabs-bar+kpis, já
+ * que .ate-list tem min-height:0 e pode encolher a ~0) — então a LINHA toda fica com a altura
+ * do Funil, e .ate-section (flex:1 1 0 na coluna) estica pra acompanhar, em ambas as abas
+ * (Conversas/Grupos) igualmente, sem variar com a quantidade de itens. Excesso de conteúdo
+ * rola dentro do próprio .ate-list (única exceção à regra "sem scroll por painel" da Parte 1
+ * — aqui o objetivo é manter a altura do card fixa, não deixá-la crescer). */
 .ate-list {
-    /* Sem altura fixa nem scroll próprio — cresce com o conteúdo; a página como um todo é
-     * quem rola agora (ver .content-area:has(.mon-updated) no topo deste bloco de estilos). */
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
 }
+.ate-list::-webkit-scrollbar { width: 5px; }
+.ate-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
+.ate-list::-webkit-scrollbar-thumb { background: rgba(38,255,147,0.25); border-radius: 3px; }
 .ate-row {
     display: flex;
     align-items: center;
