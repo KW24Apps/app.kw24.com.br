@@ -48,17 +48,31 @@ class MonitoramentoChamadosService {
         return $this->bitrix->isConfigured();
     }
 
-    public function getDados(int $mensagensPorChamado = 5): array {
+    /**
+     * $detalheCompleto controla se 'resumo' e 'comentarios' (as duas causas do peso do payload —
+     * medido ~27KB com detalhe vs. muito menos sem) entram na resposta. Default true preserva o
+     * comportamento de sempre pra quem já consome este service sem passar o parâmetro (a tela
+     * Chamados abertos via api/monitoramento-chamados.php, que precisa do conteúdo pra expandir
+     * a linha) — só monitoramento-resumo.php passa false por padrão (ver ?detalhe=completo).
+     * 'temChat' continua sempre presente mesmo em modo resumo (só o CONTEÚDO do chat é que sai);
+     * como isso só depende de existir um chatId (não do conteúdo das mensagens), a busca de
+     * mensagens (getCrmChatMessages) é pulada inteiramente em modo resumo — economia real de
+     * chamada à API do Bitrix24, não só de tamanho de payload.
+     */
+    public function getDados(int $mensagensPorChamado = 5, bool $detalheCompleto = true): array {
         // Sem filtro por Tipo aqui de propósito — um tipo novo que apareça no futuro (fora do
         // catálogo conhecido) deve continuar aparecendo no painel (cai em "Outros" no
         // frontend), não desaparecer silenciosamente por não estar numa lista fixa.
+        $selectFields = ['id', self::F_NOME, 'title', self::F_TIPO, 'stageId', self::F_RESP, 'createdTime', self::F_SOLICITANTE];
+        if ($detalheCompleto) $selectFields[] = self::F_RESUMO;
+
         $items = $this->bitrix->listItems(
             self::ENTITY_TYPE,
             [
                 'categoryId' => self::CAT_DEMANDAS,
                 'stageId'    => array_keys(self::ETAPAS),
             ],
-            ['id', self::F_NOME, 'title', self::F_TIPO, 'stageId', self::F_RESP, 'createdTime', self::F_SOLICITANTE, self::F_RESUMO],
+            $selectFields,
             0
         );
 
@@ -70,11 +84,12 @@ class MonitoramentoChamadosService {
         }
         $nomesUsuarios = $respIds ? $this->bitrix->getUserNames($respIds) : [];
 
-        // Chat: resolve o chat vinculado de cada card, depois busca mensagens recentes dos chats
-        // encontrados. ACCESS_ERROR é esperado e comum aqui — ver BitrixService::getCrmChatMessages().
+        // Chat: resolve o chat vinculado de cada card (sempre — é o que define 'temChat'),
+        // depois busca mensagens recentes dos chats encontrados (só em modo detalhado — ver
+        // docblock acima). ACCESS_ERROR é esperado e comum aqui — ver BitrixService::getCrmChatMessages().
         $itemIds          = array_column($items, 'id');
         $chatIdsPorItem   = $itemIds ? $this->bitrix->getCrmChatIds(self::ENTITY_TYPE, $itemIds) : [];
-        $mensagensPorChat = $chatIdsPorItem
+        $mensagensPorChat = ($detalheCompleto && $chatIdsPorItem)
             ? $this->bitrix->getCrmChatMessages(array_values($chatIdsPorItem), $mensagensPorChamado)
             : [];
 
@@ -113,7 +128,7 @@ class MonitoramentoChamadosService {
                 }
             }
 
-            $chamados[] = [
+            $chamado = [
                 'id'           => $id,
                 'titulo'       => $it[self::F_NOME] ?: ($it['title'] ?? ''),
                 'tipo'         => $tipo,
@@ -122,12 +137,15 @@ class MonitoramentoChamadosService {
                 'etapaLabel'   => self::ETAPAS[$stageId] ?? $stageId, // defensivo — não deveria faltar (ver nota da classe)
                 'responsaveis' => $responsaveis,
                 'solicitante'  => trim((string)($it[self::F_SOLICITANTE] ?? '')),
-                'resumo'       => trim((string)($it[self::F_RESUMO] ?? '')),
                 'createdTime'  => $it['createdTime'] ?? null,
                 'temChat'      => $chatId !== null,
                 'chatErro'     => $chatErro,
-                'comentarios'  => $mensagens,
             ];
+            if ($detalheCompleto) {
+                $chamado['resumo']      = trim((string)($it[self::F_RESUMO] ?? ''));
+                $chamado['comentarios'] = $mensagens;
+            }
+            $chamados[] = $chamado;
         }
 
         usort($chamados, function ($a, $b) {

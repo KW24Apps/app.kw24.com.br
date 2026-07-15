@@ -31,16 +31,26 @@ if ($tokenEsperado === '' || $tokenRecebido === '' || !hash_equals($tokenEsperad
     exit;
 }
 
+// Modo resumo (default): equipe/chamados_abertos/tarefas voltam sem os campos de detalhe
+// item-a-item ('cards' do Equipe; 'resumo'/'descricao' e 'comentarios' de Chamados/Tarefas) —
+// só os agregados/campos-núcleo, pensado pra dar uma visão geral rápida (é o que a Secretária
+// usa pra saber "o que está aberto"). Quem precisar do detalhe completo (ela já consegue via
+// Bitrix MCP direto, mas às vezes é mais simples pedir aqui) passa ?detalhe=completo.
+$detalheCompleto = ($_GET['detalhe'] ?? '') === 'completo';
+
 /** Executa getDados() de um service, isolando falha de um bloco sem derrubar os outros —
  *  se o Bitrix24 estiver indisponível ou um bloco específico der erro, os outros 4 ainda
- *  respondem normalmente. */
-function monBlocoResumo(callable $factory): array {
+ *  respondem normalmente. $chamada permite passar argumentos pro getDados() de blocos que
+ *  suportam modo resumo/detalhado — se omitido, chama getDados() sem argumentos (default de
+ *  cada service, que é sempre o modo completo — só este endpoint pede o resumo). */
+function monBlocoResumo(callable $factory, ?callable $chamada = null): array {
     try {
         $service = $factory();
         if (!$service->isConfigured()) {
             return ['erro' => 'Webhook Bitrix24 não configurado'];
         }
-        return array_merge(['sucesso' => true], $service->getDados());
+        $dados = $chamada !== null ? $chamada($service) : $service->getDados();
+        return array_merge(['sucesso' => true], $dados);
     } catch (Exception $e) {
         return ['erro' => $e->getMessage()];
     }
@@ -48,9 +58,9 @@ function monBlocoResumo(callable $factory): array {
 
 echo json_encode([
     'sucesso'          => true,
-    'equipe'           => monBlocoResumo(fn() => new MonitoramentoEquipeService()),
-    'chamados_abertos' => monBlocoResumo(fn() => new MonitoramentoChamadosService()),
-    'tarefas'          => monBlocoResumo(fn() => new MonitoramentoTarefasService()),
+    'equipe'           => monBlocoResumo(fn() => new MonitoramentoEquipeService(), fn($s) => $s->getDados($detalheCompleto)),
+    'chamados_abertos' => monBlocoResumo(fn() => new MonitoramentoChamadosService(), fn($s) => $s->getDados(5, $detalheCompleto)),
+    'tarefas'          => monBlocoResumo(fn() => new MonitoramentoTarefasService(), fn($s) => $s->getDados(5, $detalheCompleto)),
     'funil'            => monBlocoResumo(fn() => new MonitoramentoFunilService()),
     'atendimento'      => monBlocoResumo(fn() => new MonitoramentoAtendimentoService()),
 ]);

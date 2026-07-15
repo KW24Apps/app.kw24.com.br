@@ -38,7 +38,17 @@ class MonitoramentoEquipeService {
         return $this->bitrix->isConfigured();
     }
 
-    public function getDados(): array {
+    /**
+     * $detalheCompleto controla se a lista item-a-item ('cards', dentro de cada bucket
+     * andamento/finalizado) entra na resposta, ou só os agregados (count/minutos). Default true
+     * preserva o comportamento de sempre pra quem já consome este service sem passar o
+     * parâmetro (a tela Equipe via api/monitoramento-cards.php, cujo drill-down modal depende
+     * de 'cards') — só monitoramento-resumo.php passa false por padrão (ver ?detalhe=completo
+     * em api/monitoramento-resumo.php). Não muda nenhuma consulta ao Bitrix24 — os cards já são
+     * buscados/agregados de qualquer forma (necessário pro count/minutos), só são removidos do
+     * retorno no fim quando não pedidos.
+     */
+    public function getDados(bool $detalheCompleto = true): array {
         $ciclo = $this->calcularCicloAtual();
 
         $agg = [];
@@ -60,12 +70,19 @@ class MonitoramentoEquipeService {
 
         $equipe = [];
         foreach (self::EQUIPE as $m) {
-            $uid = $m['bitrixUserId'];
+            $uid        = $m['bitrixUserId'];
+            $andamento  = $agg[$uid]['andamento'];
+            $finalizado = $agg[$uid]['finalizado'];
+            if (!$detalheCompleto) {
+                foreach (['suporte', 'desenvolvimento'] as $bucket) {
+                    unset($andamento[$bucket]['cards'], $finalizado[$bucket]['cards']);
+                }
+            }
             $equipe[] = [
                 'nome'         => $m['nome'],
                 'bitrixUserId' => $uid,
-                'andamento'    => $agg[$uid]['andamento'],
-                'finalizado'   => $agg[$uid]['finalizado'],
+                'andamento'    => $andamento,
+                'finalizado'   => $finalizado,
             ];
         }
 

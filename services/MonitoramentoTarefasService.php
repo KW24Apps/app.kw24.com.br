@@ -39,8 +39,20 @@ class MonitoramentoTarefasService {
         return $this->bitrix->isConfigured();
     }
 
-    public function getDados(int $comentariosPorTarefa = 5): array {
-        $porId = $this->buscarPorPapeis(['CLOSED_DATE' => ''], self::SELECT);
+    /**
+     * $detalheCompleto controla se 'descricao' e 'comentarios' (as duas causas do peso do
+     * payload — medido ~34KB com detalhe) entram na resposta. Default true preserva o
+     * comportamento de sempre pra quem já consome este service sem passar o parâmetro (a tela
+     * Tarefas via api/monitoramento-tarefas.php, que precisa do conteúdo pra expandir a linha) —
+     * só monitoramento-resumo.php passa false por padrão (ver ?detalhe=completo). Diferente de
+     * Chamados abertos: não existe forma "leve" de saber se uma tarefa tem comentário sem
+     * buscar o conteúdo (task.commentItem.getList não tem endpoint de contagem separado) — os
+     * comentários continuam sendo buscados em ambos os modos, só o CONTEÚDO (autor/data/texto)
+     * é que sai do payload em modo resumo; 'temChat' continua correto nos dois casos.
+     */
+    public function getDados(int $comentariosPorTarefa = 5, bool $detalheCompleto = true): array {
+        $select = $detalheCompleto ? self::SELECT : array_values(array_diff(self::SELECT, ['DESCRIPTION']));
+        $porId  = $this->buscarPorPapeis(['CLOSED_DATE' => ''], $select);
 
         $taskIds     = array_map('intval', array_keys($porId));
         $comentarios = $taskIds ? $this->bitrix->getCommentsForTasks($taskIds, $comentariosPorTarefa) : [];
@@ -70,19 +82,22 @@ class MonitoramentoTarefasService {
                 ];
             }, $comentarios[$id] ?? []);
 
-            $tarefas[] = [
+            $tarefa = [
                 'id'            => $id,
                 'responsibleId' => (int)($t['responsibleId'] ?? 0), // usado p/ montar o deep link /company/personal/user/{id}/tasks/task/view/{id}/
                 'titulo'        => $t['title'] ?? '',
-                'descricao'     => $this->limparBBCode((string)($t['description'] ?? '')),
                 'deadline'      => $deadline,
                 'atrasada'      => $atrasada,
                 'criador'       => $this->pessoa((int)($t['createdBy']     ?? 0), $nomesExtras),
                 'responsavel'   => $this->pessoa((int)($t['responsibleId'] ?? 0), $nomesExtras),
                 'badges'        => $this->montarBadges($t),
                 'temChat'       => count($coments) > 0,
-                'comentarios'   => $coments,
             ];
+            if ($detalheCompleto) {
+                $tarefa['descricao']   = $this->limparBBCode((string)($t['description'] ?? ''));
+                $tarefa['comentarios'] = $coments;
+            }
+            $tarefas[] = $tarefa;
         }
 
         usort($tarefas, function ($a, $b) {
