@@ -77,6 +77,21 @@ function escreverDbConfigJson(string $slug, array $cfg): bool {
 }
 
 /**
+ * Homóglifos cirílicos comuns (visualmente idênticos a letras latinas) — comum em
+ * exports de ferramentas de terceiros (ex.: Bitrix Contact Center) que acabam
+ * misturando alfabetos por engano. Sem este mapa, iconv TRANSLIT//IGNORE
+ * simplesmente DESCARTA esses caracteres (não tem equivalente ASCII direto),
+ * o que já causou um cabeçalho real "Сolaborador" (С cirílico, U+0421) virar
+ * "olaborador" — perdendo a primeira letra silenciosamente. Mapeado ANTES do
+ * iconv pra virar a letra latina óbvia em vez de sumir.
+ */
+const RBI_HOMOGLIFOS_CIRILICOS = [
+    'А' => 'A', 'В' => 'B', 'Е' => 'E', 'К' => 'K', 'М' => 'M', 'Н' => 'H',
+    'О' => 'O', 'Р' => 'P', 'С' => 'C', 'Т' => 'T', 'У' => 'Y', 'Х' => 'X',
+    'а' => 'a', 'е' => 'e', 'о' => 'o', 'р' => 'p', 'с' => 'c', 'у' => 'y', 'х' => 'x',
+];
+
+/**
  * Slugify — usado tanto para sugerir o slug do relatório a partir do nome amigável
  * quanto (aplicado a cada tabela) para o nome real de tabela Excel. Minúsculo, sem
  * acento, alfanumérico com hífen/underscore como separador único, sem hífen/underscore
@@ -84,6 +99,7 @@ function escreverDbConfigJson(string $slug, array $cfg): bool {
  */
 function slugify(string $texto, string $separador = '-'): string {
     $t = trim($texto);
+    $t = strtr($t, RBI_HOMOGLIFOS_CIRILICOS);
     $translit = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $t);
     if ($translit !== false) $t = $translit;
     $t = strtolower($t);
@@ -116,6 +132,21 @@ function slugJaExiste(Database $db, string $slug): bool {
  */
 function sanitizarIdentificador(string $texto): string {
     return slugify($texto, '_');
+}
+
+/**
+ * Mesma sanitização, mas com fallback posicional (ex.: "coluna_3") quando o texto
+ * não sobra com nenhum caractere alfanumérico aproveitável (ex.: cabeçalho "#",
+ * comum em exports de terceiros como colunas de ID) — em vez de bloquear a
+ * criação inteira da tabela por causa de UMA coluna. Nunca lança/rejeita aqui;
+ * o chamador decide o que fazer (ex.: avisar o admin que houve renomeação).
+ *
+ * @return array{0: string, 1: bool} [nomeFinal, foiFallback]
+ */
+function sanitizarIdentificadorComFallback(string $texto, string $prefixoFallback, int $posicao1Based): array {
+    $nome = sanitizarIdentificador($texto);
+    if ($nome !== '') return [$nome, false];
+    return [$prefixoFallback . '_' . $posicao1Based, true];
 }
 
 /**

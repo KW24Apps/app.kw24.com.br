@@ -149,11 +149,9 @@ try {
                     exit;
                 }
 
-                $nomeTabela = sanitizarIdentificador($nomeBruto);
-                if ($nomeTabela === '') {
-                    echo json_encode(['erro' => "Tabela '{$nomeBruto}': nome inválido (sem caracteres alfanuméricos aproveitáveis)"]);
-                    exit;
-                }
+                // Nome só com símbolos (ex.: "###") cai no fallback posicional em vez de
+                // bloquear — mesma lógica do cabeçalho de coluna, ver sanitizarIdentificadorComFallback().
+                [$nomeTabela, ] = sanitizarIdentificadorComFallback($nomeBruto, 'tabela', $i + 1);
 
                 $tabelasValidas[] = ['nome' => $nomeTabela, 'nome_original' => $nomeBruto, 'tmp_path' => $arquivos['tmp_name'][$i]];
             }
@@ -162,7 +160,13 @@ try {
 
             $nomesSanit = array_column($tabelasValidas, 'nome');
             if (count($nomesSanit) !== count(array_unique($nomesSanit))) {
-                echo json_encode(['erro' => 'Duas ou mais tabelas resultaram no mesmo nome depois de normalizado — renomeie para diferenciar']);
+                $porNomeTabela = [];
+                foreach ($tabelasValidas as $t) $porNomeTabela[$t['nome']][] = "\"{$t['nome_original']}\"";
+                $detalhes = [];
+                foreach ($porNomeTabela as $nome => $originais) {
+                    if (count($originais) > 1) $detalhes[] = "'{$nome}' (" . implode(', ', $originais) . ")";
+                }
+                echo json_encode(['erro' => 'Duas ou mais tabelas resultaram no mesmo nome depois de normalizado: ' . implode('; ', $detalhes) . ' — renomeie para diferenciar']);
                 exit;
             }
 
@@ -183,17 +187,31 @@ try {
                     exit;
                 }
 
+                // Coluna cujo cabeçalho não sobra nenhum caractere alfanumérico aproveitável
+                // (ex.: "#", comum como coluna de ID em exports de terceiros) cai num fallback
+                // posicional ("coluna_N") em vez de bloquear a tabela inteira — achado real
+                // testando com export do Bitrix Contact Center (Gabriel, jul/2026).
                 $colunas = [];
-                foreach ($cabecalho as $h) {
-                    $colNome = sanitizarIdentificador((string)($h ?? ''));
-                    if ($colNome === '') {
-                        echo json_encode(['erro' => "Tabela '{$t['nome_original']}': cabeçalho com coluna vazia ou inválida"]);
-                        exit;
+                $colunasAjustadas = []; // pra avisar o admin quais headers foram renomeados
+                foreach ($cabecalho as $idx => $h) {
+                    $original = (string)($h ?? '');
+                    [$colNome, $foiFallback] = sanitizarIdentificadorComFallback($original, 'coluna', $idx + 1);
+                    if ($foiFallback) {
+                        $rotuloOriginal = trim($original) === '' ? '(vazio)' : $original;
+                        $colunasAjustadas[] = "coluna " . ($idx + 1) . " (\"{$rotuloOriginal}\") -> \"{$colNome}\"";
                     }
                     $colunas[] = $colNome;
                 }
                 if (count($colunas) !== count(array_unique($colunas))) {
-                    echo json_encode(['erro' => "Tabela '{$t['nome_original']}': cabeçalho com colunas duplicadas"]);
+                    // Nomeia exatamente quais colunas colidiram (posição + cabeçalho original) —
+                    // sem isso o admin não tem como saber qual das N colunas causou o problema.
+                    $porNome = [];
+                    foreach ($colunas as $idx => $nome) $porNome[$nome][] = ($idx + 1) . " (\"{$cabecalho[$idx]}\")";
+                    $detalhes = [];
+                    foreach ($porNome as $nome => $posicoes) {
+                        if (count($posicoes) > 1) $detalhes[] = "'{$nome}' nas colunas " . implode(', ', $posicoes);
+                    }
+                    echo json_encode(['erro' => "Tabela '{$t['nome_original']}': cabeçalho com colunas duplicadas depois de normalizado — " . implode('; ', $detalhes)]);
                     exit;
                 }
 
@@ -203,7 +221,10 @@ try {
                     $tipos[] = inferirTipoColuna($valoresColuna);
                 }
 
-                $parseados[] = ['nome' => $t['nome'], 'colunas' => $colunas, 'tipos' => $tipos, 'linhas' => $linhas];
+                $parseados[] = [
+                    'nome' => $t['nome'], 'colunas' => $colunas, 'tipos' => $tipos, 'linhas' => $linhas,
+                    'colunas_ajustadas' => $colunasAjustadas,
+                ];
             }
 
             // ── Tudo validado — cria schema + tabelas + insere dados (transação) ──
@@ -272,10 +293,16 @@ try {
                 throw $e;
             }
 
+            $ajustesPorTabela = [];
+            foreach ($parseados as $tab) {
+                if ($tab['colunas_ajustadas']) $ajustesPorTabela[$tab['nome']] = $tab['colunas_ajustadas'];
+            }
+
             echo json_encode([
-                'sucesso'         => true,
-                'relatorio'       => ['id' => $novoId, 'slug' => $slug],
-                'tabelas_criadas' => array_column($parseados, 'nome'),
+                'sucesso'          => true,
+                'relatorio'        => ['id' => $novoId, 'slug' => $slug],
+                'tabelas_criadas'  => array_column($parseados, 'nome'),
+                'colunas_ajustadas' => $ajustesPorTabela, // {} se nenhuma coluna precisou de fallback
             ]);
             exit;
         }

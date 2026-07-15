@@ -690,6 +690,51 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
     padding: .6rem;
 }
 .rbi-excel-tabela-row .rbi-field { flex: 1; min-width: 0; }
+
+/* ── Anexo de arquivo (custom — substitui o botão nativo "Escolher arquivo") ── */
+.rbi-file-attach {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    background: rgba(255,255,255,0.07);
+    border: 1.5px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    padding: .3rem .4rem;
+    transition: border-color .15s;
+}
+.rbi-file-attach:focus-within { border-color: #0DC2FF; }
+.rbi-file-attach-input { display: none; }
+.rbi-file-attach-btn {
+    flex-shrink: 0;
+    background: rgba(13,194,255,0.14);
+    border: 1px solid rgba(13,194,255,0.4);
+    border-radius: 6px;
+    color: #0DC2FF;
+    font-family: 'Inter', sans-serif;
+    font-size: .76rem;
+    font-weight: 600;
+    padding: .4rem .7rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s;
+}
+.rbi-file-attach-btn:hover { background: rgba(13,194,255,0.22); }
+.rbi-file-attach-name {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: .3rem;
+    font-family: 'Inter', sans-serif;
+    font-size: .78rem;
+    color: rgba(255,255,255,0.35);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.rbi-file-attach-name.attached { color: #26FF93; font-weight: 500; }
+.rbi-file-attach-name.attached i { flex-shrink: 0; }
+
 .rbi-excel-remove {
     background: none;
     border: 1.5px solid rgba(229,62,62,0.3);
@@ -1250,6 +1295,10 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
     if (createTipoExcel) createTipoExcel.addEventListener('click', function () { setCreateTipo('excel'); });
 
     // ── Linhas de tabela Excel (repetíveis) ───────────────────────────────────
+    // Input de arquivo nativo fica escondido (.rbi-file-attach-input) — um botão
+    // custom (mesmo visual escuro/ciano do resto do modal) dispara o seletor de
+    // arquivo, e o nome do arquivo escolhido aparece com destaque (ícone + cor)
+    // em vez de depender só do texto minúsculo do input nativo.
     function criarLinhaTabelaExcel() {
         var linha = document.createElement('div');
         linha.className = 'rbi-excel-tabela-row';
@@ -1260,9 +1309,31 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
             '</div>' +
             '<div class="rbi-field">' +
                 '<label class="rbi-field-label">Arquivo (.xlsx)</label>' +
-                '<input type="file" class="rbi-field-input rbi-excel-arquivo" accept=".xlsx">' +
+                '<div class="rbi-file-attach">' +
+                    '<input type="file" class="rbi-excel-arquivo rbi-file-attach-input" accept=".xlsx">' +
+                    '<button type="button" class="rbi-file-attach-btn"><i class="ti ti-upload"></i> Escolher</button>' +
+                    '<span class="rbi-file-attach-name">Nenhum arquivo selecionado</span>' +
+                '</div>' +
             '</div>' +
             '<button type="button" class="rbi-excel-remove" title="Remover"><i class="ti ti-trash"></i></button>';
+
+        var fileInput = linha.querySelector('.rbi-file-attach-input');
+        var fileBtn   = linha.querySelector('.rbi-file-attach-btn');
+        var fileName  = linha.querySelector('.rbi-file-attach-name');
+        fileBtn.addEventListener('click', function () { fileInput.click(); });
+        fileInput.addEventListener('change', function () {
+            var arquivo = fileInput.files[0];
+            if (arquivo) {
+                fileName.innerHTML = '<i class="ti ti-circle-check-filled"></i> ' + escHtml(arquivo.name);
+                fileName.className = 'rbi-file-attach-name attached';
+                fileName.title = arquivo.name;
+            } else {
+                fileName.textContent = 'Nenhum arquivo selecionado';
+                fileName.className = 'rbi-file-attach-name';
+                fileName.title = '';
+            }
+        });
+
         linha.querySelector('.rbi-excel-remove').addEventListener('click', function () { linha.remove(); });
         return linha;
     }
@@ -1355,8 +1426,18 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
             .then(function (r) { return r.json(); })
             .then(function (res) {
                 if (res.sucesso) {
-                    createShowMsg('Relatório criado com sucesso.', 'ok');
-                    setTimeout(function () { closeCreateModal(); loadCards(); }, 900);
+                    var ajustes = res.colunas_ajustadas || {};
+                    var nomesTabelasAjustadas = Object.keys(ajustes);
+                    if (nomesTabelasAjustadas.length) {
+                        var resumo = nomesTabelasAjustadas.map(function (tab) {
+                            return tab + ': ' + ajustes[tab].join('; ');
+                        }).join(' | ');
+                        createShowMsg('Relatório criado. Algumas colunas sem nome aproveitável foram renomeadas automaticamente — ' + resumo, 'ok');
+                        setTimeout(function () { closeCreateModal(); loadCards(); }, 4500);
+                    } else {
+                        createShowMsg('Relatório criado com sucesso.', 'ok');
+                        setTimeout(function () { closeCreateModal(); loadCards(); }, 900);
+                    }
                 } else {
                     createShowMsg(res.erro || 'Erro ao criar relatório.', 'erro');
                 }
