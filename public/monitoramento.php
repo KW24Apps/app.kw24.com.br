@@ -1308,6 +1308,15 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
+    // "H:MM" exato a partir dos minutos totais — sem arredondar pra hora cheia (20min não pode
+    // virar "0h", escondendo o valor real). Minutos sempre com 2 dígitos (ex.: "0:05", "1:30").
+    function fmtHM(totalMinutos) {
+        var min = Math.max(0, Math.round(totalMinutos || 0));
+        var h   = Math.floor(min / 60);
+        var m   = min % 60;
+        return h + ':' + (m < 10 ? '0' + m : m);
+    }
+
     // Linha em texto puro (sem bar/gráfico) — nome à esquerda, contadores clicáveis à
     // direita, abrindo o mesmo drill-down de antes. "Em andamento" foi removido daqui (só
     // da UI — a query em MonitoramentoEquipeService.php continua intacta, ver relatório).
@@ -1321,8 +1330,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         return '<div class="mon-membro-row">'
             + '<span class="mon-membro-nome-plain">' + escHtml(m.nome) + '</span>'
             + '<span class="mon-membro-metricas">'
-                + '<span class="mon-membro-metrica suporte" onclick="monAbrirDrill(' + idx + ',\'finalizado\',\'suporte\')">Suporte ' + finSupCnt + '·' + Math.round(finSupMin / 60) + 'h</span>'
-                + '<span class="mon-membro-metrica dev" onclick="monAbrirDrill(' + idx + ',\'finalizado\',\'desenvolvimento\')">Dev ' + finDevCnt + '·' + Math.round(finDevMin / 60) + 'h</span>'
+                + '<span class="mon-membro-metrica suporte" onclick="monAbrirDrill(' + idx + ',\'finalizado\',\'suporte\')">Suporte ' + finSupCnt + '·' + fmtHM(finSupMin) + '</span>'
+                + '<span class="mon-membro-metrica dev" onclick="monAbrirDrill(' + idx + ',\'finalizado\',\'desenvolvimento\')">Dev ' + finDevCnt + '·' + fmtHM(finDevMin) + '</span>'
             + '</span>'
             + '</div>';
     }
@@ -1332,12 +1341,9 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         if (!el) return;
         if (!totalMinutos) { el.innerHTML = ''; return; }
 
-        var supHoras = Math.round((totalMinutos.suporte || 0) / 60);
-        var devHoras = Math.round((totalMinutos.desenvolvimento || 0) / 60);
-
         el.innerHTML =
-            '<span><b>' + supHoras + 'h</b> Suporte</span>'
-            + '<span><b>' + devHoras + 'h</b> Dev</span>';
+            '<span><b>' + fmtHM(totalMinutos.suporte || 0) + '</b> Suporte</span>'
+            + '<span><b>' + fmtHM(totalMinutos.desenvolvimento || 0) + '</b> Dev</span>';
     }
 
     function render(data) {
