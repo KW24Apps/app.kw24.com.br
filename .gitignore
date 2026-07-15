@@ -42,3 +42,7 @@ venv/
 relatorios-bi/*/run_local.py
 # Túnel SSH local para o banco — contém credenciais. NUNCA vai para o repositório.
 relatorios-bi/*/_tunnel.py
+
+# Config de conexão gerado pelo painel (api/relatorio-conexao.php) — contém credenciais reais.
+# Substitui o .env manual; NUNCA vai para o repositório.
+.dbconfig.json

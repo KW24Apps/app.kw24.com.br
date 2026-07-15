@@ -21,6 +21,7 @@ if (is_dir($_rtThumbsDir)) {
 <script>
 window.REL_TESTE_VISIVEIS     = <?= $_rtIsAdmin ? 'null' : json_encode($_rtVisiveis) ?>;
 window.RBI_THUMBS_DISPONIVEIS = <?= json_encode($_rtThumbsDisponiveis) ?>;
+window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
 </script>
 <style>
 /* ── Relatórios BI Hub ──────────────────────────────────────────────────── */
@@ -190,6 +191,7 @@ window.RBI_THUMBS_DISPONIVEIS = <?= json_encode($_rtThumbsDisponiveis) ?>;
 }
 
 /* Card — elementos compartilhados entre grade e lista */
+.rbi-card { position: relative; }
 .rbi-card:hover {
     border-color: rgba(13,194,255,.4);
     background: rgba(255,255,255,0.08);
@@ -456,6 +458,107 @@ window.RBI_THUMBS_DISPONIVEIS = <?= json_encode($_rtThumbsDisponiveis) ?>;
     transition: background .15s;
 }
 .rbi-btn-open:hover { background: #08aadd; }
+
+/* ── Botão "Configurar conexão" (admin_interno only) ──────────────────────── */
+.rbi-conn-btn {
+    position: absolute;
+    top: .5rem;
+    right: .5rem;
+    z-index: 2;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(6,25,32,0.65);
+    border: 1.5px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    color: rgba(255,255,255,0.6);
+    cursor: pointer;
+    font-size: .85rem;
+    transition: border-color .15s, color .15s, background .15s;
+}
+.rbi-conn-btn:hover {
+    border-color: #0DC2FF;
+    color: #0DC2FF;
+    background: rgba(6,25,32,0.85);
+}
+.rbi-cards-row.view-list .rbi-conn-btn {
+    position: static;
+    margin-left: .5rem;
+    flex-shrink: 0;
+    order: 99;
+}
+
+/* ── Modal "Configurar conexão" ────────────────────────────────────────────── */
+.rbi-conn-modal { max-width: 440px; }
+.rbi-conn-tipo-row {
+    display: flex;
+    gap: 8px;
+}
+.rbi-conn-tipo-btn {
+    flex: 1;
+    padding: .45rem .5rem;
+    border-radius: 8px;
+    border: 1.5px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.45);
+    font-family: 'Inter', sans-serif;
+    font-size: .78rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+    transition: border-color .15s, background .15s, color .15s;
+}
+.rbi-conn-tipo-btn.active {
+    border-color: #0DC2FF;
+    background: rgba(13,194,255,0.12);
+    color: #0DC2FF;
+    font-weight: 600;
+}
+.rbi-conn-tipo-btn:disabled {
+    cursor: not-allowed;
+    opacity: .4;
+}
+.rbi-conn-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+.rbi-conn-grid .rbi-field.full { grid-column: 1 / -1; }
+.rbi-conn-pass-wrap { position: relative; }
+.rbi-conn-pass-wrap .rbi-field-input { padding-right: 2.3rem; }
+.rbi-conn-pass-toggle {
+    position: absolute;
+    right: .6rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.4);
+    cursor: pointer;
+    font-size: .85rem;
+    padding: 2px;
+}
+.rbi-conn-pass-toggle:hover { color: #fff; }
+.rbi-conn-msg {
+    font-family: 'Inter', sans-serif;
+    font-size: .78rem;
+    padding: .5rem .7rem;
+    border-radius: 8px;
+    display: none;
+}
+.rbi-conn-msg.show { display: block; }
+.rbi-conn-msg.erro {
+    background: rgba(229,62,62,0.12);
+    color: #ff8080;
+    border: 1px solid rgba(229,62,62,0.3);
+}
+.rbi-conn-msg.ok {
+    background: rgba(38,255,147,0.10);
+    color: #26FF93;
+    border: 1px solid rgba(38,255,147,0.25);
+}
 </style>
 
 <div class="rbi-wrap">
@@ -527,6 +630,60 @@ window.RBI_THUMBS_DISPONIVEIS = <?= json_encode($_rtThumbsDisponiveis) ?>;
     </div>
 </div>
 
+<!-- Config modal — conexão de dados (admin_interno only) -->
+<div class="rbi-overlay" id="rbi-conn-overlay">
+    <div class="rbi-modal rbi-conn-modal" id="rbi-conn-modal">
+        <div class="rbi-modal-head">
+            <span class="rbi-modal-title">Configurar conexão</span>
+            <button class="rbi-modal-close" id="rbi-conn-close" title="Fechar">&times;</button>
+        </div>
+
+        <input type="hidden" id="rbi-conn-relatorio-id">
+
+        <div class="rbi-field">
+            <label class="rbi-field-label">Tipo de conexão</label>
+            <div class="rbi-conn-tipo-row">
+                <button type="button" class="rbi-conn-tipo-btn active" id="rbi-conn-tipo-sql" data-val="sql">SQL</button>
+                <button type="button" class="rbi-conn-tipo-btn" disabled title="Em breve">Webhook</button>
+                <button type="button" class="rbi-conn-tipo-btn" disabled title="Em breve">Excel</button>
+            </div>
+        </div>
+
+        <div class="rbi-conn-grid">
+            <div class="rbi-field full">
+                <label class="rbi-field-label">Host</label>
+                <input type="text" class="rbi-field-input" id="rbi-conn-host" autocomplete="off">
+            </div>
+            <div class="rbi-field">
+                <label class="rbi-field-label">Porta</label>
+                <input type="number" class="rbi-field-input" id="rbi-conn-port" autocomplete="off" value="5432">
+            </div>
+            <div class="rbi-field">
+                <label class="rbi-field-label">Banco</label>
+                <input type="text" class="rbi-field-input" id="rbi-conn-dbname" autocomplete="off">
+            </div>
+            <div class="rbi-field">
+                <label class="rbi-field-label">Usuário</label>
+                <input type="text" class="rbi-field-input" id="rbi-conn-user" autocomplete="off">
+            </div>
+            <div class="rbi-field">
+                <label class="rbi-field-label">Senha</label>
+                <div class="rbi-conn-pass-wrap">
+                    <input type="password" class="rbi-field-input" id="rbi-conn-password" autocomplete="new-password">
+                    <button type="button" class="rbi-conn-pass-toggle" id="rbi-conn-pass-toggle" title="Mostrar/ocultar"><i class="ti ti-eye"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <div class="rbi-conn-msg" id="rbi-conn-msg"></div>
+
+        <div class="rbi-modal-footer">
+            <button class="rbi-btn-cancel" id="rbi-conn-cancel">Cancelar</button>
+            <button class="rbi-btn-save"   id="rbi-conn-save">Testar e salvar</button>
+        </div>
+    </div>
+</div>
+
 <!-- Tooltip de usuários (chip "N usuários") -->
 <div class="rbi-user-tooltip" id="rbi-user-tooltip" style="display:none"></div>
 
@@ -544,6 +701,19 @@ window.RBI_THUMBS_DISPONIVEIS = <?= json_encode($_rtThumbsDisponiveis) ?>;
     const empresaSel = document.getElementById('rbi-empresa-filter');
     const btnGrid    = document.getElementById('rbi-view-grid');
     const btnList    = document.getElementById('rbi-view-list');
+
+    // ── Modal de conexão (admin_interno only) ────────────────────────────────
+    const connOverlay   = document.getElementById('rbi-conn-overlay');
+    const connRelId     = document.getElementById('rbi-conn-relatorio-id');
+    const connHost      = document.getElementById('rbi-conn-host');
+    const connPort      = document.getElementById('rbi-conn-port');
+    const connDbname    = document.getElementById('rbi-conn-dbname');
+    const connUser      = document.getElementById('rbi-conn-user');
+    const connPassword  = document.getElementById('rbi-conn-password');
+    const connMsg       = document.getElementById('rbi-conn-msg');
+    const connBtnSave   = document.getElementById('rbi-conn-save');
+    const connPassToggle = document.getElementById('rbi-conn-pass-toggle');
+
     let visivel      = true;
     let _empresaFiltroSalvo = null; // id de empresa restaurado do sessionStorage, aplicado após popular o <select>
 
@@ -579,6 +749,84 @@ window.RBI_THUMBS_DISPONIVEIS = <?= json_encode($_rtThumbsDisponiveis) ?>;
     function closeModal() {
         overlay.classList.remove('open');
     }
+
+    // ── Modal de conexão (admin_interno only) ────────────────────────────────
+    function connShowMsg(texto, tipo) {
+        connMsg.textContent = texto;
+        connMsg.className = 'rbi-conn-msg show ' + (tipo || 'erro');
+    }
+    function connClearMsg() {
+        connMsg.className = 'rbi-conn-msg';
+        connMsg.textContent = '';
+    }
+    function openConnModal(relatorioId) {
+        connRelId.value = relatorioId;
+        connHost.value = ''; connPort.value = '5432'; connDbname.value = '';
+        connUser.value = ''; connPassword.value = '';
+        connClearMsg();
+        connOverlay.classList.add('open');
+        fetch('/api/relatorio-conexao.php?action=get&relatorio_id=' + encodeURIComponent(relatorioId))
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (res.erro) { connShowMsg(res.erro, 'erro'); return; }
+                var cfg = (res.conexao && res.conexao.config) || {};
+                connHost.value     = cfg.host || '';
+                connPort.value     = cfg.port || 5432;
+                connDbname.value   = cfg.dbname || '';
+                connUser.value     = cfg.user || '';
+                connPassword.value = cfg.password || '';
+            })
+            .catch(function () { connShowMsg('Erro de rede ao carregar configuração.', 'erro'); });
+    }
+    function closeConnModal() {
+        connOverlay.classList.remove('open');
+    }
+    connPassToggle.addEventListener('click', function () {
+        connPassword.type = connPassword.type === 'password' ? 'text' : 'password';
+    });
+    document.getElementById('rbi-conn-close').addEventListener('click', closeConnModal);
+    document.getElementById('rbi-conn-cancel').addEventListener('click', closeConnModal);
+    connOverlay.addEventListener('click', function (e) { if (e.target === connOverlay) closeConnModal(); });
+
+    connBtnSave.addEventListener('click', function () {
+        connClearMsg();
+        var payload = {
+            relatorio_id: parseInt(connRelId.value, 10),
+            tipo_conexao: 'sql',
+            config: {
+                host: connHost.value.trim(),
+                port: parseInt(connPort.value, 10) || 5432,
+                dbname: connDbname.value.trim(),
+                user: connUser.value.trim(),
+                password: connPassword.value
+            }
+        };
+        if (!payload.config.host || !payload.config.dbname || !payload.config.user) {
+            connShowMsg('Host, banco e usuário são obrigatórios.', 'erro');
+            return;
+        }
+        connBtnSave.disabled = true;
+        connBtnSave.textContent = 'Testando conexão...';
+        fetch('/api/relatorio-conexao.php?action=save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+            if (res.sucesso) {
+                connShowMsg('Conexão testada e salva com sucesso.', 'ok');
+                setTimeout(closeConnModal, 900);
+            } else {
+                connShowMsg(res.erro || 'Erro ao salvar.', 'erro');
+            }
+        })
+        .catch(function () { connShowMsg('Erro de rede ao salvar.', 'erro'); })
+        .finally(function () {
+            connBtnSave.disabled = false;
+            connBtnSave.textContent = 'Testar e salvar';
+        });
+    });
 
     // ── Tooltip de usuários (hover no chip "N usuários") ─────────────────────
     function montarTooltip(usuarios) {
@@ -645,8 +893,12 @@ window.RBI_THUMBS_DISPONIVEIS = <?= json_encode($_rtThumbsDisponiveis) ?>;
             : '<span class="rbi-empresa-badge" style="opacity:.5">Nenhuma empresa</span>';
 
         const userCount = r.user_count || 0;
+        const connBtnHtml = window.RBI_IS_ADMIN
+            ? '<button type="button" class="rbi-conn-btn" title="Configurar conexão"><i class="ti ti-database-cog"></i></button>'
+            : '';
 
         card.innerHTML =
+            connBtnHtml +
             '<div class="rbi-thumb">' + thumbHtml(r.slug) + '</div>' +
             '<div class="rbi-card-body">' +
                 '<div class="rbi-card-name">' + escHtml(r.nome_amigavel) + '</div>' +
@@ -656,7 +908,7 @@ window.RBI_THUMBS_DISPONIVEIS = <?= json_encode($_rtThumbsDisponiveis) ?>;
 
         // Card click — abre o modal de configuração (comportamento existente preservado).
         card.addEventListener('click', function (e) {
-            if (e.target.closest('.rbi-user-chip')) return;
+            if (e.target.closest('.rbi-user-chip') || e.target.closest('.rbi-conn-btn')) return;
             openModal(r);
         });
 
@@ -664,6 +916,14 @@ window.RBI_THUMBS_DISPONIVEIS = <?= json_encode($_rtThumbsDisponiveis) ?>;
         chip.addEventListener('mouseenter', function (e) { mostrarTooltip(e, r.usuarios); });
         chip.addEventListener('mousemove',  posicionarTooltip);
         chip.addEventListener('mouseleave', esconderTooltip);
+
+        const connBtn = card.querySelector('.rbi-conn-btn');
+        if (connBtn) {
+            connBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                openConnModal(r.id);
+            });
+        }
 
         return card;
     }
