@@ -174,7 +174,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
  * membroCardHtml()) fixa a LINHA de cada pessoa explicitamente. Sem isso, o algoritmo de
  * auto-placement do grid (cada célula só com grid-column definido, sem grid-row) inflava um
  * espaço vertical enorme entre pessoas — regressão corrigida fixando a linha em vez de deixar
- * o browser decidir. */
+ * o browser decidir. Linha 1 é reservada pro cabeçalho das colunas (.mon-equipe-col-header,
+ * "Suporte"/"Dev" mostrados uma única vez) — pessoas começam em --eq-row:2 (ver membroCardHtml()). */
 .mon-equipe-body {
     flex: 1;
     padding: var(--mon-sp-base) var(--mon-sp-lg);
@@ -185,19 +186,32 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     align-items: center;
 }
 .mon-equipe-body > .mon-empty { grid-column: 1 / -1; }
+.mon-equipe-col-header {
+    grid-row: 1;
+    font-size: var(--mon-fs-2xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    text-align: right;
+    color: rgba(255,255,255,.4);
+    padding-bottom: var(--mon-sp-2xs);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.mon-equipe-col-header.suporte { grid-column: 2; color: #0DC2FF; }
+.mon-equipe-col-header.dev     { grid-column: 3; color: #f6ad55; }
 .mon-membro-row, .mon-membro-metricas { display: contents; }
 .mon-membro-nome-plain {
     grid-column: 1;
     grid-row: var(--eq-row);
     font-family: 'Rubik', sans-serif;
-    font-size: var(--mon-fs-num);
+    font-size: var(--mon-fs-base);
     font-weight: 600;
     color: #fff;
     min-width: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding: var(--mon-sp-sm) 0;
+    padding: var(--mon-sp-2xs) 0;
     border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 .mon-membro-metrica {
@@ -207,7 +221,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     text-align: right;
     font-size: var(--mon-fs-sm);
     font-weight: 600;
-    padding: var(--mon-sp-sm) 0;
+    font-family: 'Inter', monospace;
+    padding: var(--mon-sp-2xs) 0;
     border-bottom: 1px solid rgba(255,255,255,0.06);
     transition: filter .15s ease;
 }
@@ -1443,9 +1458,18 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         return h + ':' + (m < 10 ? '0' + m : m);
     }
 
+    // Cabeçalho das colunas Suporte/Dev — mostrado uma única vez (linha 1 do grid), não mais
+    // repetido em cada pessoa (ver membroCardHtml() abaixo). Mesmas cores de sempre.
+    function equipeColHeaderHtml() {
+        return '<span class="mon-equipe-col-header suporte">Suporte</span>'
+            + '<span class="mon-equipe-col-header dev">Dev</span>';
+    }
+
     // Linha em texto puro (sem bar/gráfico) — nome à esquerda, contadores clicáveis à
     // direita, abrindo o mesmo drill-down de antes. "Em andamento" foi removido daqui (só
     // da UI — a query em MonitoramentoEquipeService.php continua intacta, ver relatório).
+    // Só o valor (sem repetir "Suporte"/"Dev" — isso agora é cabeçalho de coluna, ver acima).
+    // --eq-row começa em 2 (linha 1 é do cabeçalho).
     function membroCardHtml(m, idx) {
         var fin       = m.finalizado || {};
         var finSupMin = (fin.suporte && fin.suporte.minutos) || 0;
@@ -1453,11 +1477,11 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         var finSupCnt = (fin.suporte && fin.suporte.count) || 0;
         var finDevCnt = (fin.desenvolvimento && fin.desenvolvimento.count) || 0;
 
-        return '<div class="mon-membro-row" style="--eq-row:' + (idx + 1) + '">'
+        return '<div class="mon-membro-row" style="--eq-row:' + (idx + 2) + '">'
             + '<span class="mon-membro-nome-plain">' + escHtml(m.nome) + '</span>'
             + '<span class="mon-membro-metricas">'
-                + '<span class="mon-membro-metrica suporte" onclick="monAbrirDrill(' + idx + ',\'finalizado\',\'suporte\')">Suporte ' + finSupCnt + '·' + fmtHM(finSupMin) + '</span>'
-                + '<span class="mon-membro-metrica dev" onclick="monAbrirDrill(' + idx + ',\'finalizado\',\'desenvolvimento\')">Dev ' + finDevCnt + '·' + fmtHM(finDevMin) + '</span>'
+                + '<span class="mon-membro-metrica suporte" onclick="monAbrirDrill(' + idx + ',\'finalizado\',\'suporte\')">' + finSupCnt + '·' + fmtHM(finSupMin) + '</span>'
+                + '<span class="mon-membro-metrica dev" onclick="monAbrirDrill(' + idx + ',\'finalizado\',\'desenvolvimento\')">' + finDevCnt + '·' + fmtHM(finDevMin) + '</span>'
             + '</span>'
             + '</div>';
     }
@@ -1489,7 +1513,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             return;
         }
 
-        grid.innerHTML = equipe.map(membroCardHtml).join('');
+        grid.innerHTML = equipeColHeaderHtml() + equipe.map(membroCardHtml).join('');
     }
 
     // ── Drill-down: lista de chamados (com ID clicável para o Bitrix24) por trás de um segmento ──
