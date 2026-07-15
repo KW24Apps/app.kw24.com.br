@@ -21,8 +21,18 @@ if ($action === 'list') {
     $uid     = (int)($user['id'] ?? 0);
 
     $rows = $db->fetchAll(
-        'SELECT id, slug, nome_amigavel, visivel FROM relatorios_bi ORDER BY ordem ASC'
+        'SELECT id, slug, nome_amigavel, visivel, em_construcao FROM relatorios_bi ORDER BY ordem ASC'
     );
+
+    // "Em construção" (Etapa 2 do self-service): visível SÓ para admin_interno,
+    // independente de cliente_aplicacoes/relatorio_usuario_permissoes — some da
+    // resposta inteiramente pra quem não é admin, não é só um filtro de UI.
+    if (!$isAdmin) {
+        $rows = array_values(array_filter($rows, fn($r) => !filter_var($r['em_construcao'], FILTER_VALIDATE_BOOLEAN)));
+    }
+    foreach ($rows as $i => $r) {
+        $rows[$i]['em_construcao'] = filter_var($r['em_construcao'], FILTER_VALIDATE_BOOLEAN);
+    }
 
     // Enriquecimento por relatório (empresas vinculadas + usuários com acesso) para o hub
     // (public/relatorios-bi.php). admin_interno vê tudo; usuário comum só as próprias
@@ -93,11 +103,19 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    // "Em construção" só pode ser alterado por admin_interno — nunca confiar no
+    // cliente pra isso, mesmo que o campo venha no payload (não-admin não deveria
+    // nem enxergar o controle na UI, mas o servidor nunca aplica sem checar de novo).
+    $isAdmin = (($auth->getCurrentUser()['perfil'] ?? '') === 'admin_interno');
+    $sets    = 'nome_amigavel = :nome, visivel = :visivel';
+    $params  = [':nome' => $nome, ':visivel' => $visivel ? 'true' : 'false', ':id' => $id];
+    if ($isAdmin && isset($body['em_construcao'])) {
+        $sets .= ', em_construcao = :em_construcao';
+        $params[':em_construcao'] = ((bool)$body['em_construcao']) ? 'true' : 'false';
+    }
+
     // slug is immutable — never updated, only set at row creation
-    $db->execute(
-        'UPDATE relatorios_bi SET nome_amigavel = :nome, visivel = :visivel WHERE id = :id',
-        [':nome' => $nome, ':visivel' => $visivel ? 'true' : 'false', ':id' => $id]
-    );
+    $db->execute("UPDATE relatorios_bi SET {$sets} WHERE id = :id", $params);
 
     $row = $db->fetchAll('SELECT slug FROM relatorios_bi WHERE id = :id', [':id' => $id]);
     echo json_encode(['success' => true, 'slug' => $row[0]['slug'] ?? '']);

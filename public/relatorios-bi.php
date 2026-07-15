@@ -593,6 +593,148 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
     color: #26FF93;
     border: 1px solid rgba(38,255,147,0.25);
 }
+
+/* ── Botão "+" (criar relatório — admin_interno only) ─────────────────────── */
+.rbi-btn-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    background: #0DC2FF;
+    border: none;
+    border-radius: 8px;
+    color: #061920;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background .15s;
+}
+.rbi-btn-add:hover { background: #08aadd; }
+
+/* ── Badge "Em construção" no card ─────────────────────────────────────────── */
+.rbi-badge-construcao {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    font-size: .6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    padding: .2rem .55rem;
+    border-radius: 20px;
+    background: rgba(255,184,0,0.15);
+    color: #ffb800;
+    white-space: nowrap;
+}
+.rbi-cards-row.view-grid .rbi-badge-construcao {
+    position: absolute;
+    top: .5rem;
+    left: .5rem;
+    z-index: 2;
+}
+.rbi-cards-row.view-list .rbi-badge-construcao {
+    flex-shrink: 0;
+    order: 98;
+}
+
+/* ── Toggle genérico (reaproveitado por Visibilidade e Em construção) ────────── */
+.rbi-toggle-row {
+    display: flex;
+    gap: 8px;
+}
+.rbi-toggle-btn {
+    flex: 1;
+    padding: .45rem .75rem;
+    border-radius: 8px;
+    border: 1.5px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.45);
+    font-family: 'Inter', sans-serif;
+    font-size: .8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color .15s, background .15s, color .15s;
+    text-align: center;
+}
+.rbi-toggle-btn.active-a {
+    border-color: #0DC2FF;
+    background: rgba(13,194,255,0.12);
+    color: #0DC2FF;
+    font-weight: 600;
+}
+.rbi-toggle-btn.active-b {
+    border-color: rgba(255,184,0,0.5);
+    background: rgba(255,184,0,0.12);
+    color: #ffb800;
+    font-weight: 600;
+}
+
+/* ── Modal "Criar relatório" ───────────────────────────────────────────────── */
+.rbi-create-modal { max-width: 480px; max-height: 85vh; overflow-y: auto; }
+.rbi-slug-preview {
+    font-family: 'Inter', sans-serif;
+    font-size: .72rem;
+    color: rgba(255,255,255,0.4);
+}
+.rbi-slug-preview.ok  { color: #26FF93; }
+.rbi-slug-preview.bad { color: #ff8080; }
+
+.rbi-excel-tabela-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    border: 1px dashed rgba(255,255,255,0.15);
+    border-radius: 8px;
+    padding: .6rem;
+}
+.rbi-excel-tabela-row .rbi-field { flex: 1; min-width: 0; }
+.rbi-excel-remove {
+    background: none;
+    border: 1.5px solid rgba(229,62,62,0.3);
+    border-radius: 8px;
+    color: #ff8080;
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+}
+.rbi-excel-remove:hover { background: rgba(229,62,62,0.12); }
+
+.rbi-btn-add-tabela {
+    background: rgba(13,194,255,0.10);
+    border: 1.5px dashed rgba(13,194,255,0.4);
+    border-radius: 8px;
+    color: #0DC2FF;
+    font-family: 'Inter', sans-serif;
+    font-size: .8rem;
+    font-weight: 600;
+    padding: .5rem;
+    cursor: pointer;
+    transition: background .15s;
+}
+.rbi-btn-add-tabela:hover { background: rgba(13,194,255,0.18); }
+
+.rbi-create-msg {
+    font-family: 'Inter', sans-serif;
+    font-size: .78rem;
+    padding: .5rem .7rem;
+    border-radius: 8px;
+    display: none;
+}
+.rbi-create-msg.show { display: block; }
+.rbi-create-msg.erro {
+    background: rgba(229,62,62,0.12);
+    color: #ff8080;
+    border: 1px solid rgba(229,62,62,0.3);
+}
+.rbi-create-msg.ok {
+    background: rgba(38,255,147,0.10);
+    color: #26FF93;
+    border: 1px solid rgba(38,255,147,0.25);
+}
 </style>
 
 <div class="rbi-wrap">
@@ -619,6 +761,11 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
                     <i class="ti ti-layout-list"></i>
                 </button>
             </div>
+            <?php if ($_rtIsAdmin): ?>
+            <button type="button" class="rbi-btn-add" id="rbi-btn-add-relatorio" title="Criar relatório">
+                <i class="ti ti-plus"></i>
+            </button>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -661,6 +808,16 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
                     <button class="rbi-vis-btn" id="rbi-vis-oculto"  data-val="false">Oculto</button>
                 </div>
             </div>
+
+            <?php if ($_rtIsAdmin): ?>
+            <div class="rbi-field">
+                <label class="rbi-field-label">Em construção</label>
+                <div class="rbi-toggle-row" id="rbi-construcao-row">
+                    <button type="button" class="rbi-toggle-btn" id="rbi-construcao-sim" data-val="true">Sim — só admin vê</button>
+                    <button type="button" class="rbi-toggle-btn" id="rbi-construcao-nao" data-val="false">Não — publicado</button>
+                </div>
+            </div>
+            <?php endif; ?>
 
             <button class="rbi-btn-open" id="rbi-btn-open">
                 <i class="ti ti-external-link" style="margin-right:.35rem"></i>Abrir relatório
@@ -730,6 +887,85 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
     </div>
 </div>
 
+<?php if ($_rtIsAdmin): ?>
+<!-- Modal "Criar relatório" (Etapa 2 do self-service, admin_interno only) -->
+<div class="rbi-overlay" id="rbi-create-overlay">
+    <div class="rbi-modal rbi-create-modal" id="rbi-create-modal">
+        <div class="rbi-modal-head">
+            <span class="rbi-modal-title">Criar relatório</span>
+            <button class="rbi-modal-close" id="rbi-create-close" title="Fechar">&times;</button>
+        </div>
+
+        <div class="rbi-field">
+            <label class="rbi-field-label">Nome amigável</label>
+            <input type="text" class="rbi-field-input" id="rbi-create-nome" autocomplete="off">
+        </div>
+
+        <div class="rbi-field">
+            <label class="rbi-field-label">Slug (URL, imutável após criar)</label>
+            <input type="text" class="rbi-field-input" id="rbi-create-slug" autocomplete="off">
+            <span class="rbi-slug-preview" id="rbi-create-slug-msg"></span>
+        </div>
+
+        <div class="rbi-field">
+            <label class="rbi-field-label">Tipo de conexão</label>
+            <div class="rbi-conn-tipo-row">
+                <button type="button" class="rbi-conn-tipo-btn active" id="rbi-create-tipo-sql" data-val="sql">SQL</button>
+                <button type="button" class="rbi-conn-tipo-btn" disabled title="Em breve">Webhook</button>
+                <button type="button" class="rbi-conn-tipo-btn" id="rbi-create-tipo-excel" data-val="excel">Excel</button>
+            </div>
+        </div>
+
+        <!-- Campos SQL -->
+        <div id="rbi-create-sql-fields">
+            <div class="rbi-conn-grid">
+                <div class="rbi-field full">
+                    <label class="rbi-field-label">Host</label>
+                    <input type="text" class="rbi-field-input" id="rbi-create-host" autocomplete="off">
+                </div>
+                <div class="rbi-field">
+                    <label class="rbi-field-label">Porta</label>
+                    <input type="number" class="rbi-field-input" id="rbi-create-port" autocomplete="off" value="5432">
+                </div>
+                <div class="rbi-field">
+                    <label class="rbi-field-label">Banco</label>
+                    <input type="text" class="rbi-field-input" id="rbi-create-dbname" autocomplete="off">
+                </div>
+                <div class="rbi-field">
+                    <label class="rbi-field-label">Usuário</label>
+                    <input type="text" class="rbi-field-input" id="rbi-create-user" autocomplete="off">
+                </div>
+                <div class="rbi-field">
+                    <label class="rbi-field-label">Senha</label>
+                    <div class="rbi-conn-pass-wrap">
+                        <input type="password" class="rbi-field-input" id="rbi-create-password" autocomplete="new-password">
+                        <button type="button" class="rbi-conn-pass-toggle" id="rbi-create-pass-toggle" title="Mostrar/ocultar"><i class="ti ti-eye"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Campos Excel -->
+        <div id="rbi-create-excel-fields" style="display:none">
+            <div class="rbi-field">
+                <label class="rbi-field-label">Tabelas</label>
+                <div id="rbi-excel-tabelas-list" style="display:flex;flex-direction:column;gap:.6rem"></div>
+            </div>
+            <button type="button" class="rbi-btn-add-tabela" id="rbi-btn-add-tabela" style="margin-top:.6rem;width:100%">
+                <i class="ti ti-plus" style="margin-right:.3rem"></i>Adicionar tabela
+            </button>
+        </div>
+
+        <div class="rbi-create-msg" id="rbi-create-msg"></div>
+
+        <div class="rbi-modal-footer">
+            <button class="rbi-btn-cancel" id="rbi-create-cancel">Cancelar</button>
+            <button class="rbi-btn-save"   id="rbi-create-save">Criar relatório</button>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- Tooltip de usuários (chip "N usuários") -->
 <div class="rbi-user-tooltip" id="rbi-user-tooltip" style="display:none"></div>
 
@@ -768,7 +1004,33 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
     const infraServico  = document.getElementById('rbi-infra-servico');
     const infraPorta    = document.getElementById('rbi-infra-porta');
 
+    // ── Toggle "Em construção" na aba Geral (admin_interno only) ─────────────
+    const construcaoSimBtn = document.getElementById('rbi-construcao-sim');
+    const construcaoNaoBtn = document.getElementById('rbi-construcao-nao');
+
+    // ── Modal "Criar relatório" (admin_interno only) ─────────────────────────
+    const createOverlay   = document.getElementById('rbi-create-overlay');
+    const createNome       = document.getElementById('rbi-create-nome');
+    const createSlug        = document.getElementById('rbi-create-slug');
+    const createSlugMsg     = document.getElementById('rbi-create-slug-msg');
+    const createTipoSql     = document.getElementById('rbi-create-tipo-sql');
+    const createTipoExcel   = document.getElementById('rbi-create-tipo-excel');
+    const createSqlFields    = document.getElementById('rbi-create-sql-fields');
+    const createExcelFields  = document.getElementById('rbi-create-excel-fields');
+    const createHost        = document.getElementById('rbi-create-host');
+    const createPort        = document.getElementById('rbi-create-port');
+    const createDbname      = document.getElementById('rbi-create-dbname');
+    const createUser        = document.getElementById('rbi-create-user');
+    const createPassword    = document.getElementById('rbi-create-password');
+    const createPassToggle  = document.getElementById('rbi-create-pass-toggle');
+    const excelTabelasList   = document.getElementById('rbi-excel-tabelas-list');
+    const btnAddTabela       = document.getElementById('rbi-btn-add-tabela');
+    const createMsg         = document.getElementById('rbi-create-msg');
+    const createSaveBtn     = document.getElementById('rbi-create-save');
+    const btnAddRelatorio    = document.getElementById('rbi-btn-add-relatorio');
+
     let visivel      = true;
+    let emConstrucao = true;
     let _empresaFiltroSalvo = null; // id de empresa restaurado do sessionStorage, aplicado após popular o <select>
 
     function escHtml(s) {
@@ -793,6 +1055,16 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
         document.getElementById('rbi-vis-oculto').className  = 'rbi-vis-btn' + (!v ? ' active-oculto' : '');
     }
 
+    // "Em construção" — admin_interno only, elementos null pra quem não é admin.
+    function setConstrucao(v) {
+        emConstrucao = v;
+        if (!construcaoSimBtn || !construcaoNaoBtn) return;
+        construcaoSimBtn.className = 'rbi-toggle-btn' + (v ? ' active-b' : '');
+        construcaoNaoBtn.className = 'rbi-toggle-btn' + (!v ? ' active-a' : '');
+    }
+    if (construcaoSimBtn) construcaoSimBtn.addEventListener('click', function () { setConstrucao(true); });
+    if (construcaoNaoBtn) construcaoNaoBtn.addEventListener('click', function () { setConstrucao(false); });
+
     // ── Troca de aba (Geral | Conexão) — no-op se a aba Conexão não existir no DOM
     // (usuário não admin_interno, PHP não renderiza a aba). Não recarrega dados ao
     // trocar de aba — só mostra/esconde, então nada digitado na outra aba se perde.
@@ -812,6 +1084,7 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
         editSlug.value = card.slug;
         editNome.value = card.nome_amigavel;
         setVis(card.visivel !== false);
+        setConstrucao(card.em_construcao === true);
         switchTab('geral'); // sempre abre na aba Geral, independente da aba deixada aberta da última vez
         if (window.RBI_IS_ADMIN && connRelId) {
             connRelId.value = card.id;
@@ -910,6 +1183,191 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
         });
     });
 
+    // ── Modal "Criar relatório" (admin_interno only — elementos null pra quem não é) ──
+    function slugifyClient(texto) {
+        var t = String(texto || '').trim().normalize('NFD').replace(new RegExp('[\\u0300-\\u036f]', 'g'), '');
+        t = t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        return t;
+    }
+
+    var slugEditadoManualmente = false;
+    var slugCheckTimer = null;
+    var slugDisponivel = false;
+
+    function createShowMsg(texto, tipo) {
+        if (!createMsg) return;
+        createMsg.textContent = texto;
+        createMsg.className = 'rbi-create-msg show ' + (tipo || 'erro');
+    }
+    function createClearMsg() {
+        if (!createMsg) return;
+        createMsg.className = 'rbi-create-msg';
+        createMsg.textContent = '';
+    }
+
+    function checarSlug(slug) {
+        if (!createSlugMsg) return;
+        if (!slug) { createSlugMsg.textContent = ''; createSlugMsg.className = 'rbi-slug-preview'; slugDisponivel = false; return; }
+        fetch('/api/relatorio-criar.php?action=check-slug&slug=' + encodeURIComponent(slug))
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                slugDisponivel = !!res.disponivel;
+                createSlugMsg.textContent = res.disponivel ? ('Disponível: /' + slug) : (res.erro || 'Indisponível');
+                createSlugMsg.className = 'rbi-slug-preview ' + (res.disponivel ? 'ok' : 'bad');
+            })
+            .catch(function () {
+                slugDisponivel = false;
+                createSlugMsg.textContent = 'Erro ao checar disponibilidade.';
+                createSlugMsg.className = 'rbi-slug-preview bad';
+            });
+    }
+
+    if (createNome) {
+        createNome.addEventListener('input', function () {
+            if (slugEditadoManualmente) return;
+            createSlug.value = slugifyClient(createNome.value);
+            clearTimeout(slugCheckTimer);
+            slugCheckTimer = setTimeout(function () { checarSlug(createSlug.value); }, 350);
+        });
+    }
+    if (createSlug) {
+        createSlug.addEventListener('input', function () {
+            slugEditadoManualmente = true;
+            createSlug.value = createSlug.value.toLowerCase();
+            clearTimeout(slugCheckTimer);
+            slugCheckTimer = setTimeout(function () { checarSlug(createSlug.value.trim()); }, 350);
+        });
+    }
+
+    // ── Tipo de conexão (SQL | Excel — Webhook desabilitado) ─────────────────
+    function setCreateTipo(tipo) {
+        if (createTipoSql)   createTipoSql.classList.toggle('active', tipo === 'sql');
+        if (createTipoExcel) createTipoExcel.classList.toggle('active', tipo === 'excel');
+        if (createSqlFields)   createSqlFields.style.display   = tipo === 'sql'   ? '' : 'none';
+        if (createExcelFields) createExcelFields.style.display = tipo === 'excel' ? '' : 'none';
+    }
+    if (createTipoSql)   createTipoSql.addEventListener('click',   function () { setCreateTipo('sql'); });
+    if (createTipoExcel) createTipoExcel.addEventListener('click', function () { setCreateTipo('excel'); });
+
+    // ── Linhas de tabela Excel (repetíveis) ───────────────────────────────────
+    function criarLinhaTabelaExcel() {
+        var linha = document.createElement('div');
+        linha.className = 'rbi-excel-tabela-row';
+        linha.innerHTML =
+            '<div class="rbi-field">' +
+                '<label class="rbi-field-label">Nome da tabela</label>' +
+                '<input type="text" class="rbi-field-input rbi-excel-nome" autocomplete="off">' +
+            '</div>' +
+            '<div class="rbi-field">' +
+                '<label class="rbi-field-label">Arquivo (.xlsx)</label>' +
+                '<input type="file" class="rbi-field-input rbi-excel-arquivo" accept=".xlsx">' +
+            '</div>' +
+            '<button type="button" class="rbi-excel-remove" title="Remover"><i class="ti ti-trash"></i></button>';
+        linha.querySelector('.rbi-excel-remove').addEventListener('click', function () { linha.remove(); });
+        return linha;
+    }
+    if (btnAddTabela) {
+        btnAddTabela.addEventListener('click', function () {
+            excelTabelasList.appendChild(criarLinhaTabelaExcel());
+        });
+    }
+
+    if (createPassToggle) {
+        createPassToggle.addEventListener('click', function () {
+            createPassword.type = createPassword.type === 'password' ? 'text' : 'password';
+        });
+    }
+
+    function openCreateModal() {
+        if (!createOverlay) return;
+        createNome.value = '';
+        createSlug.value = '';
+        slugEditadoManualmente = false;
+        slugDisponivel = false;
+        createSlugMsg.textContent = '';
+        createSlugMsg.className = 'rbi-slug-preview';
+        setCreateTipo('sql');
+        createHost.value = ''; createPort.value = '5432'; createDbname.value = '';
+        createUser.value = ''; createPassword.value = '';
+        excelTabelasList.innerHTML = '';
+        excelTabelasList.appendChild(criarLinhaTabelaExcel());
+        createClearMsg();
+        createOverlay.classList.add('open');
+        createNome.focus();
+    }
+    function closeCreateModal() {
+        if (createOverlay) createOverlay.classList.remove('open');
+    }
+    if (btnAddRelatorio) btnAddRelatorio.addEventListener('click', openCreateModal);
+    var createCloseBtn  = document.getElementById('rbi-create-close');
+    var createCancelBtn = document.getElementById('rbi-create-cancel');
+    if (createCloseBtn)  createCloseBtn.addEventListener('click', closeCreateModal);
+    if (createCancelBtn) createCancelBtn.addEventListener('click', closeCreateModal);
+    if (createOverlay) {
+        createOverlay.addEventListener('click', function (e) { if (e.target === createOverlay) closeCreateModal(); });
+    }
+
+    if (createSaveBtn) createSaveBtn.addEventListener('click', function () {
+        createClearMsg();
+        var nome = createNome.value.trim();
+        var slug = createSlug.value.trim();
+        var tipo = createTipoExcel && createTipoExcel.classList.contains('active') ? 'excel' : 'sql';
+
+        if (!nome) { createShowMsg('Nome amigável é obrigatório.', 'erro'); createNome.focus(); return; }
+        if (!slug) { createShowMsg('Slug é obrigatório.', 'erro'); createSlug.focus(); return; }
+        if (!slugDisponivel) { createShowMsg('Escolha um slug disponível antes de salvar.', 'erro'); createSlug.focus(); return; }
+
+        var formData = new FormData();
+        formData.append('nome_amigavel', nome);
+        formData.append('slug', slug);
+        formData.append('tipo_conexao', tipo);
+
+        if (tipo === 'sql') {
+            var host = createHost.value.trim(), dbname = createDbname.value.trim(), usuario = createUser.value.trim();
+            if (!host || !dbname || !usuario) { createShowMsg('Host, banco e usuário são obrigatórios.', 'erro'); return; }
+            formData.append('host', host);
+            formData.append('porta', createPort.value || '5432');
+            formData.append('banco', dbname);
+            formData.append('usuario', usuario);
+            formData.append('senha', createPassword.value);
+        } else {
+            var linhas = excelTabelasList.querySelectorAll('.rbi-excel-tabela-row');
+            var algumaValida = false;
+            for (var i = 0; i < linhas.length; i++) {
+                var nomeTab = linhas[i].querySelector('.rbi-excel-nome').value.trim();
+                var arquivoInput = linhas[i].querySelector('.rbi-excel-arquivo');
+                var arquivo = arquivoInput.files[0];
+                if (!nomeTab && !arquivo) continue; // linha em branco, ignora
+                if (!nomeTab || !arquivo) {
+                    createShowMsg('Toda tabela precisa de nome e arquivo juntos.', 'erro');
+                    return;
+                }
+                formData.append('tabela_nome[]', nomeTab);
+                formData.append('tabela_arquivo[]', arquivo);
+                algumaValida = true;
+            }
+            if (!algumaValida) { createShowMsg('Adicione pelo menos uma tabela (nome + arquivo).', 'erro'); return; }
+        }
+
+        createSaveBtn.disabled = true;
+        createSaveBtn.textContent = tipo === 'sql' ? 'Testando conexão...' : 'Processando arquivos...';
+        fetch('/api/relatorio-criar.php?action=create', { method: 'POST', body: formData })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (res.sucesso) {
+                    createShowMsg('Relatório criado com sucesso.', 'ok');
+                    setTimeout(function () { closeCreateModal(); loadCards(); }, 900);
+                } else {
+                    createShowMsg(res.erro || 'Erro ao criar relatório.', 'erro');
+                }
+            })
+            .catch(function () { createShowMsg('Erro de rede ao criar relatório.', 'erro'); })
+            .finally(function () {
+                createSaveBtn.disabled = false;
+                createSaveBtn.textContent = 'Criar relatório';
+            });
+    });
+
     // ── Tooltip de usuários (hover no chip "N usuários") ─────────────────────
     function montarTooltip(usuarios) {
         if (!usuarios || !usuarios.length) {
@@ -975,8 +1433,12 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
             : '<span class="rbi-empresa-badge" style="opacity:.5">Nenhuma empresa</span>';
 
         const userCount = r.user_count || 0;
+        const badgeConstrucao = r.em_construcao
+            ? '<span class="rbi-badge-construcao"><i class="ti ti-tool"></i>Em construção</span>'
+            : '';
 
         card.innerHTML =
+            badgeConstrucao +
             '<div class="rbi-thumb">' + thumbHtml(r.slug) + '</div>' +
             '<div class="rbi-card-body">' +
                 '<div class="rbi-card-name">' + escHtml(r.nome_amigavel) + '</div>' +
@@ -1096,10 +1558,12 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
         if (!nome) { editNome.focus(); return; }
 
         btnSave.disabled = true;
+        var payloadGeral = { id: parseInt(editId.value), nome_amigavel: nome, visivel: visivel };
+        if (window.RBI_IS_ADMIN) payloadGeral.em_construcao = emConstrucao;
         fetch('/api/relatorios-bi.php?action=update', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: parseInt(editId.value), nome_amigavel: nome, visivel: visivel })
+            body: JSON.stringify(payloadGeral)
         })
         .then(function (r) { return r.json(); })
         .then(function (res) {
