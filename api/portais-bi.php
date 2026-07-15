@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/../services/AuthenticationService.php';
 require_once __DIR__ . '/../helpers/Database.php';
+require_once __DIR__ . '/../services/NimbusTaxPortalSync.php';
 
 header('Content-Type: application/json');
 
@@ -256,6 +257,14 @@ try {
         }
         $id = (int)$pdo->lastInsertId('portais_bi_id_seq');
 
+        NimbusTaxPortalSync::sync(null, [
+            'relatorio_slug' => $relatorioSlug,
+            'filter_type'    => $filterType,
+            'filter_values'  => array_values($filterValues),
+            'slug'           => $slug,
+            'ativo'          => true,
+        ], $senha);
+
         echo json_encode([
             'sucesso'     => true,
             'id'          => $id,
@@ -280,10 +289,19 @@ try {
         if (!$id || !$filterType || !$slug) {
             echo json_encode(['erro' => 'Campos obrigatórios não preenchidos']); exit;
         }
-        // relatorio_slug é imutável — busca do banco p/ saber se é contabilidade
-        $rSlug = $pdo->prepare('SELECT relatorio_slug FROM portais_bi WHERE id=?');
-        $rSlug->execute([$id]);
-        $isContab = ($rSlug->fetchColumn() === 'relatorio-contabilidade');
+        // relatorio_slug é imutável — busca do banco p/ saber se é contabilidade; aproveita a
+        // mesma consulta para capturar o estado ANTES da atualização (sync Bitrix NimbusTax).
+        $oldStmt = $pdo->prepare('SELECT relatorio_slug, filter_type, filter_values, slug, ativo FROM portais_bi WHERE id=?');
+        $oldStmt->execute([$id]);
+        $oldRow   = $oldStmt->fetch(PDO::FETCH_ASSOC);
+        $isContab = (($oldRow['relatorio_slug'] ?? null) === 'relatorio-contabilidade');
+        $oldForSync = $oldRow ? [
+            'relatorio_slug' => $oldRow['relatorio_slug'],
+            'filter_type'    => $oldRow['filter_type'],
+            'filter_values'  => json_decode($oldRow['filter_values'], true) ?? [],
+            'slug'           => $oldRow['slug'],
+            'ativo'          => (bool)$oldRow['ativo'],
+        ] : null;
 
         $filterTypesValidos = $isContab ? ['indicador', 'contabilidade'] : ['parceiro', 'oportunidade'];
         if (!in_array($filterType, $filterTypesValidos, true)) {
@@ -342,6 +360,16 @@ try {
                 $id,
             ]);
         }
+
+        $newForSync = [
+            'relatorio_slug' => $oldForSync['relatorio_slug'] ?? '',
+            'filter_type'    => $filterType,
+            'filter_values'  => array_values($filterValues),
+            'slug'           => $slug,
+            'ativo'          => $oldForSync['ativo'] ?? true,
+        ];
+        NimbusTaxPortalSync::sync($oldForSync, $newForSync, $novaSenha !== '' ? $novaSenha : null);
+
         echo json_encode(['sucesso' => true]);
         exit;
     }
@@ -352,11 +380,28 @@ try {
         $id   = (int)($body['id'] ?? 0);
         if (!$id) { echo json_encode(['erro' => 'ID inválido']); exit; }
 
+        $beforeStmt = $pdo->prepare('SELECT relatorio_slug, filter_type, filter_values, slug, ativo FROM portais_bi WHERE id=?');
+        $beforeStmt->execute([$id]);
+        $beforeRow = $beforeStmt->fetch(PDO::FETCH_ASSOC);
+
         $pdo->prepare('UPDATE portais_bi SET ativo = NOT ativo WHERE id=?')->execute([$id]);
 
         $r = $pdo->prepare('SELECT ativo FROM portais_bi WHERE id=?');
         $r->execute([$id]);
         $novoAtivo = (bool)$r->fetchColumn();
+
+        if ($beforeRow) {
+            $oldForSync = [
+                'relatorio_slug' => $beforeRow['relatorio_slug'],
+                'filter_type'    => $beforeRow['filter_type'],
+                'filter_values'  => json_decode($beforeRow['filter_values'], true) ?? [],
+                'slug'           => $beforeRow['slug'],
+                'ativo'          => (bool)$beforeRow['ativo'],
+            ];
+            $newForSync = $oldForSync;
+            $newForSync['ativo'] = $novoAtivo;
+            NimbusTaxPortalSync::sync($oldForSync, $newForSync, null);
+        }
 
         echo json_encode(['sucesso' => true, 'ativo' => $novoAtivo]);
         exit;
@@ -368,7 +413,23 @@ try {
         $id   = (int)($body['id'] ?? 0);
         if (!$id) { echo json_encode(['erro' => 'ID inválido']); exit; }
 
+        $beforeStmt = $pdo->prepare('SELECT relatorio_slug, filter_type, filter_values, slug, ativo FROM portais_bi WHERE id=?');
+        $beforeStmt->execute([$id]);
+        $beforeRow = $beforeStmt->fetch(PDO::FETCH_ASSOC);
+
         $pdo->prepare('DELETE FROM portais_bi WHERE id=?')->execute([$id]);
+
+        if ($beforeRow) {
+            $oldForSync = [
+                'relatorio_slug' => $beforeRow['relatorio_slug'],
+                'filter_type'    => $beforeRow['filter_type'],
+                'filter_values'  => json_decode($beforeRow['filter_values'], true) ?? [],
+                'slug'           => $beforeRow['slug'],
+                'ativo'          => (bool)$beforeRow['ativo'],
+            ];
+            NimbusTaxPortalSync::sync($oldForSync, null, null);
+        }
+
         echo json_encode(['sucesso' => true]);
         exit;
     }

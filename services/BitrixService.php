@@ -36,6 +36,28 @@ class BitrixService {
         return $row['webhook_motor'] ?? null;
     }
 
+    /**
+     * Busca o webhook Bitrix24 vinculado ao cliente que tem a aplicação de slug $appSlug ativa
+     * (cliente_aplicacoes.ativo=TRUE), via cliente_aplicacoes → clientes → organizacoes.webhook_motor.
+     * Mesmo padrão de resolução já usado por apis2.kw24.com.br (AccessControl::validate() e
+     * NimbusPartnersReportJob) para o app 'nimbus_parceiros' — conta Bitrix24 da Nimbus Tax,
+     * diferente do webhook interno da KW24 (financeiro_webhook_bitrix / ORG_GRUPO_NIMBUS).
+     */
+    public static function getWebhookForAppSlug(string $appSlug): ?string {
+        $db  = Database::getInstance();
+        $row = $db->fetchOne(
+            'SELECT o.webhook_motor
+               FROM cliente_aplicacoes ca
+               JOIN clientes c ON ca.cliente_id = c.id
+               JOIN aplicacoes a ON a.id = ca.aplicacao_id
+               JOIN organizacoes o ON o.id = c.org_id
+              WHERE a.slug = :slug AND ca.ativo = TRUE
+              LIMIT 1',
+            ['slug' => $appSlug]
+        );
+        return $row['webhook_motor'] ?? null;
+    }
+
     public function isConfigured(): bool {
         return strlen($this->webhookUrl) > 15;
     }
@@ -169,6 +191,15 @@ class BitrixService {
 
     public function getCompany(int $companyId): ?array {
         return $this->post('crm.company.get', ['id' => $companyId]);
+    }
+
+    /** Atualiza campos (inclusive UF_CRM_*) de uma Company via crm.company.update. */
+    public function updateCompany(int $companyId, array $fields): bool {
+        $result = $this->post('crm.company.update', [
+            'id'     => $companyId,
+            'fields' => $fields,
+        ]);
+        return $result !== null;
     }
 
     /** Resolve IDs de usuário Bitrix24 para nome completo. Retorna [id => "Nome Sobrenome"]. */
