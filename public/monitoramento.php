@@ -161,79 +161,55 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     flex-shrink: 0;
     white-space: nowrap;
 }
-.mon-equipe-total b { font-family: 'Inter', monospace; }
-/* Grid de 3 colunas (nome | Suporte | Dev) compartilhado por TODAS as linhas — cada coluna
- * tem a mesma largura (a do conteúdo mais largo dela) em todas as pessoas, então Suporte e Dev
- * sempre começam na mesma posição horizontal, linha após linha (fácil de comparar as 4 pessoas
- * de uma olhada, em vez de cada linha flutuar conforme o tamanho do próprio conteúdo). Truque:
- * .mon-membro-row/.mon-membro-metricas usam display:contents (não geram caixa própria, só
- * "promovem" os filhos pro grid do container) — por isso a borda divisória vai em cada célula
- * (nome/Suporte/Dev), não na linha, mas como as 3 têm o mesmo padding/altura, formam uma única
- * linha visual contínua.
- * --eq-row (custom property, herda através do display:contents mesmo sem caixa própria — ver
- * membroCardHtml()) fixa a LINHA de cada pessoa explicitamente. Sem isso, o algoritmo de
- * auto-placement do grid (cada célula só com grid-column definido, sem grid-row) inflava um
- * espaço vertical enorme entre pessoas — regressão corrigida fixando a linha em vez de deixar
- * o browser decidir. Linha 1 é reservada pro cabeçalho das colunas (.mon-equipe-col-header,
- * "Suporte"/"Dev" mostrados uma única vez) — pessoas começam em --eq-row:2 (ver membroCardHtml()). */
+.mon-equipe-total-item.suporte { color: #0DC2FF; }
+.mon-equipe-total-item.dev     { color: #f6ad55; }
+.mon-equipe-total-sep { color: rgba(255,255,255,.25); }
+/* 4 cards lado a lado, largura igual — cada card: nome no topo + 2 linhas empilhadas
+ * (Suporte acima, Desenvolvimento abaixo), sem repetir a palavra "Suporte"/"Desenvolvimento"
+ * dentro do card (só a cor identifica qual é qual — o texto por extenso já está na legenda do
+ * topo, ver renderEquipeTotal()). flex-wrap pra não espremer demais em telas estreitas (empilha
+ * 2x2 em vez de 4 numa linha só). */
 .mon-equipe-body {
     flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--mon-sp-sm);
     padding: var(--mon-sp-base) var(--mon-sp-lg);
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    grid-auto-rows: min-content;
-    column-gap: var(--mon-sp-md);
-    align-items: center;
 }
-.mon-equipe-body > .mon-empty { grid-column: 1 / -1; }
-.mon-equipe-col-header {
-    grid-row: 1;
-    font-size: var(--mon-fs-2xs);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-    text-align: right;
-    color: rgba(255,255,255,.4);
-    padding-bottom: var(--mon-sp-2xs);
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+.mon-membro-card {
+    flex: 1 1 0;
+    min-width: 140px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--mon-sp-3xs);
+    padding: var(--mon-sp-sm);
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px;
 }
-.mon-equipe-col-header.suporte { grid-column: 2; color: #0DC2FF; }
-.mon-equipe-col-header.dev     { grid-column: 3; color: #f6ad55; }
-.mon-membro-row, .mon-membro-metricas { display: contents; }
-.mon-membro-nome-plain {
-    grid-column: 1;
-    grid-row: var(--eq-row);
+.mon-membro-nome {
     font-family: 'Rubik', sans-serif;
     font-size: var(--mon-fs-base);
     font-weight: 600;
     color: #fff;
-    min-width: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding: var(--mon-sp-2xs) 0;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: var(--mon-sp-3xs);
 }
-.mon-membro-metrica {
-    grid-row: var(--eq-row);
+.mon-membro-valor {
     cursor: pointer;
-    white-space: nowrap;
-    text-align: right;
     font-size: var(--mon-fs-sm);
     font-weight: 600;
-    font-family: 'Inter', monospace;
-    padding: var(--mon-sp-2xs) 0;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     transition: filter .15s ease;
 }
-.mon-membro-metrica:hover { filter: brightness(1.25); }
-.mon-membro-metrica.suporte { grid-column: 2; color: #0DC2FF; }
-.mon-membro-metrica.dev     { grid-column: 3; color: #f6ad55; }
-.mon-membro-row:last-child > .mon-membro-nome-plain,
-.mon-membro-row:last-child .mon-membro-metrica {
-    border-bottom: none;
-    padding-bottom: 0;
-}
+.mon-membro-valor:hover { filter: brightness(1.25); }
+.mon-membro-valor .n { font-family: 'Inter', monospace; }
+.mon-membro-valor.suporte { color: #0DC2FF; }
+.mon-membro-valor.dev     { color: #f6ad55; }
 
 .mon-empty {
     text-align: center;
@@ -1458,18 +1434,16 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         return h + ':' + (m < 10 ? '0' + m : m);
     }
 
-    // Cabeçalho das colunas Suporte/Dev — mostrado uma única vez (linha 1 do grid), não mais
-    // repetido em cada pessoa (ver membroCardHtml() abaixo). Mesmas cores de sempre.
-    function equipeColHeaderHtml() {
-        return '<span class="mon-equipe-col-header suporte">Suporte</span>'
-            + '<span class="mon-equipe-col-header dev">Dev</span>';
+    // "1 chamado" / "2 chamados" — plural correto, mais legível que só o número cru.
+    function fmtChamados(n) {
+        return n + (n === 1 ? ' chamado' : ' chamados');
     }
 
-    // Linha em texto puro (sem bar/gráfico) — nome à esquerda, contadores clicáveis à
-    // direita, abrindo o mesmo drill-down de antes. "Em andamento" foi removido daqui (só
-    // da UI — a query em MonitoramentoEquipeService.php continua intacta, ver relatório).
-    // Só o valor (sem repetir "Suporte"/"Dev" — isso agora é cabeçalho de coluna, ver acima).
-    // --eq-row começa em 2 (linha 1 é do cabeçalho).
+    // Card por pessoa: nome no topo + 2 linhas empilhadas (Suporte acima, Desenvolvimento
+    // abaixo) — sem repetir a palavra "Suporte"/"Desenvolvimento" (só a cor identifica, o
+    // texto por extenso já está na legenda do topo, ver renderEquipeTotal()). "Em andamento"
+    // foi removido daqui (só da UI — a query em MonitoramentoEquipeService.php continua
+    // intacta, ver relatório).
     function membroCardHtml(m, idx) {
         var fin       = m.finalizado || {};
         var finSupMin = (fin.suporte && fin.suporte.minutos) || 0;
@@ -1477,23 +1451,24 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         var finSupCnt = (fin.suporte && fin.suporte.count) || 0;
         var finDevCnt = (fin.desenvolvimento && fin.desenvolvimento.count) || 0;
 
-        return '<div class="mon-membro-row" style="--eq-row:' + (idx + 2) + '">'
-            + '<span class="mon-membro-nome-plain">' + escHtml(m.nome) + '</span>'
-            + '<span class="mon-membro-metricas">'
-                + '<span class="mon-membro-metrica suporte" onclick="monAbrirDrill(' + idx + ',\'finalizado\',\'suporte\')">' + finSupCnt + '·' + fmtHM(finSupMin) + '</span>'
-                + '<span class="mon-membro-metrica dev" onclick="monAbrirDrill(' + idx + ',\'finalizado\',\'desenvolvimento\')">' + finDevCnt + '·' + fmtHM(finDevMin) + '</span>'
-            + '</span>'
+        return '<div class="mon-membro-card">'
+            + '<div class="mon-membro-nome">' + escHtml(m.nome) + '</div>'
+            + '<div class="mon-membro-valor suporte" onclick="monAbrirDrill(' + idx + ',\'finalizado\',\'suporte\')"><span class="n">' + fmtChamados(finSupCnt) + '</span> — ' + fmtHM(finSupMin) + '</div>'
+            + '<div class="mon-membro-valor dev" onclick="monAbrirDrill(' + idx + ',\'finalizado\',\'desenvolvimento\')"><span class="n">' + fmtChamados(finDevCnt) + '</span> — ' + fmtHM(finDevMin) + '</div>'
             + '</div>';
     }
 
+    // Legenda do topo (mesma linha do título "Equipe") — palavras por extenso, com um
+    // separador visível entre os dois totais.
     function renderEquipeTotal(totalMinutos) {
         var el = document.getElementById('mon-equipe-total');
         if (!el) return;
         if (!totalMinutos) { el.innerHTML = ''; return; }
 
         el.innerHTML =
-            '<span><b>' + fmtHM(totalMinutos.suporte || 0) + '</b> Suporte</span>'
-            + '<span><b>' + fmtHM(totalMinutos.desenvolvimento || 0) + '</b> Dev</span>';
+            '<span class="mon-equipe-total-item suporte">Suporte — ' + fmtHM(totalMinutos.suporte || 0) + '</span>'
+            + '<span class="mon-equipe-total-sep">|</span>'
+            + '<span class="mon-equipe-total-item dev">Desenvolvimento — ' + fmtHM(totalMinutos.desenvolvimento || 0) + '</span>';
     }
 
     function render(data) {
@@ -1513,7 +1488,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             return;
         }
 
-        grid.innerHTML = equipeColHeaderHtml() + equipe.map(membroCardHtml).join('');
+        grid.innerHTML = equipe.map(membroCardHtml).join('');
     }
 
     // ── Drill-down: lista de chamados (com ID clicável para o Bitrix24) por trás de um segmento ──
