@@ -75,7 +75,7 @@ class MonitoramentoChamadosService {
         // Sem filtro por Tipo aqui de propósito — um tipo novo que apareça no futuro (fora do
         // catálogo conhecido) deve continuar aparecendo no painel (cai em "Outros" no
         // frontend), não desaparecer silenciosamente por não estar numa lista fixa.
-        $selectFields = ['id', self::F_NOME, 'title', self::F_TIPO, self::F_PRIORIDADE, 'stageId', self::F_RESP, 'createdTime', self::F_SOLICITANTE];
+        $selectFields = ['id', self::F_NOME, 'title', self::F_TIPO, self::F_PRIORIDADE, 'stageId', self::F_RESP, 'createdTime', self::F_SOLICITANTE, 'companyId'];
         if ($detalheCompleto) $selectFields[] = self::F_RESUMO;
 
         $items = $this->bitrix->listItems(
@@ -95,6 +95,17 @@ class MonitoramentoChamadosService {
             foreach ((array)($it[self::F_RESP] ?? []) as $uid) $respIds[] = (int)$uid;
         }
         $nomesUsuarios = $respIds ? $this->bitrix->getUserNames($respIds) : [];
+
+        // companyId é campo nativo do item (não UF customizado) — não lido/exibido neste
+        // painel até agora (não tinha como saber de qual cliente é um chamado, olhando só a
+        // tela). Chamados sem empresa vinculada (companyId=0/ausente) ficam com
+        // empresaNome=null — o frontend mostra "—", não um erro nem "Empresa #0".
+        $companyIds = [];
+        foreach ($items as $it) {
+            $cid = (int)($it['companyId'] ?? 0);
+            if ($cid) $companyIds[] = $cid;
+        }
+        $nomesEmpresas = $companyIds ? $this->bitrix->getCompanyNames($companyIds) : [];
 
         // Chat: resolve o chat vinculado de cada card (sempre — é o que define 'temChat'), depois
         // busca mensagens recentes dos chats encontrados (só em modo detalhado — ver docblock
@@ -138,6 +149,7 @@ class MonitoramentoChamadosService {
             $tipo       = (int)($it[self::F_TIPO] ?? 0);
             $prioridade = (int)($it[self::F_PRIORIDADE] ?? 0);
             $stageId    = $it['stageId'] ?? '';
+            $companyId  = (int)($it['companyId'] ?? 0);
 
             $responsaveis = [];
             foreach ((array)($it[self::F_RESP] ?? []) as $uid) {
@@ -178,6 +190,8 @@ class MonitoramentoChamadosService {
                 'prioridadeLabel'=> self::PRIORIDADES[$prioridade]['label'] ?? null,
                 'prioridadeCor'  => self::PRIORIDADES[$prioridade]['cor'] ?? '#a0aec0',
                 'etapaLabel'     => self::ETAPAS[$stageId] ?? $stageId, // defensivo — não deveria faltar (ver nota da classe)
+                'empresaId'      => $companyId ?: null,
+                'empresaNome'    => $companyId ? ($nomesEmpresas[$companyId] ?? "Empresa #{$companyId}") : null,
                 'responsaveis'   => $responsaveis,
                 'solicitante'    => trim((string)($it[self::F_SOLICITANTE] ?? '')),
                 'createdTime'    => $it['createdTime'] ?? null,

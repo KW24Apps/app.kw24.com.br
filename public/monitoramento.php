@@ -619,7 +619,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .cha-dropdown-empty { padding: var(--mon-sp-sm); font-size: var(--mon-fs-sm); color: rgba(255,255,255,.35); white-space: normal; }
 .cha-thead {
     display: grid;
-    grid-template-columns: clamp(21px,1.54vw,26px) minmax(clamp(112px,8.2vw,140px),1.4fr) minmax(clamp(88px,6.44vw,110px),0.9fr) minmax(clamp(64px,4.69vw,82px),0.6fr) minmax(clamp(80px,5.86vw,100px),0.8fr) minmax(clamp(72px,5.27vw,90px),0.8fr) clamp(62px,4.54vw,78px) clamp(40px,2.93vw,50px);
+    grid-template-columns: clamp(21px,1.54vw,26px) minmax(clamp(112px,8.2vw,140px),1.4fr) minmax(clamp(80px,5.86vw,100px),0.8fr) minmax(clamp(88px,6.44vw,110px),0.9fr) minmax(clamp(64px,4.69vw,82px),0.6fr) minmax(clamp(80px,5.86vw,100px),0.8fr) minmax(clamp(72px,5.27vw,90px),0.8fr) clamp(62px,4.54vw,78px) clamp(40px,2.93vw,50px);
     gap: var(--mon-sp-base);
     align-items: center;
     padding: var(--mon-sp-sm) var(--mon-sp-lg);
@@ -660,7 +660,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .cha-row:last-child { border-bottom: none; }
 .cha-row-main {
     display: grid;
-    grid-template-columns: clamp(21px,1.54vw,26px) minmax(clamp(112px,8.2vw,140px),1.4fr) minmax(clamp(88px,6.44vw,110px),0.9fr) minmax(clamp(64px,4.69vw,82px),0.6fr) minmax(clamp(80px,5.86vw,100px),0.8fr) minmax(clamp(72px,5.27vw,90px),0.8fr) clamp(62px,4.54vw,78px) clamp(40px,2.93vw,50px);
+    grid-template-columns: clamp(21px,1.54vw,26px) minmax(clamp(112px,8.2vw,140px),1.4fr) minmax(clamp(80px,5.86vw,100px),0.8fr) minmax(clamp(88px,6.44vw,110px),0.9fr) minmax(clamp(64px,4.69vw,82px),0.6fr) minmax(clamp(80px,5.86vw,100px),0.8fr) minmax(clamp(72px,5.27vw,90px),0.8fr) clamp(62px,4.54vw,78px) clamp(40px,2.93vw,50px);
     gap: var(--mon-sp-base);
     align-items: center;
     padding: var(--mon-sp-xs) var(--mon-sp-lg);
@@ -721,6 +721,14 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .cha-solicitante {
     font-size: var(--mon-fs-base);
     color: rgba(255,255,255,.65);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+.cha-empresa {
+    font-size: var(--mon-fs-sm);
+    color: rgba(255,255,255,.5);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1260,6 +1268,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                 <div class="cha-thead">
                     <span></span>
                     <span class="cha-th">Chamado</span>
+                    <span class="cha-th">Empresa</span>
                     <span class="cha-th cha-th-sort" data-col="tipo" onclick="chaOrdenarPor('tipo')">Tipo<i class="fas fa-sort mon-sort-icon"></i></span>
                     <span class="cha-th cha-th-sort" data-col="prioridade" onclick="chaOrdenarPor('prioridade')">Prior.<i class="fas fa-sort mon-sort-icon"></i></span>
                     <span class="cha-th cha-th-sort" data-col="etapa" onclick="chaOrdenarPor('etapa')">Etapa<i class="fas fa-sort mon-sort-icon"></i></span>
@@ -1980,6 +1989,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             + '<div class="cha-row-main" onclick="chaToggle(' + c.id + ')">'
                 + '<button class="cha-chevron-btn" id="cha-btn-' + c.id + '"><i class="fas fa-chevron-right" style="font-size:.7rem"></i></button>'
                 + '<div class="cha-row-chamado">' + idHtml + '<span class="cha-row-title" title="' + escHtml(c.titulo) + '">' + escHtml(c.titulo) + '</span></div>'
+                + '<span class="cha-empresa" title="' + escHtml(c.empresaNome || '') + '">' + escHtml(c.empresaNome || '—') + '</span>'
                 + '<span class="cha-badge" title="' + escHtml(c.tipoLabel) + '" style="background:' + c.tipoCor + '22;color:' + c.tipoCor + ';border:1px solid ' + c.tipoCor + '55">' + escHtml(c.tipoLabel) + '</span>'
                 + (c.prioridadeLabel
                     ? '<span class="cha-badge" title="' + escHtml(c.prioridadeLabel) + '" style="background:' + c.prioridadeCor + '22;color:' + c.prioridadeCor + ';border:1px solid ' + c.prioridadeCor + '55">' + escHtml(c.prioridadeLabel) + '</span>'

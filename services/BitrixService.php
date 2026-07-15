@@ -221,6 +221,33 @@ class BitrixService {
     }
 
     /**
+     * Resolve IDs de Company (crm.company) para nome (TITLE), em lote via batch
+     * (crm.company.get, chunks de 50) — mesmo padrão já usado por
+     * FinanceiroSync::batchFetchCompanyNames() (privado, duplicado lá antes de existir aqui)
+     * e por getCrmChatIds() nesta mesma classe. Retorna [id => nome]; id sem company
+     * encontrada cai no fallback "Empresa #{id}" (mesmo texto usado no resto do projeto).
+     */
+    public function getCompanyNames(array $companyIds): array {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $companyIds))));
+        if (!$ids) return [];
+
+        $out = [];
+        foreach (array_chunk($ids, 50) as $chunk) {
+            $cmd = [];
+            foreach ($chunk as $i => $cid) {
+                $cmd["co{$i}"] = 'crm.company.get?' . http_build_query(['id' => $cid], '', '&', PHP_QUERY_RFC3986);
+            }
+            $resp    = $this->post('batch', ['halt' => 0, 'cmd' => $cmd]);
+            $results = $resp['result'] ?? [];
+            foreach ($chunk as $i => $cid) {
+                $co = $results["co{$i}"] ?? null;
+                $out[$cid] = $co['TITLE'] ?? "Empresa #{$cid}";
+            }
+        }
+        return $out;
+    }
+
+    /**
      * Resolve o chat vinculado (im.chat) de vários itens CRM (SPA) de uma vez, via batch.
      * Retorna [itemId => chatId] — itens sem chat vinculado não aparecem no retorno.
      * Padrão descoberto em apis2.kw24.com.br/TRANSICAO.md ("Localizar chat vinculado a um card
