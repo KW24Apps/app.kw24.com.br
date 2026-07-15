@@ -19,6 +19,20 @@ require_once __DIR__ . '/../services/WebhooksPessoaisAtendimento.php';
  *
  * Sem conceito de período/ciclo neste painel (mesma decisão já aplicada ao Tarefas) — o
  * que importa é o que está ativo/sem resposta agora, não um total histórico.
+ *
+ * tempoMedioRespostaMinutos = média SÓ sobre conversas atualmente ABERTAS. Isso já é
+ * garantido de graça pela própria API: calibrado ao vivo (10 sessões confirmadas como
+ * "Conversa fechada" no export nativo do Contact Center do Bitrix24, cruzadas contra
+ * lines.id) que conversas fechadas NUNCA aparecem em im.recent.list — nem com LIMIT alto,
+ * nem sem o filtro de fila — apesar de sessões abertas cronologicamente vizinhas (IDs antes
+ * E depois) aparecerem normalmente. Ou seja, $itensFila já É "só conversas abertas" por
+ * construção; não existe um valor de lines.status próprio pra "fechada" que precise ser
+ * filtrado à parte (só sub-estados de conversa aberta foram observados/confirmados com
+ * Gabriel: 25 = "Cliente aguardando resposta do agente", 40 = "O agente respondeu" — ver
+ * statusCodigoBruto/statusRotulo abaixo). Um design anterior (Incremento: "amostra
+ * ampliada") tentava um segundo cálculo com LIMIT=200 pra comparar contra esse — removido
+ * porque a amostra maior nunca achava nada além do que LIMIT=50 já cobria (mesma razão: não
+ * há conversa fechada pra "recuperar" aumentando o LIMIT).
  */
 class MonitoramentoAtendimentoService {
     private const LINE_CONFIG_ID = 21; // "Geral KW24 - Suporte"
@@ -27,12 +41,13 @@ class MonitoramentoAtendimentoService {
     private const HORA_INICIO_COMERCIAL = 8;
     private const HORA_FIM_COMERCIAL    = 18;
 
-    // Não existe método REST que liste o histórico completo de sessões por fila (pesquisado
-    // e confirmado) — im.recent.list só devolve uma janela "recente". 200 é o máximo
-    // documentado de LIMIT; usado só pra tempoMedioRespostaAmplaMinutos, uma segunda amostra
-    // maior (inclui conversas já finalizadas dentro dessa janela) pra dar perspectiva sobre o
-    // tempoMedioRespostaMinutos "atual" — nunca é uma média histórica completa.
-    private const LIMIT_AMOSTRA_AMPLA = 200;
+    // Rótulos confirmados ao vivo com Gabriel (cruzando lines.status contra a coluna "Status"
+    // do export nativo do Contact Center) — só os 2 valores realmente confirmados até agora;
+    // qualquer outro (5, 20 observados, mas não confirmados) fica sem rótulo (null).
+    private const STATUS_FILA_ROTULOS = [
+        25 => 'Cliente aguardando resposta do agente',
+        40 => 'O agente respondeu',
+    ];
 
     private BitrixService $bitrixAutomacao;
 
@@ -78,34 +93,10 @@ class MonitoramentoAtendimentoService {
             }
         }
 
-        // Segunda busca, com LIMIT bem maior (200, o máximo documentado) — mesma fila
-        // (filtrarPorFila aplicado igual), mas alcança conversas já finalizadas que saíram do
-        // recorte de 50 usado acima. Usada só pra tempoMedioRespostaAmplaMinutos (ver return);
-        // não participa da lista "conversas", de conversasAtivas nem do statusFila/reclamadaPor
-        // (esses continuam exatamente como antes, baseados só em $itensFila).
-        $itensAmplos = [];
-        foreach ($identidades as $identidade) {
-            $recentesAmplos = $identidade['bitrix']->call('im.recent.list', [
-                'SKIP_DIALOG'                  => 'Y',
-                'SKIP_CHAT'                    => 'Y',
-                'SKIP_OPENLINES'               => 'N',
-                'SKIP_UNDISTRIBUTED_OPENLINES' => 'N',
-                'LIMIT'                        => self::LIMIT_AMOSTRA_AMPLA,
-            ]);
-            foreach ($this->filtrarPorFila($recentesAmplos['items'] ?? []) as $it) {
-                $sessionId = $it['lines']['id'] ?? null;
-                if ($sessionId === null || isset($itensAmplos[$sessionId])) continue;
-                $itensAmplos[$sessionId] = ['item' => $it, 'identidade' => $identidade];
-            }
-        }
-
         // Histórico completo de cada conversa — busca com o webhook da identidade que
         // efetivamente viu essa conversa (ela é participante real; a automação pode não ser).
-        // União de $itensAmplos + $itensFila: como a amostra ampla usa LIMIT maior na mesma
-        // ordenação por recência, ela já cobre praticamente todo $itensFila — evita refazer a
-        // chamada de histórico duas vezes pra mesma sessão.
         $historicos = [];
-        foreach (($itensAmplos + $itensFila) as $sessionId => $entrada) {
+        foreach ($itensFila as $sessionId => $entrada) {
             $it     = $entrada['item'];
             $chatId = $it['chat']['id'] ?? null;
             if ($chatId === null) continue;
@@ -170,6 +161,8 @@ class MonitoramentoAtendimentoService {
                 }
             }
 
+            $statusCodigoBruto = $it['lines']['status'] ?? null;
+
             $conversas[] = [
                 'sessionId'                   => (int)$sessionId,
                 'titulo'                      => $titulo,
@@ -178,7 +171,8 @@ class MonitoramentoAtendimentoService {
                 'ultimaMensagemTexto'         => $ultima ? $this->limparBBCode((string)$ultima['text']) : null,
                 'ultimaMensagemData'          => $ultimaData,
                 'minutosDesdeUltimaAtividade' => $ultimaData ? round((time() - strtotime($ultimaData)) / 60) : null,
-                'statusCodigoBruto'           => $it['lines']['status'] ?? null, // não confirmado — só pra calibração visual
+                'statusCodigoBruto'           => $statusCodigoBruto, // valor cru do lines.status — ver STATUS_FILA_ROTULOS
+                'statusRotulo'                => self::STATUS_FILA_ROTULOS[$statusCodigoBruto] ?? null, // texto real, só quando confirmado
                 'urlBitrix24'                 => $bitrixBase ? ($bitrixBase . '/online/?IM_HISTORY=imol|' . $sessionId) : null,
                 'vistaPor'                    => $entrada['identidade']['nome'], // diagnóstico — qual identidade trouxe essa conversa
                 'statusFila'                  => $statusFila,   // 'aguardando_atendimento' | 'em_atendimento' | null (indeterminado)
@@ -200,23 +194,6 @@ class MonitoramentoAtendimentoService {
         $conversasSemGrupo = array_values(array_filter($conversas, fn($c) => !$c['ehGrupo']));
         $grupos             = array_values(array_filter($conversas, fn($c) => $c['ehGrupo']));
 
-        // Amostra ampliada (ver $itensAmplos acima) — mesma exclusão de grupo, mesmo
-        // filtrarPorFila, mesma paresClienteAtendente/minutosUteisEntre; só o conjunto de
-        // sessões de origem é maior (inclui conversas já finalizadas dentro da janela de 200).
-        $amostrasRespostaAmpla = [];
-        foreach ($itensAmplos as $sessionId => $entrada) {
-            $titulo = $entrada['item']['title'] ?? '(sem título)';
-            if ($this->ehGrupo($titulo)) continue;
-
-            $msgs = $historicos[$sessionId] ?? [];
-            foreach ($this->paresClienteAtendente($msgs, $nomesInternos) as $par) {
-                $amostrasRespostaAmpla[] = $this->minutosUteisEntre(
-                    new DateTime($par['clienteData']),
-                    new DateTime($par['atendenteData'])
-                );
-            }
-        }
-
         return [
             'bitrixBase'              => $bitrixBase,
             'identidades'             => array_column($identidades, 'nome'), // diagnóstico — quais webhooks foram consultados
@@ -225,16 +202,12 @@ class MonitoramentoAtendimentoService {
                 'total'      => count($conversasSemGrupo),
                 'aguardando' => count(array_filter($conversasSemGrupo, fn($c) => $c['aguardando'])),
             ],
+            // Média de tempo de resposta sobre conversas ABERTAS agora — garantido pela própria
+            // API (ver docblock da classe), não por um filtro extra aqui; grupo continua fora
+            // (ver exclusão de $ehGrupo acima).
             'tempoMedioRespostaMinutos' => $amostrasResposta
                 ? round(array_sum($amostrasResposta) / count($amostrasResposta))
                 : null,
-            // Amostra maior (LIMIT=200/identidade) pra dar perspectiva — NÃO é média histórica
-            // completa (Bitrix24 não expõe isso, ver docblock da classe), só uma janela mais
-            // larga da mesma fila/exclusão de grupo. amostraAmplaTotalSessoes é diagnóstico.
-            'tempoMedioRespostaAmplaMinutos' => $amostrasRespostaAmpla
-                ? round(array_sum($amostrasRespostaAmpla) / count($amostrasRespostaAmpla))
-                : null,
-            'amostraAmplaTotalSessoes' => count($itensAmplos),
             'conversas' => $conversasSemGrupo,
             'grupos'    => $grupos,
         ];

@@ -1019,11 +1019,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     flex-wrap: wrap;
 }
 .ate-kpi { display: flex; flex-direction: column; gap: var(--mon-sp-3xs); }
-/* "Amostra ampliada" (ver tempoMedioRespostaAmplaMinutos) é uma janela mais larga dentro do
- * "recente" da API do Bitrix24 — nunca histórico completo (não existe método pra isso, ver
- * docblock de MonitoramentoAtendimentoService). Opacidade reduzida + cursor:help sinalizam
- * que é secundária/aproximada; o texto real da ressalva vai no title (tooltip nativo). */
-.ate-kpi-ampla { opacity: .7; cursor: help; }
 .ate-kpi-value {
     font-size: var(--mon-fs-num);
     font-weight: 700;
@@ -2266,21 +2261,15 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                 : '<div class="mon-empty"><i class="fas fa-check-circle"></i><div>Nenhum grupo de WhatsApp ativo no momento.</div></div>';
         }
 
-        var ativas      = data.conversasAtivas || { total: 0, aguardando: 0 };
-        var tempoTxt    = data.tempoMedioRespostaMinutos != null
+        var ativas   = data.conversasAtivas || { total: 0, aguardando: 0 };
+        var tempoTxt = data.tempoMedioRespostaMinutos != null
             ? fmtMinutos(data.tempoMedioRespostaMinutos)
-            : 'sem dados suficientes';
-        var tempoAmplaTxt = data.tempoMedioRespostaAmplaMinutos != null
-            ? fmtMinutos(data.tempoMedioRespostaAmplaMinutos)
             : 'sem dados suficientes';
 
         kpisEl.innerHTML =
             '<div class="ate-kpi"><span class="ate-kpi-value">' + ativas.total + '</span><span class="ate-kpi-label">Conversas ativas</span></div>'
             + '<div class="ate-kpi"><span class="ate-kpi-value' + (ativas.aguardando ? ' alerta' : '') + '">' + ativas.aguardando + '</span><span class="ate-kpi-label">Aguardando resposta</span></div>'
-            + '<div class="ate-kpi"><span class="ate-kpi-value">' + escHtml(tempoTxt) + '</span><span class="ate-kpi-label">Tempo médio (atual)</span></div>'
-            + '<div class="ate-kpi ate-kpi-ampla" title="Amostra mais larga dentro da janela recente da API do Bitrix24 (inclui conversas já finalizadas) — não é uma média histórica completa.">'
-                + '<span class="ate-kpi-value">' + escHtml(tempoAmplaTxt) + '</span><span class="ate-kpi-label">Tempo médio (amostra ampliada)</span>'
-            + '</div>';
+            + '<div class="ate-kpi"><span class="ate-kpi-value">' + escHtml(tempoTxt) + '</span><span class="ate-kpi-label">Tempo médio de resposta</span></div>';
 
         var conversas = data.conversas || [];
         if (!conversas.length) {
