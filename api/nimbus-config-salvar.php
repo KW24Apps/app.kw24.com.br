@@ -18,10 +18,16 @@ if (!$caId) {
     exit;
 }
 
-$desc    = trim($body['descricao'] ?? '') ?: null;
-$horario = trim($body['horario']   ?? '') ?: null;
-$valor   = (isset($body['valor']) && $body['valor'] !== '' && $body['valor'] !== null)
+$desc       = trim($body['descricao']    ?? '') ?: null;
+$horario    = trim($body['horario']      ?? '') ?: null;
+$emailTeste = trim($body['email_teste']  ?? '') ?: null;
+$valor      = (isset($body['valor']) && $body['valor'] !== '' && $body['valor'] !== null)
              ? (float)$body['valor'] : null;
+
+if ($emailTeste !== null && !preg_match('/^[^\s@]+@[^\s@]+\.[^\s@]+$/', $emailTeste)) {
+    echo json_encode(['erro' => 'Email Teste inválido']);
+    exit;
+}
 
 // Valida e normaliza dias_semana (aceita apenas 0–6)
 $dias = array_values(array_unique(array_filter(
@@ -44,7 +50,7 @@ try {
         exit;
     }
 
-    $config = json_encode(['dias_semana' => $dias, 'horario' => $horario]);
+    $config = json_encode(['dias_semana' => $dias, 'horario' => $horario, 'email_teste' => $emailTeste]);
 
     $sets   = ["descricao = :desc", "config_extra = :config", "valor = :valor"];
     $params = [

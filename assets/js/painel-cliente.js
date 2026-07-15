@@ -824,6 +824,11 @@ function abrirModalApp(app) {
                         <label style="font-size:.72rem;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:.35rem">Valor (R$)</label>
                         <input id="app-valor-input" type="number" step="0.01" min="0" class="form-input" value="${app.valor || ''}" placeholder="0,00">
                     </div>
+                    <div>
+                        <label style="font-size:.72rem;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:.35rem">Email Teste</label>
+                        <input id="nimbus-email-teste-input" type="email" class="form-input" value="${_esc(extra.email_teste || '')}" placeholder="teste@exemplo.com">
+                        <p style="font-size:.72rem;color:#a0aec0;margin-top:.3rem">Destinatário usado pela rota de teste do relatório de parceiro (não envia para o parceiro real).</p>
+                    </div>
                 </div>
             </div>`;
 
@@ -1622,9 +1627,10 @@ function fecharNovoCliente() { fecharPainel(); }
 // ===== NIMBUS PARTNERS =====
 
 function salvarNimbus(caId) {
-    const descricao  = document.getElementById('app-descricao-input')?.value.trim();
-    const valor      = document.getElementById('app-valor-input')?.value;
-    const horario    = document.getElementById('nimbus-horario-input')?.value;
+    const descricao   = document.getElementById('app-descricao-input')?.value.trim();
+    const valor       = document.getElementById('app-valor-input')?.value;
+    const horario     = document.getElementById('nimbus-horario-input')?.value;
+    const emailTeste  = document.getElementById('nimbus-email-teste-input')?.value.trim();
     const diasSemana = Array.from(document.querySelectorAll('input[name="nimbus-dia"]:checked'))
         .map(cb => parseInt(cb.value, 10));
     const msg = document.getElementById('app-integracao-msg');
@@ -1641,7 +1647,7 @@ function salvarNimbus(caId) {
     fetch('/api/nimbus-config-salvar.php', {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ca_id: caId, descricao, dias_semana: diasSemana, horario: horario || null, valor: valor || null })
+        body: JSON.stringify({ ca_id: caId, descricao, dias_semana: diasSemana, horario: horario || null, valor: valor || null, email_teste: emailTeste || null })
     })
     .then(r => r.json())
     .then(data => {
