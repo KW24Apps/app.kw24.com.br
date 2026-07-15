@@ -42,15 +42,21 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 /* ===== MONITORAMENTO KW24 — layout geral =====
  * Decisão revertida nesta rodada: em telas menores, conteúdo ficava cortado sem nenhuma forma
  * de alcançar (a versão anterior evitava de propósito qualquer scroll de página, só scroll
- * interno por painel). Agora é o oposto: UM scroll só, na página inteira — .content-area é a
- * área certa pra isso (grid row 1fr do shell; sidebar/topbar ficam FORA dela, em outra célula
- * do grid, então continuam fixos só por estarem fora do elemento que rola — não precisam de
- * nenhuma regra extra). Escopado via :has(.mon-updated), igual ao padrão já usado pro
- * .page-header, pra não afetar .content-area nas outras páginas da aplicação.
- * Painéis individuais (Atendimento/Equipe) não têm mais overflow-y:auto próprio — crescem
- * naturalmente com o conteúdo; só Chamados abertos/Tarefas tem uma regra especial (ver
- * .cha-list/.tsk-list): piso de ~12 linhas, cresce se houver espaço, sem scrollbar própria
- * mesmo quando nem o piso cabe (a página inteira absorve o excesso).
+ * interno por painel). Agora os dois mecanismos convivem, pra propósitos diferentes:
+ *   1) Scroll da PÁGINA (.content-area, escopado via :has(.mon-updated) igual ao padrão já
+ *      usado pro .page-header, pra não afetar outras páginas) — deixa alcançar as seções do
+ *      relatório (Atendimento/Funil/Equipe/Chamados-Tarefas) quando juntas não cabem na tela.
+ *      Sidebar/topbar ficam FORA dessa área, em outra célula do grid do shell, então continuam
+ *      fixos sem precisar de nenhuma regra extra.
+ *   2) Scroll PRÓPRIO do Chamados abertos/Tarefas (.cha-list/.tsk-list) — a lista pode ter
+ *      muito mais que 12 itens (ex.: 35 chamados abertos); o painel mostra um piso de ~12
+ *      linhas, cresce se houver espaço de sobra (mostra mais sem precisar rolar), mas nunca
+ *      tenta crescer o suficiente pra caber a lista inteira de uma vez — o que sobra além da
+ *      altura que ele de fato ocupa (12 ou mais) rola dentro do próprio painel.
+ * Atendimento tem uma terceira regra, diferente das duas acima: altura FIXA (igual ao Funil,
+ * via align-items:stretch — ver .ate-list), com scroll próprio só quando a lista realmente não
+ * cabe nessa altura fixa. Equipe cresce naturalmente com o conteúdo, sem scroll próprio (é
+ * sempre curto — roster fixo de 4 pessoas).
  */
 .content-area:has(.mon-updated) {
     overflow-y: auto;
@@ -102,6 +108,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     gap: var(--mon-sp-lg);
     flex: 1 1 auto;
     min-width: 320px;
+    min-height: 0;
 }
 @media (max-width: 1024px) {
     .mon-panels-row { flex-direction: column; }
@@ -507,6 +514,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     border: 1.5px solid rgba(255,255,255,0.10);
     border-radius: 12px;
     flex: 1 1 0;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -648,15 +656,23 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .mon-sort-icon { font-size: var(--mon-fs-2xs); color: rgba(255,255,255,.25); }
 .mon-sort-icon.active { color: #0DC2FF; }
 /* Piso de ~12 linhas visíveis (thead + 12 * ~34px de linha) — cresce com flex:1 quando há
- * espaço de sobra na página (mostra mais de 12 sem precisar rolar), mas nunca encolhe abaixo
- * do piso; se nem o piso couber na tela, quem absorve o excesso é o scroll da página inteira
- * (.content-area:has(.mon-updated)), não uma barra de rolagem própria deste painel. */
+ * espaço de sobra na página (mostra mais de 12 sem precisar rolar). Dois mecanismos
+ * independentes, não um substituto do outro: min-height é o piso (nunca encolhe abaixo dele —
+ * se nem ele couber na tela, o scroll da página inteira, .content-area:has(.mon-updated),
+ * assume o excesso); overflow-y:auto é o scroll PRÓPRIO da lista, pra quando ela tem mais
+ * linhas do que cabem na altura que ela de fato ocupa (12 ou mais, dependendo do espaço
+ * disponível) — sem isso, uma lista de 35 chamados tentaria crescer pra caber todo mundo de
+ * uma vez, em vez de rolar internamente. */
 .cha-list {
     display: flex;
     flex-direction: column;
     flex: 1;
     min-height: 440px;
+    overflow-y: auto;
 }
+.cha-list::-webkit-scrollbar { width: 5px; }
+.cha-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
+.cha-list::-webkit-scrollbar-thumb { background: rgba(13,194,255,0.25); border-radius: 3px; }
 .cha-row { border-bottom: 1px solid rgba(255,255,255,0.06); }
 .cha-row:last-child { border-bottom: none; }
 .cha-row-main {
@@ -817,14 +833,18 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     color: #061920;
     border-color: transparent;
 }
-/* Mesmo piso de ~12 linhas do .cha-list (ver comentário lá) — mesmo painel com abas,
+/* Mesmo piso + scroll próprio de .cha-list (ver comentário lá) — mesmo painel com abas,
  * mesma regra de altura pras duas. */
 .tsk-list {
     display: flex;
     flex-direction: column;
     flex: 1;
     min-height: 440px;
+    overflow-y: auto;
 }
+.tsk-list::-webkit-scrollbar { width: 5px; }
+.tsk-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
+.tsk-list::-webkit-scrollbar-thumb { background: rgba(183,148,244,0.25); border-radius: 3px; }
 .tsk-row {
     border-bottom: 1px solid rgba(255,255,255,0.06);
 }
