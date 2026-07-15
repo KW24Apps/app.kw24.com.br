@@ -1425,15 +1425,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
-    // "H:MM" exato a partir dos minutos totais — sem arredondar pra hora cheia (20min não pode
-    // virar "0h", escondendo o valor real). Minutos sempre com 2 dígitos (ex.: "0:05", "1:30").
-    function fmtHM(totalMinutos) {
-        var min = Math.max(0, Math.round(totalMinutos || 0));
-        var h   = Math.floor(min / 60);
-        var m   = min % 60;
-        return h + ':' + (m < 10 ? '0' + m : m);
-    }
-
     // "1 chamado" / "2 chamados" — plural correto, mais legível que só o número cru.
     function fmtChamados(n) {
         return n + (n === 1 ? ' chamado' : ' chamados');
@@ -1453,8 +1444,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 
         return '<div class="mon-membro-card">'
             + '<div class="mon-membro-nome">' + escHtml(m.nome) + '</div>'
-            + '<div class="mon-membro-valor suporte" onclick="monAbrirDrill(' + idx + ',\'finalizado\',\'suporte\')"><span class="n">' + fmtChamados(finSupCnt) + '</span> — ' + fmtHM(finSupMin) + '</div>'
-            + '<div class="mon-membro-valor dev" onclick="monAbrirDrill(' + idx + ',\'finalizado\',\'desenvolvimento\')"><span class="n">' + fmtChamados(finDevCnt) + '</span> — ' + fmtHM(finDevMin) + '</div>'
+            + '<div class="mon-membro-valor suporte" onclick="monAbrirDrill(' + idx + ',\'finalizado\',\'suporte\')"><span class="n">' + fmtChamados(finSupCnt) + '</span> — ' + fmtMinutos(finSupMin) + '</div>'
+            + '<div class="mon-membro-valor dev" onclick="monAbrirDrill(' + idx + ',\'finalizado\',\'desenvolvimento\')"><span class="n">' + fmtChamados(finDevCnt) + '</span> — ' + fmtMinutos(finDevMin) + '</div>'
             + '</div>';
     }
 
@@ -1466,9 +1457,9 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         if (!totalMinutos) { el.innerHTML = ''; return; }
 
         el.innerHTML =
-            '<span class="mon-equipe-total-item suporte">Suporte — ' + fmtHM(totalMinutos.suporte || 0) + '</span>'
+            '<span class="mon-equipe-total-item suporte">Suporte — ' + fmtMinutos(totalMinutos.suporte || 0) + '</span>'
             + '<span class="mon-equipe-total-sep">|</span>'
-            + '<span class="mon-equipe-total-item dev">Desenvolvimento — ' + fmtHM(totalMinutos.desenvolvimento || 0) + '</span>';
+            + '<span class="mon-equipe-total-item dev">Desenvolvimento — ' + fmtMinutos(totalMinutos.desenvolvimento || 0) + '</span>';
     }
 
     function render(data) {
