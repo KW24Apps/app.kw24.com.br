@@ -101,14 +101,23 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     margin-bottom: var(--mon-sp-lg);
 }
 /* Chamados abertos/Tarefas — linha própria, largura cheia, ocupa todo o espaço vertical que
- * sobra na página. */
+ * sobra na página.
+ * min-height explícito (não "auto"/propagado) — testado ao vivo com Chrome headless: só
+ * remover min-height:0 daqui NÃO bastou, o painel ainda colapsava a ~2px dentro de
+ * .content-area (que agora tem altura limitada + overflow-y:auto, Parte 1). Causa: um
+ * descendente (.mon-tabs-section) tem overflow:hidden, o que faz o "automatic minimum size"
+ * do flexbox (a regra que protegeria .mon-right-col de encolher abaixo do conteúdo) virar 0
+ * nessa cadeia, em vez de propagar o mínimo real de baixo pra cima. Valor abaixo é o piso do
+ * .cha-list/.tsk-list (440px, ~12 linhas) + folga pra barra de abas + cabeçalho da tabela —
+ * quando nem esse mínimo cabe na tela, .content-area cresce mais que a viewport e o scroll de
+ * página (Parte 1) assume corretamente, em vez do painel encolher a ponto de desaparecer. */
 .mon-right-col {
     display: flex;
     flex-direction: column;
     gap: var(--mon-sp-lg);
     flex: 1 1 auto;
     min-width: 320px;
-    min-height: 0;
+    min-height: 530px;
 }
 @media (max-width: 1024px) {
     .mon-panels-row { flex-direction: column; }
@@ -964,12 +973,20 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 }
 
 /* ===== MONITORAMENTO KW24 — Funil (volume: criados / finalizados, SPA 1054 / Funil 208) ===== */
+/* align-self:flex-start — Funil NUNCA estica pra acompanhar a altura de Atendimento (mesmo
+ * com align-items:stretch padrão em .topo-row). É o contrário que se quer: Atendimento é
+ * quem deve copiar a altura NATURAL do Funil (medida via JS, ver monSincronizarAlturaAtendimento()),
+ * não o Funil esticando pra acompanhar uma lista de conversas que pode ter qualquer tamanho.
+ * Sem isso, a altura de .ate-section (a mais alta das duas, ex.: 12 conversas) definia a
+ * linha inteira e o Funil só "seguia", deixando um vão vazio abaixo de "Outros" — o bug
+ * relatado ao vivo. */
 .fun-box {
     background: rgba(255,255,255,0.05);
     border: 1.5px solid rgba(255,255,255,0.10);
     border-radius: 12px;
     flex: 1 1 0;
     min-width: 0;
+    align-self: flex-start;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -1112,14 +1129,17 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     letter-spacing: .06em;
     color: rgba(255,255,255,.4);
 }
-/* Altura FIXA, igual à do Funil (o vizinho de linha estável, sem novas etapas previstas) —
- * não à toa, sem nenhum valor hardcoded: .topo-row usa align-items:stretch (default) e o
- * Funil já é naturalmente mais alto que o conteúdo mínimo do Atendimento (tabs-bar+kpis, já
- * que .ate-list tem min-height:0 e pode encolher a ~0) — então a LINHA toda fica com a altura
- * do Funil, e .ate-section (flex:1 1 0 na coluna) estica pra acompanhar, em ambas as abas
- * (Conversas/Grupos) igualmente, sem variar com a quantidade de itens. Excesso de conteúdo
- * rola dentro do próprio .ate-list (única exceção à regra "sem scroll por painel" da Parte 1
- * — aqui o objetivo é manter a altura do card fixa, não deixá-la crescer). */
+/* Altura FIXA, igual à do Funil — tentativa anterior (via align-items:stretch "de graça") não
+ * funcionava: sem nenhuma restrição de altura vinda de fora, .topo-row calcula sua própria
+ * altura como o MAIOR conteúdo natural entre os dois lados — com 12 conversas (mais alto que
+ * o Funil), era o Atendimento que dava a altura da linha, e o Funil só esticava pra
+ * acompanhar (vão vazio abaixo de "Outros", o bug relatado ao vivo e confirmado num teste
+ * visual local antes deste fix). Corrigido com medição real via JS: .fun-box tem
+ * align-self:flex-start (nunca estica, sempre mostra sua altura natural verdadeira) e
+ * monSincronizarAlturaAtendimento() lê essa altura (fun-section.offsetHeight) e aplica como
+ * altura FIXA (style.height) em #ate-section, depois de Funil e Atendimento carregarem. Com
+ * uma altura explícita definida, min-height:0 + overflow-y:auto aqui passam a valer de
+ * verdade — a lista rola dentro dela mesma quando não cabe, em vez de crescer a caixa. */
 .ate-list {
     flex: 1;
     min-height: 0;
@@ -1140,25 +1160,18 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .ate-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .ate-dot.aguardando { background: #fc8181; }
 .ate-dot.respondido { background: #48bb78; }
-.ate-row-main { display: flex; flex-direction: column; gap: var(--mon-sp-3xs); min-width: 0; flex: 1; }
+.ate-row-main { display: flex; min-width: 0; flex: 1; }
 .ate-row-titulo {
     color: #fff;
-    font-size: var(--mon-fs-md);
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.ate-row-msg {
-    color: rgba(255,255,255,.45);
     font-size: var(--mon-fs-sm);
+    font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 .ate-row-tempo {
     flex-shrink: 0;
-    font-size: var(--mon-fs-sm);
+    font-size: var(--mon-fs-xs);
     color: rgba(255,255,255,.5);
     font-family: 'Inter', monospace;
     white-space: nowrap;
@@ -1209,7 +1222,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 </div>
 
 <div class="topo-row">
-    <div class="ate-section">
+    <div class="ate-section" id="ate-section">
         <div class="mon-tabs-bar">
             <div class="mon-tab active" id="mon-tab-ate-conv" onclick="ateTrocarAba('conv')">
                 <span class="mon-tab-title"><i class="fas fa-comments"></i>Conversas</span>
@@ -2392,9 +2405,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     function ateRowHtml(c) {
         var dotClasse   = c.aguardando ? 'aguardando' : 'respondido';
         var tempoClasse = c.aguardando ? ' aguardando' : '';
-        var msg         = c.ultimaMensagemTexto
-            ? escHtml(c.ultimaMensagemTexto)
-            : '<span style="color:rgba(255,255,255,.35)">Sem mensagens ainda</span>';
         var tempoTexto  = c.minutosDesdeUltimaAtividade != null
             ? (c.aguardando ? 'aguardando há ' : 'há ') + fmtMinutos(c.minutosDesdeUltimaAtividade)
             : '';
@@ -2402,10 +2412,11 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             ? '<span class="ate-row-responsavel">' + escHtml(c.reclamadaPor) + '</span>'
             : '';
 
+        // Só o nome/título da conversa — sem a prévia da última mensagem (removida: encurta a
+        // linha, ajuda mais linhas caberem na altura fixa do card, ver monSincronizarAlturaAtendimento()).
         var body = '<span class="ate-dot ' + dotClasse + '"></span>'
             + '<span class="ate-row-main">'
                 + '<span class="ate-row-titulo">' + escHtml(c.titulo) + '</span>'
-                + '<span class="ate-row-msg">' + msg + '</span>'
             + '</span>'
             + responsavelHtml
             + '<span class="ate-row-tempo' + tempoClasse + '">' + escHtml(tempoTexto) + '</span>';
@@ -2523,6 +2534,22 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             });
     }
 
+    // Atendimento precisa ter a MESMA altura do Funil (vizinho de linha), nas duas abas
+    // (Conversas/Grupos), sem depender da quantidade de itens da lista — align-items:stretch
+    // "de graça" não funciona aqui porque nenhum dos dois tem altura imposta de fora, então
+    // .topo-row sempre usa o MAIOR conteúdo natural dos dois lados como referência (com uma
+    // lista de conversas mais alta que o Funil, era ela que dava a altura da linha, e o
+    // Funil só esticava pra acompanhar — vão vazio embaixo de "Outros", bug relatado ao vivo,
+    // reproduzido e confirmado num teste visual local com Chrome headless antes deste fix).
+    // Fun-box tem align-self:flex-start (nunca estica, sempre reporta sua altura NATURAL
+    // verdadeira) — lida aqui e aplicada como altura FIXA em #ate-section via JS.
+    function monSincronizarAlturaAtendimento() {
+        var ate = document.getElementById('ate-section');
+        var fun = document.getElementById('fun-section');
+        if (!ate || !fun) return;
+        ate.style.height = fun.offsetHeight + 'px';
+    }
+
     // ── Carregamento geral (Equipe + Chamados abertos + Tarefas + Funil + Atendimento) ──
     function carregar() {
         var icon = document.getElementById('mon-refresh-icon');
@@ -2549,6 +2576,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             if (icon) icon.classList.remove('fa-spin');
             var upd = document.getElementById('mon-updated');
             if (upd) upd.textContent = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR');
+            monSincronizarAlturaAtendimento();
         });
     }
 
@@ -2556,6 +2584,14 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 
     carregar();
     setInterval(carregar, AUTO_REFRESH_MS);
+
+    // Largura fluida (clamp) muda fonte/padding do Funil ao redimensionar — re-sincroniza pra
+    // Atendimento não ficar com uma altura desatualizada.
+    var monResizeTimer = null;
+    window.addEventListener('resize', function () {
+        clearTimeout(monResizeTimer);
+        monResizeTimer = setTimeout(monSincronizarAlturaAtendimento, 150);
+    });
 
 })();
 </script>
