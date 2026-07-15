@@ -61,6 +61,27 @@ function pastaRelatorio(string $slug): string {
 }
 
 /**
+ * Porta interna do Gunicorn — determinística (8100 + relatorio_id), nunca gravada
+ * no banco. Mesma fórmula usada por scripts/regenerar-nginx-relatorios-bi.php para
+ * o map do nginx. Ver ESTRUTURA_RELATORIOS_BI.md.
+ */
+function portaRelatorio(int $relatorioId): int {
+    return 8100 + $relatorioId;
+}
+
+/**
+ * Bloco somente-leitura "Infraestrutura" da aba Conexão — pasta/serviço/porta
+ * computados a partir de slug/id, válidos mesmo antes de o app Python existir.
+ */
+function infraestruturaRelatorio(int $relatorioId, string $slug): array {
+    return [
+        'pasta'   => 'relatorios-bi/' . $slug,
+        'servico' => 'kw24-relatorio-' . $slug . '.service',
+        'porta'   => portaRelatorio($relatorioId),
+    ];
+}
+
+/**
  * Grava (ou remove) o arquivo local de config que o processo Python (db.py) lê no lugar do .env.
  * Permissão restrita (0600) — mesmo usuário (kw24) roda PHP-FPM e o Gunicorn dos relatórios.
  */
@@ -93,14 +114,15 @@ try {
         );
 
         echo json_encode([
-            'sucesso'   => true,
-            'relatorio' => $relatorio,
-            'conexao'   => $conexao ? [
+            'sucesso'        => true,
+            'relatorio'      => $relatorio,
+            'conexao'        => $conexao ? [
                 'tipo_conexao' => $conexao['tipo_conexao'],
                 'config'       => json_decode($conexao['config'], true) ?? [],
                 'testado_em'   => $conexao['testado_em'],
             ] : null,
             'tipos_habilitados' => TIPOS_CONEXAO_HABILITADOS,
+            'infraestrutura'    => infraestruturaRelatorio($relatorioId, $relatorio['slug']),
         ]);
         exit;
     }

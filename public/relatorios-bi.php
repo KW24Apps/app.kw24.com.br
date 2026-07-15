@@ -493,6 +493,38 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
 }
 .rbi-tab-content.rbi-tab-hidden { display: none; }
 
+/* ── Bloco "Infraestrutura" (somente leitura) no topo da aba Conexão ─────────── */
+.rbi-infra-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: rgba(255,255,255,0.04);
+    border: 1px dashed rgba(255,255,255,0.15);
+    border-radius: 8px;
+    padding: .65rem .8rem;
+}
+.rbi-infra-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .75rem;
+}
+.rbi-infra-label {
+    font-family: 'Rubik', sans-serif;
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: rgba(255,255,255,0.35);
+}
+.rbi-infra-value {
+    font-family: 'Inter', sans-serif;
+    font-size: .78rem;
+    color: rgba(255,255,255,0.75);
+    text-align: right;
+    word-break: break-all;
+}
+
 /* ── Conteúdo da aba "Conexão" ─────────────────────────────────────────────── */
 .rbi-conn-tipo-row {
     display: flex;
@@ -645,6 +677,13 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
         <div class="rbi-tab-content rbi-tab-hidden" id="rbi-tab-conexao">
             <input type="hidden" id="rbi-conn-relatorio-id">
 
+            <!-- Infraestrutura — somente leitura, calculada a partir de slug/id (nunca editável) -->
+            <div class="rbi-infra-box">
+                <div class="rbi-infra-row"><span class="rbi-infra-label">Pasta</span><span class="rbi-infra-value" id="rbi-infra-pasta">—</span></div>
+                <div class="rbi-infra-row"><span class="rbi-infra-label">Serviço</span><span class="rbi-infra-value" id="rbi-infra-servico">—</span></div>
+                <div class="rbi-infra-row"><span class="rbi-infra-label">Porta interna</span><span class="rbi-infra-value" id="rbi-infra-porta">—</span></div>
+            </div>
+
             <div class="rbi-field">
                 <label class="rbi-field-label">Tipo de conexão</label>
                 <div class="rbi-conn-tipo-row">
@@ -725,6 +764,9 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
     const connMsg       = document.getElementById('rbi-conn-msg');
     const connBtnSave   = document.getElementById('rbi-conn-save');
     const connPassToggle = document.getElementById('rbi-conn-pass-toggle');
+    const infraPasta    = document.getElementById('rbi-infra-pasta');
+    const infraServico  = document.getElementById('rbi-infra-servico');
+    const infraPorta    = document.getElementById('rbi-infra-porta');
 
     let visivel      = true;
     let _empresaFiltroSalvo = null; // id de empresa restaurado do sessionStorage, aplicado após popular o <select>
@@ -800,6 +842,7 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
         if (!connHost) return;
         connHost.value = ''; connPort.value = '5432'; connDbname.value = '';
         connUser.value = ''; connPassword.value = '';
+        infraPasta.textContent = '—'; infraServico.textContent = '—'; infraPorta.textContent = '—';
         connClearMsg();
         fetch('/api/relatorio-conexao.php?action=get&relatorio_id=' + encodeURIComponent(relatorioId))
             .then(function (r) { return r.json(); })
@@ -811,6 +854,11 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
                 connDbname.value   = cfg.dbname || '';
                 connUser.value     = cfg.user || '';
                 connPassword.value = cfg.password || '';
+
+                var infra = res.infraestrutura || {};
+                infraPasta.textContent   = infra.pasta   || '—';
+                infraServico.textContent = infra.servico || '—';
+                infraPorta.textContent   = infra.porta   || '—';
             })
             .catch(function () { connShowMsg('Erro de rede ao carregar configuração.', 'erro'); });
     }

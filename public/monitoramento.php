@@ -143,7 +143,12 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
  * .mon-membro-row/.mon-membro-metricas usam display:contents (não geram caixa própria, só
  * "promovem" os filhos pro grid do container) — por isso a borda divisória vai em cada célula
  * (nome/Suporte/Dev), não na linha, mas como as 3 têm o mesmo padding/altura, formam uma única
- * linha visual contínua. */
+ * linha visual contínua.
+ * --eq-row (custom property, herda através do display:contents mesmo sem caixa própria — ver
+ * membroCardHtml()) fixa a LINHA de cada pessoa explicitamente. Sem isso, o algoritmo de
+ * auto-placement do grid (cada célula só com grid-column definido, sem grid-row) inflava um
+ * espaço vertical enorme entre pessoas — regressão corrigida fixando a linha em vez de deixar
+ * o browser decidir. */
 .mon-equipe-body {
     flex: 1;
     min-height: 0;
@@ -151,6 +156,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     padding: var(--mon-sp-base) var(--mon-sp-lg);
     display: grid;
     grid-template-columns: 1fr auto auto;
+    grid-auto-rows: min-content;
     column-gap: var(--mon-sp-md);
     align-items: center;
 }
@@ -158,6 +164,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .mon-membro-row, .mon-membro-metricas { display: contents; }
 .mon-membro-nome-plain {
     grid-column: 1;
+    grid-row: var(--eq-row);
     font-family: 'Rubik', sans-serif;
     font-size: var(--mon-fs-num);
     font-weight: 600;
@@ -170,6 +177,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 .mon-membro-metrica {
+    grid-row: var(--eq-row);
     cursor: pointer;
     white-space: nowrap;
     text-align: right;
@@ -1338,7 +1346,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         var finSupCnt = (fin.suporte && fin.suporte.count) || 0;
         var finDevCnt = (fin.desenvolvimento && fin.desenvolvimento.count) || 0;
 
-        return '<div class="mon-membro-row">'
+        return '<div class="mon-membro-row" style="--eq-row:' + (idx + 1) + '">'
             + '<span class="mon-membro-nome-plain">' + escHtml(m.nome) + '</span>'
             + '<span class="mon-membro-metricas">'
                 + '<span class="mon-membro-metrica suporte" onclick="monAbrirDrill(' + idx + ',\'finalizado\',\'suporte\')">Suporte ' + finSupCnt + '·' + fmtHM(finSupMin) + '</span>'
