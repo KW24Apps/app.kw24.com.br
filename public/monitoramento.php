@@ -136,46 +136,57 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     white-space: nowrap;
 }
 .mon-equipe-total b { font-family: 'Inter', monospace; }
+/* Grid de 3 colunas (nome | Suporte | Dev) compartilhado por TODAS as linhas — cada coluna
+ * tem a mesma largura (a do conteúdo mais largo dela) em todas as pessoas, então Suporte e Dev
+ * sempre começam na mesma posição horizontal, linha após linha (fácil de comparar as 4 pessoas
+ * de uma olhada, em vez de cada linha flutuar conforme o tamanho do próprio conteúdo). Truque:
+ * .mon-membro-row/.mon-membro-metricas usam display:contents (não geram caixa própria, só
+ * "promovem" os filhos pro grid do container) — por isso a borda divisória vai em cada célula
+ * (nome/Suporte/Dev), não na linha, mas como as 3 têm o mesmo padding/altura, formam uma única
+ * linha visual contínua. */
 .mon-equipe-body {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
     padding: var(--mon-sp-base) var(--mon-sp-lg);
-}
-/* Uma pessoa por linha: nome à esquerda, contadores Suporte/Dev à direita — sem
- * bar/gráfico de proporção (removido junto com "Em andamento", ver relatório da tarefa). */
-.mon-membro-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    column-gap: var(--mon-sp-md);
     align-items: center;
-    justify-content: space-between;
-    gap: var(--mon-sp-md);
-    padding-bottom: var(--mon-sp-sm);
-    margin-bottom: var(--mon-sp-sm);
-    border-bottom: 1px solid rgba(255,255,255,0.06);
 }
-.mon-membro-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.mon-equipe-body > .mon-empty { grid-column: 1 / -1; }
+.mon-membro-row, .mon-membro-metricas { display: contents; }
 .mon-membro-nome-plain {
+    grid-column: 1;
     font-family: 'Rubik', sans-serif;
     font-size: var(--mon-fs-num);
     font-weight: 600;
     color: #fff;
     min-width: 0;
-    flex: 1 1 auto;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    padding: var(--mon-sp-sm) 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
 }
-.mon-membro-metricas {
-    display: flex;
-    gap: var(--mon-sp-md);
-    flex-shrink: 0;
+.mon-membro-metrica {
+    cursor: pointer;
+    white-space: nowrap;
+    text-align: right;
     font-size: var(--mon-fs-sm);
     font-weight: 600;
+    padding: var(--mon-sp-sm) 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    transition: filter .15s ease;
 }
-.mon-membro-metrica { cursor: pointer; white-space: nowrap; transition: filter .15s ease; }
 .mon-membro-metrica:hover { filter: brightness(1.25); }
-.mon-membro-metrica.suporte { color: #0DC2FF; }
-.mon-membro-metrica.dev     { color: #f6ad55; }
+.mon-membro-metrica.suporte { grid-column: 2; color: #0DC2FF; }
+.mon-membro-metrica.dev     { grid-column: 3; color: #f6ad55; }
+.mon-membro-row:last-child > .mon-membro-nome-plain,
+.mon-membro-row:last-child .mon-membro-metrica {
+    border-bottom: none;
+    padding-bottom: 0;
+}
 
 .mon-empty {
     text-align: center;
