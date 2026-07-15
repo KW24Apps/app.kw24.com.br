@@ -312,7 +312,7 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
     border-radius: 16px;
     padding: 1.75rem 1.75rem 1.5rem;
     width: 100%;
-    max-width: 400px;
+    max-width: 440px;
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
@@ -459,39 +459,41 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
 }
 .rbi-btn-open:hover { background: #08aadd; }
 
-/* ── Botão "Configurar conexão" (admin_interno only) ──────────────────────── */
-.rbi-conn-btn {
-    position: absolute;
-    top: .5rem;
-    right: .5rem;
-    z-index: 2;
-    width: 28px;
-    height: 28px;
+/* ── Tabs do modal de configuração (Geral | Conexão — Conexão admin_interno only) ── */
+.rbi-tab-bar {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(6,25,32,0.65);
-    border: 1.5px solid rgba(255,255,255,0.15);
+    gap: 4px;
+    background: rgba(255,255,255,0.05);
     border-radius: 8px;
-    color: rgba(255,255,255,0.6);
+    padding: .25rem;
+}
+.rbi-tab-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    color: rgba(255,255,255,0.45);
+    font-family: 'Inter', sans-serif;
+    font-size: .8rem;
+    font-weight: 500;
+    padding: .45rem .5rem;
     cursor: pointer;
-    font-size: .85rem;
-    transition: border-color .15s, color .15s, background .15s;
+    transition: background .15s, color .15s;
 }
-.rbi-conn-btn:hover {
-    border-color: #0DC2FF;
-    color: #0DC2FF;
-    background: rgba(6,25,32,0.85);
+.rbi-tab-btn:hover { color: rgba(255,255,255,0.7); }
+.rbi-tab-btn.active {
+    background: #0DC2FF;
+    color: #061920;
+    font-weight: 700;
 }
-.rbi-cards-row.view-list .rbi-conn-btn {
-    position: static;
-    margin-left: .5rem;
-    flex-shrink: 0;
-    order: 99;
+.rbi-tab-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
 }
+.rbi-tab-content.rbi-tab-hidden { display: none; }
 
-/* ── Modal "Configurar conexão" ────────────────────────────────────────────── */
-.rbi-conn-modal { max-width: 440px; }
+/* ── Conteúdo da aba "Conexão" ─────────────────────────────────────────────── */
 .rbi-conn-tipo-row {
     display: flex;
     gap: 8px;
@@ -595,7 +597,7 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
 
 </div>
 
-<!-- Config modal -->
+<!-- Config modal — Geral (todos) + Conexão (admin_interno only, aba extra) -->
 <div class="rbi-overlay" id="rbi-overlay">
     <div class="rbi-modal" id="rbi-modal">
         <div class="rbi-modal-head">
@@ -603,84 +605,89 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
             <button class="rbi-modal-close" id="rbi-modal-close" title="Fechar">&times;</button>
         </div>
 
-        <input type="hidden" id="rbi-edit-id">
-        <input type="hidden" id="rbi-edit-slug">
-
-        <div class="rbi-field">
-            <label class="rbi-field-label">Nome amigável</label>
-            <input type="text" class="rbi-field-input" id="rbi-edit-nome" autocomplete="off">
+        <?php if ($_rtIsAdmin): ?>
+        <div class="rbi-tab-bar" id="rbi-tab-bar">
+            <button type="button" class="rbi-tab-btn active" id="rbi-tab-btn-geral">Geral</button>
+            <button type="button" class="rbi-tab-btn" id="rbi-tab-btn-conexao">Conexão</button>
         </div>
+        <?php endif; ?>
 
-        <div class="rbi-field">
-            <label class="rbi-field-label">Visibilidade</label>
-            <div class="rbi-vis-row">
-                <button class="rbi-vis-btn" id="rbi-vis-visivel" data-val="true">Visível</button>
-                <button class="rbi-vis-btn" id="rbi-vis-oculto"  data-val="false">Oculto</button>
-            </div>
-        </div>
+        <!-- Aba Geral (nome amigável, visibilidade, abrir relatório) -->
+        <div class="rbi-tab-content" id="rbi-tab-geral">
+            <input type="hidden" id="rbi-edit-id">
+            <input type="hidden" id="rbi-edit-slug">
 
-        <button class="rbi-btn-open" id="rbi-btn-open">
-            <i class="ti ti-external-link" style="margin-right:.35rem"></i>Abrir relatório
-        </button>
-
-        <div class="rbi-modal-footer">
-            <button class="rbi-btn-cancel" id="rbi-btn-cancel">Cancelar</button>
-            <button class="rbi-btn-save"   id="rbi-btn-save">Salvar</button>
-        </div>
-    </div>
-</div>
-
-<!-- Config modal — conexão de dados (admin_interno only) -->
-<div class="rbi-overlay" id="rbi-conn-overlay">
-    <div class="rbi-modal rbi-conn-modal" id="rbi-conn-modal">
-        <div class="rbi-modal-head">
-            <span class="rbi-modal-title">Configurar conexão</span>
-            <button class="rbi-modal-close" id="rbi-conn-close" title="Fechar">&times;</button>
-        </div>
-
-        <input type="hidden" id="rbi-conn-relatorio-id">
-
-        <div class="rbi-field">
-            <label class="rbi-field-label">Tipo de conexão</label>
-            <div class="rbi-conn-tipo-row">
-                <button type="button" class="rbi-conn-tipo-btn active" id="rbi-conn-tipo-sql" data-val="sql">SQL</button>
-                <button type="button" class="rbi-conn-tipo-btn" disabled title="Em breve">Webhook</button>
-                <button type="button" class="rbi-conn-tipo-btn" disabled title="Em breve">Excel</button>
-            </div>
-        </div>
-
-        <div class="rbi-conn-grid">
-            <div class="rbi-field full">
-                <label class="rbi-field-label">Host</label>
-                <input type="text" class="rbi-field-input" id="rbi-conn-host" autocomplete="off">
-            </div>
             <div class="rbi-field">
-                <label class="rbi-field-label">Porta</label>
-                <input type="number" class="rbi-field-input" id="rbi-conn-port" autocomplete="off" value="5432">
+                <label class="rbi-field-label">Nome amigável</label>
+                <input type="text" class="rbi-field-input" id="rbi-edit-nome" autocomplete="off">
             </div>
+
             <div class="rbi-field">
-                <label class="rbi-field-label">Banco</label>
-                <input type="text" class="rbi-field-input" id="rbi-conn-dbname" autocomplete="off">
-            </div>
-            <div class="rbi-field">
-                <label class="rbi-field-label">Usuário</label>
-                <input type="text" class="rbi-field-input" id="rbi-conn-user" autocomplete="off">
-            </div>
-            <div class="rbi-field">
-                <label class="rbi-field-label">Senha</label>
-                <div class="rbi-conn-pass-wrap">
-                    <input type="password" class="rbi-field-input" id="rbi-conn-password" autocomplete="new-password">
-                    <button type="button" class="rbi-conn-pass-toggle" id="rbi-conn-pass-toggle" title="Mostrar/ocultar"><i class="ti ti-eye"></i></button>
+                <label class="rbi-field-label">Visibilidade</label>
+                <div class="rbi-vis-row">
+                    <button class="rbi-vis-btn" id="rbi-vis-visivel" data-val="true">Visível</button>
+                    <button class="rbi-vis-btn" id="rbi-vis-oculto"  data-val="false">Oculto</button>
                 </div>
             </div>
+
+            <button class="rbi-btn-open" id="rbi-btn-open">
+                <i class="ti ti-external-link" style="margin-right:.35rem"></i>Abrir relatório
+            </button>
+
+            <div class="rbi-modal-footer">
+                <button class="rbi-btn-cancel" id="rbi-btn-cancel">Cancelar</button>
+                <button class="rbi-btn-save"   id="rbi-btn-save">Salvar</button>
+            </div>
         </div>
 
-        <div class="rbi-conn-msg" id="rbi-conn-msg"></div>
+        <?php if ($_rtIsAdmin): ?>
+        <!-- Aba Conexão (tipo de conexão + campos de acesso ao banco) -->
+        <div class="rbi-tab-content rbi-tab-hidden" id="rbi-tab-conexao">
+            <input type="hidden" id="rbi-conn-relatorio-id">
 
-        <div class="rbi-modal-footer">
-            <button class="rbi-btn-cancel" id="rbi-conn-cancel">Cancelar</button>
-            <button class="rbi-btn-save"   id="rbi-conn-save">Testar e salvar</button>
+            <div class="rbi-field">
+                <label class="rbi-field-label">Tipo de conexão</label>
+                <div class="rbi-conn-tipo-row">
+                    <button type="button" class="rbi-conn-tipo-btn active" id="rbi-conn-tipo-sql" data-val="sql">SQL</button>
+                    <button type="button" class="rbi-conn-tipo-btn" disabled title="Em breve">Webhook</button>
+                    <button type="button" class="rbi-conn-tipo-btn" disabled title="Em breve">Excel</button>
+                </div>
+            </div>
+
+            <div class="rbi-conn-grid">
+                <div class="rbi-field full">
+                    <label class="rbi-field-label">Host</label>
+                    <input type="text" class="rbi-field-input" id="rbi-conn-host" autocomplete="off">
+                </div>
+                <div class="rbi-field">
+                    <label class="rbi-field-label">Porta</label>
+                    <input type="number" class="rbi-field-input" id="rbi-conn-port" autocomplete="off" value="5432">
+                </div>
+                <div class="rbi-field">
+                    <label class="rbi-field-label">Banco</label>
+                    <input type="text" class="rbi-field-input" id="rbi-conn-dbname" autocomplete="off">
+                </div>
+                <div class="rbi-field">
+                    <label class="rbi-field-label">Usuário</label>
+                    <input type="text" class="rbi-field-input" id="rbi-conn-user" autocomplete="off">
+                </div>
+                <div class="rbi-field">
+                    <label class="rbi-field-label">Senha</label>
+                    <div class="rbi-conn-pass-wrap">
+                        <input type="password" class="rbi-field-input" id="rbi-conn-password" autocomplete="new-password">
+                        <button type="button" class="rbi-conn-pass-toggle" id="rbi-conn-pass-toggle" title="Mostrar/ocultar"><i class="ti ti-eye"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rbi-conn-msg" id="rbi-conn-msg"></div>
+
+            <div class="rbi-modal-footer">
+                <button class="rbi-btn-cancel" id="rbi-conn-cancel">Cancelar</button>
+                <button class="rbi-btn-save"   id="rbi-conn-save">Testar e salvar</button>
+            </div>
         </div>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -702,8 +709,13 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
     const btnGrid    = document.getElementById('rbi-view-grid');
     const btnList    = document.getElementById('rbi-view-list');
 
-    // ── Modal de conexão (admin_interno only) ────────────────────────────────
-    const connOverlay   = document.getElementById('rbi-conn-overlay');
+    // ── Tabs do modal (Geral | Conexão — Conexão só existe no DOM para admin_interno) ──
+    const tabBtnGeral   = document.getElementById('rbi-tab-btn-geral');
+    const tabBtnConexao = document.getElementById('rbi-tab-btn-conexao');
+    const tabGeral      = document.getElementById('rbi-tab-geral');
+    const tabConexao    = document.getElementById('rbi-tab-conexao');
+
+    // ── Aba de conexão (admin_interno only — elementos null quando não renderizados) ──
     const connRelId     = document.getElementById('rbi-conn-relatorio-id');
     const connHost      = document.getElementById('rbi-conn-host');
     const connPort      = document.getElementById('rbi-conn-port');
@@ -738,11 +750,31 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
         document.getElementById('rbi-vis-visivel').className = 'rbi-vis-btn' + (v ? ' active-vis' : '');
         document.getElementById('rbi-vis-oculto').className  = 'rbi-vis-btn' + (!v ? ' active-oculto' : '');
     }
+
+    // ── Troca de aba (Geral | Conexão) — no-op se a aba Conexão não existir no DOM
+    // (usuário não admin_interno, PHP não renderiza a aba). Não recarrega dados ao
+    // trocar de aba — só mostra/esconde, então nada digitado na outra aba se perde.
+    function switchTab(tab) {
+        if (!tabGeral || !tabConexao) return;
+        const isConexao = tab === 'conexao';
+        tabGeral.classList.toggle('rbi-tab-hidden', isConexao);
+        tabConexao.classList.toggle('rbi-tab-hidden', !isConexao);
+        if (tabBtnGeral)   tabBtnGeral.classList.toggle('active', !isConexao);
+        if (tabBtnConexao) tabBtnConexao.classList.toggle('active', isConexao);
+    }
+    if (tabBtnGeral)   tabBtnGeral.addEventListener('click',   function () { switchTab('geral'); });
+    if (tabBtnConexao) tabBtnConexao.addEventListener('click', function () { switchTab('conexao'); });
+
     function openModal(card) {
         editId.value   = card.id;
         editSlug.value = card.slug;
         editNome.value = card.nome_amigavel;
         setVis(card.visivel !== false);
+        switchTab('geral'); // sempre abre na aba Geral, independente da aba deixada aberta da última vez
+        if (window.RBI_IS_ADMIN && connRelId) {
+            connRelId.value = card.id;
+            loadConexaoConfig(card.id);
+        }
         overlay.classList.add('open');
         editNome.focus();
     }
@@ -750,21 +782,25 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
         overlay.classList.remove('open');
     }
 
-    // ── Modal de conexão (admin_interno only) ────────────────────────────────
+    // ── Aba de conexão (admin_interno only) ──────────────────────────────────
     function connShowMsg(texto, tipo) {
+        if (!connMsg) return;
         connMsg.textContent = texto;
         connMsg.className = 'rbi-conn-msg show ' + (tipo || 'erro');
     }
     function connClearMsg() {
+        if (!connMsg) return;
         connMsg.className = 'rbi-conn-msg';
         connMsg.textContent = '';
     }
-    function openConnModal(relatorioId) {
-        connRelId.value = relatorioId;
+    // Busca a config atual do relatório uma única vez por abertura do modal (openModal
+    // chama isto antes do usuário poder trocar de aba) — trocar de aba depois não refaz
+    // a busca, então uma edição em andamento nunca é sobrescrita.
+    function loadConexaoConfig(relatorioId) {
+        if (!connHost) return;
         connHost.value = ''; connPort.value = '5432'; connDbname.value = '';
         connUser.value = ''; connPassword.value = '';
         connClearMsg();
-        connOverlay.classList.add('open');
         fetch('/api/relatorio-conexao.php?action=get&relatorio_id=' + encodeURIComponent(relatorioId))
             .then(function (r) { return r.json(); })
             .then(function (res) {
@@ -778,17 +814,15 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
             })
             .catch(function () { connShowMsg('Erro de rede ao carregar configuração.', 'erro'); });
     }
-    function closeConnModal() {
-        connOverlay.classList.remove('open');
+    if (connPassToggle) {
+        connPassToggle.addEventListener('click', function () {
+            connPassword.type = connPassword.type === 'password' ? 'text' : 'password';
+        });
     }
-    connPassToggle.addEventListener('click', function () {
-        connPassword.type = connPassword.type === 'password' ? 'text' : 'password';
-    });
-    document.getElementById('rbi-conn-close').addEventListener('click', closeConnModal);
-    document.getElementById('rbi-conn-cancel').addEventListener('click', closeConnModal);
-    connOverlay.addEventListener('click', function (e) { if (e.target === connOverlay) closeConnModal(); });
+    const connCancelBtn = document.getElementById('rbi-conn-cancel');
+    if (connCancelBtn) connCancelBtn.addEventListener('click', closeModal);
 
-    connBtnSave.addEventListener('click', function () {
+    if (connBtnSave) connBtnSave.addEventListener('click', function () {
         connClearMsg();
         var payload = {
             relatorio_id: parseInt(connRelId.value, 10),
@@ -816,7 +850,7 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
         .then(function (res) {
             if (res.sucesso) {
                 connShowMsg('Conexão testada e salva com sucesso.', 'ok');
-                setTimeout(closeConnModal, 900);
+                setTimeout(closeModal, 900);
             } else {
                 connShowMsg(res.erro || 'Erro ao salvar.', 'erro');
             }
@@ -893,12 +927,8 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
             : '<span class="rbi-empresa-badge" style="opacity:.5">Nenhuma empresa</span>';
 
         const userCount = r.user_count || 0;
-        const connBtnHtml = window.RBI_IS_ADMIN
-            ? '<button type="button" class="rbi-conn-btn" title="Configurar conexão"><i class="ti ti-database-cog"></i></button>'
-            : '';
 
         card.innerHTML =
-            connBtnHtml +
             '<div class="rbi-thumb">' + thumbHtml(r.slug) + '</div>' +
             '<div class="rbi-card-body">' +
                 '<div class="rbi-card-name">' + escHtml(r.nome_amigavel) + '</div>' +
@@ -906,9 +936,9 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
             '</div>' +
             '<div class="rbi-user-chip"><i class="ti ti-user"></i>&nbsp;' + userCount + (userCount === 1 ? ' usuário' : ' usuários') + '</div>';
 
-        // Card click — abre o modal de configuração (comportamento existente preservado).
+        // Card click — abre o modal de configuração (Geral + aba Conexão para admin_interno).
         card.addEventListener('click', function (e) {
-            if (e.target.closest('.rbi-user-chip') || e.target.closest('.rbi-conn-btn')) return;
+            if (e.target.closest('.rbi-user-chip')) return;
             openModal(r);
         });
 
@@ -916,14 +946,6 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
         chip.addEventListener('mouseenter', function (e) { mostrarTooltip(e, r.usuarios); });
         chip.addEventListener('mousemove',  posicionarTooltip);
         chip.addEventListener('mouseleave', esconderTooltip);
-
-        const connBtn = card.querySelector('.rbi-conn-btn');
-        if (connBtn) {
-            connBtn.addEventListener('click', function (e) {
-                e.stopPropagation();
-                openConnModal(r.id);
-            });
-        }
 
         return card;
     }
