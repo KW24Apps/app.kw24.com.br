@@ -1259,8 +1259,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         </div>
         <div id="mon-webhooks-list"></div>
         <div id="mon-webhooks-form">
-            <input type="text" id="mon-webhook-nome" placeholder="Nome (ex.: Gabriel Acker)">
-            <input type="url" id="mon-webhook-url" placeholder="https://.../rest/.../TOKEN/">
+            <input type="text" id="mon-webhook-nome" placeholder="Preenchido automaticamente ao validar o webhook">
+            <input type="url" id="mon-webhook-url" placeholder="https://.../rest/.../TOKEN/" onblur="monValidarWebhookPessoal()">
             <button onclick="monSalvarWebhookPessoal()"><span id="mon-webhooks-submit-label">Adicionar</span></button>
         </div>
         <div id="mon-webhooks-feedback"></div>
@@ -1641,6 +1641,34 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                 if (monWebhookEditandoId === id) monWebhookLimparForm();
             })
             .catch(function () { monWebhookFeedback('Erro de comunicação.', 'erro'); });
+    };
+
+    // Dispara ao sair do campo de URL (colar/tab) — valida o webhook de verdade via
+    // user.current (ver WebhooksPessoaisAtendimento::buscarNomeConta()) e pré-preenche o nome
+    // com a conta real dona do webhook, em vez de depender do que foi digitado a mão. O campo
+    // continua editável depois — isso só sugere o valor correto. Em modo edição mantendo o
+    // webhook atual (campo em branco), não há nada pra validar.
+    window.monValidarWebhookPessoal = function () {
+        var url = document.getElementById('mon-webhook-url').value.trim();
+        if (!url) return;
+        if (url.indexOf('https://') !== 0) {
+            monWebhookFeedback('Webhook deve começar com https://', 'erro');
+            return;
+        }
+
+        monWebhookFeedback('Verificando webhook…', '');
+        fetch('/api/monitoramento-webhooks-pessoais.php', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ acao: 'validar', webhookUrl: url })
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.erro) { monWebhookFeedback(data.erro, 'erro'); return; }
+                document.getElementById('mon-webhook-nome').value = data.nome;
+                monWebhookFeedback('Nome preenchido automaticamente: ' + data.nome + ' (pode editar antes de salvar)', 'ok');
+            })
+            .catch(function () { monWebhookFeedback('Erro de comunicação ao validar o webhook.', 'erro'); });
     };
 
     window.monSalvarWebhookPessoal = function () {

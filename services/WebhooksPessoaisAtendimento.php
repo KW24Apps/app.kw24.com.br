@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../helpers/Database.php';
 require_once __DIR__ . '/../dao/ConfiguracaoDAO.php';
+require_once __DIR__ . '/../services/BitrixService.php';
 
 /**
  * CRUD dos webhooks Bitrix24 pessoais (escopo im, um por colaborador) usados pelo painel
@@ -43,6 +44,31 @@ class WebhooksPessoaisAtendimento {
                 'webhookMascarado' => self::mascarar($p['webhookUrl'] ?? ''),
             ];
         }, $this->listar());
+    }
+
+    /**
+     * Busca o nome real da conta Bitrix24 dona desse webhook, via user.current — nome digitado
+     * a mão não tem nenhuma garantia de bater com o webhook colado (ex.: colar o webhook do
+     * Jeferson mas digitar "Gabriel" por engano); usar user.current elimina esse risco E valida
+     * de cara que o webhook funciona (escopo "im" mínimo já cobre esse método). Chamada tanto
+     * pelo preenchimento automático no modal (ação 'validar') quanto, de novo, no momento de
+     * salvar (ações 'adicionar'/'editar' em api/monitoramento-webhooks-pessoais.php) — cobre o
+     * caso de alguém pular a validação do modal e enviar direto pra API.
+     */
+    public function buscarNomeConta(string $webhookUrl): array {
+        $bitrix = new BitrixService($webhookUrl);
+        if (!$bitrix->isConfigured()) {
+            return ['sucesso' => false, 'erro' => 'Webhook inválido ou incompleto'];
+        }
+
+        $usuario = $bitrix->call('user.current');
+        if ($usuario === null) {
+            return ['sucesso' => false, 'erro' => 'Não foi possível validar esse webhook no Bitrix24 — confira a URL'];
+        }
+
+        $nome = trim(($usuario['NAME'] ?? '') . ' ' . ($usuario['LAST_NAME'] ?? ''));
+        if ($nome === '') $nome = 'Usuário #' . ($usuario['ID'] ?? '?');
+        return ['sucesso' => true, 'nome' => $nome];
     }
 
     public function adicionar(string $nome, string $webhookUrl): void {

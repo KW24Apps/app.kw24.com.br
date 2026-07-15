@@ -36,6 +36,22 @@ try {
             echo json_encode(['sucesso' => true, 'pessoas' => $service->listarMascarado()]);
             break;
 
+        // Preenchimento automático do nome no modal (ver monValidarWebhookPessoal() no
+        // frontend) — chamada ao colar/sair do campo de URL, antes de salvar. Não persiste
+        // nada, só valida o webhook e devolve o nome real da conta pra pré-preencher o campo
+        // (que continua editável depois).
+        case 'validar':
+            $url = trim((string)($body['webhookUrl'] ?? ''));
+            if ($url === '' || strpos($url, 'https://') !== 0) {
+                echo json_encode(['erro' => 'Webhook deve começar com https://']);
+                break;
+            }
+            $validacao = $service->buscarNomeConta($url);
+            echo $validacao['sucesso']
+                ? json_encode(['sucesso' => true, 'nome' => $validacao['nome']])
+                : json_encode(['erro' => $validacao['erro']]);
+            break;
+
         case 'adicionar':
             $nome = trim((string)($body['nome'] ?? ''));
             $url  = trim((string)($body['webhookUrl'] ?? ''));
@@ -45,6 +61,13 @@ try {
             }
             if (strpos($url, 'https://') !== 0) {
                 echo json_encode(['erro' => 'Webhook deve começar com https://']);
+                break;
+            }
+            // Revalida aqui (não só no modal) — cobre quem pular a validação ao vivo e
+            // garante que nunca é salvo um webhook que não funciona.
+            $validacao = $service->buscarNomeConta($url);
+            if (!$validacao['sucesso']) {
+                echo json_encode(['erro' => $validacao['erro']]);
                 break;
             }
             $service->adicionar($nome, $url);
@@ -59,9 +82,18 @@ try {
                 echo json_encode(['erro' => 'Id e nome são obrigatórios']);
                 break;
             }
-            if ($url !== '' && strpos($url, 'https://') !== 0) {
-                echo json_encode(['erro' => 'Webhook deve começar com https://']);
-                break;
+            if ($url !== '') {
+                if (strpos($url, 'https://') !== 0) {
+                    echo json_encode(['erro' => 'Webhook deve começar com https://']);
+                    break;
+                }
+                // Só revalida quando uma URL nova é de fato enviada — editar só o nome,
+                // mantendo o webhook já salvo (URL em branco), não precisa revalidar.
+                $validacao = $service->buscarNomeConta($url);
+                if (!$validacao['sucesso']) {
+                    echo json_encode(['erro' => $validacao['erro']]);
+                    break;
+                }
             }
             $service->editar($id, $nome, $url !== '' ? $url : null);
             echo json_encode(['sucesso' => true, 'pessoas' => $service->listarMascarado()]);
