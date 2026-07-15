@@ -193,13 +193,17 @@ class BitrixService {
         return $this->post('crm.company.get', ['id' => $companyId]);
     }
 
-    /** Atualiza campos (inclusive UF_CRM_*) de uma Company via crm.company.update. */
+    /**
+     * Atualiza campos (inclusive UF_CRM_*) de uma Company via crm.company.update. Não usa post()
+     * porque crm.company.update retorna 'result' como boolean (true), não array — post() é
+     * tipado ?array e lançaria TypeError ao tentar retornar um bool.
+     */
     public function updateCompany(int $companyId, array $fields): bool {
-        $result = $this->post('crm.company.update', [
+        $data = $this->callRaw('crm.company.update', [
             'id'     => $companyId,
             'fields' => $fields,
         ]);
-        return $result !== null;
+        return $data !== null && ($data['result'] ?? false) === true;
     }
 
     /** Resolve IDs de usuário Bitrix24 para nome completo. Retorna [id => "Nome Sobrenome"]. */
