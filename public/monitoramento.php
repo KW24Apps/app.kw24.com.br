@@ -40,16 +40,22 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 }
 
 /* ===== MONITORAMENTO KW24 — layout geral =====
- * .content-area já é a área certa (grid row 1fr do shell, altura = 100vh - topbar) com
- * overflow:hidden por padrão em toda a aplicação — sidebar/topbar ficam fora dela, então
- * já são fixos por natureza, sem precisar de nenhuma regra extra aqui. A página inteira
- * (header + topo-row + mon-panels-row) precisa caber dentro dessa altura já certa, sem
- * scroll de página — só o scroll interno de cada painel (cha-list/tsk-list/mon-equipe-body
- * etc., cada um com seu próprio overflow-y:auto). Por isso mon-panels-row usa flex:1 (ocupa
- * só o que sobra do content-area) em vez de uma altura mínima fixa — uma versão anterior
- * (min-height:1600px + content-area:has(...){overflow-y:auto}) inflava a página e criava
- * scrollbar de página inteira; removida.
+ * Decisão revertida nesta rodada: em telas menores, conteúdo ficava cortado sem nenhuma forma
+ * de alcançar (a versão anterior evitava de propósito qualquer scroll de página, só scroll
+ * interno por painel). Agora é o oposto: UM scroll só, na página inteira — .content-area é a
+ * área certa pra isso (grid row 1fr do shell; sidebar/topbar ficam FORA dela, em outra célula
+ * do grid, então continuam fixos só por estarem fora do elemento que rola — não precisam de
+ * nenhuma regra extra). Escopado via :has(.mon-updated), igual ao padrão já usado pro
+ * .page-header, pra não afetar .content-area nas outras páginas da aplicação.
+ * Painéis individuais (Atendimento/Equipe) não têm mais overflow-y:auto próprio — crescem
+ * naturalmente com o conteúdo; só Chamados abertos/Tarefas tem uma regra especial (ver
+ * .cha-list/.tsk-list): piso de ~12 linhas, cresce se houver espaço, sem scrollbar própria
+ * mesmo quando nem o piso cabe (a página inteira absorve o excesso).
  */
+.content-area:has(.mon-updated) {
+    overflow-y: auto;
+    overflow-x: hidden;
+}
 .mon-updated {
     font-size: var(--mon-fs-sm);
     color: rgba(255,255,255,.35);
@@ -96,12 +102,11 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     gap: var(--mon-sp-lg);
     flex: 1 1 auto;
     min-width: 320px;
-    min-height: 0;
 }
 @media (max-width: 1024px) {
     .mon-panels-row { flex-direction: column; }
     .mon-equipe-card { flex: 0 0 auto !important; max-height: 45vh; }
-    .mon-right-col { flex: 1 1 auto; min-height: 560px; }
+    .mon-right-col { flex: 1 1 auto; }
 }
 
 /* ===== Painel Equipe — card único, membros empilhados ===== */
@@ -156,8 +161,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
  * o browser decidir. */
 .mon-equipe-body {
     flex: 1;
-    min-height: 0;
-    overflow-y: auto;
     padding: var(--mon-sp-base) var(--mon-sp-lg);
     display: grid;
     grid-template-columns: 1fr auto auto;
@@ -504,7 +507,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     border: 1.5px solid rgba(255,255,255,0.10);
     border-radius: 12px;
     flex: 1 1 0;
-    min-height: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -550,8 +552,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     display: flex;
     flex-direction: column;
     flex: 1;
-    min-height: 0;
-    overflow: hidden;
 }
 .mon-tab-filters {
     display: flex;
@@ -646,16 +646,16 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .cha-th-sort:hover, .tsk-th-sort:hover { color: rgba(255,255,255,.6); }
 .mon-sort-icon { font-size: var(--mon-fs-2xs); color: rgba(255,255,255,.25); }
 .mon-sort-icon.active { color: #0DC2FF; }
+/* Piso de ~12 linhas visíveis (thead + 12 * ~34px de linha) — cresce com flex:1 quando há
+ * espaço de sobra na página (mostra mais de 12 sem precisar rolar), mas nunca encolhe abaixo
+ * do piso; se nem o piso couber na tela, quem absorve o excesso é o scroll da página inteira
+ * (.content-area:has(.mon-updated)), não uma barra de rolagem própria deste painel. */
 .cha-list {
     display: flex;
     flex-direction: column;
     flex: 1;
-    min-height: 0;
-    overflow-y: auto;
+    min-height: 440px;
 }
-.cha-list::-webkit-scrollbar { width: 5px; }
-.cha-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
-.cha-list::-webkit-scrollbar-thumb { background: rgba(13,194,255,0.25); border-radius: 3px; }
 .cha-row { border-bottom: 1px solid rgba(255,255,255,0.06); }
 .cha-row:last-child { border-bottom: none; }
 .cha-row-main {
@@ -808,16 +808,14 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     color: #061920;
     border-color: transparent;
 }
+/* Mesmo piso de ~12 linhas do .cha-list (ver comentário lá) — mesmo painel com abas,
+ * mesma regra de altura pras duas. */
 .tsk-list {
     display: flex;
     flex-direction: column;
     flex: 1;
-    min-height: 0;
-    overflow-y: auto;
+    min-height: 440px;
 }
-.tsk-list::-webkit-scrollbar { width: 5px; }
-.tsk-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
-.tsk-list::-webkit-scrollbar-thumb { background: rgba(183,148,244,0.25); border-radius: 3px; }
 .tsk-row {
     border-bottom: 1px solid rgba(255,255,255,0.06);
 }
@@ -1086,17 +1084,9 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     color: rgba(255,255,255,.4);
 }
 .ate-list {
-    /* Altura fluida por viewport HEIGHT (não width) — essa é a maior contribuinte de
-     * overflow vertical em telas baixas (1366x768): com altura fixa em 340px, sobrava
-     * pouquíssima altura pro mon-panels-row (Equipe/Chamados/Tarefas) abaixo. 30vh dá
-     * ~230px numa tela de 768px de altura (cabe) e ~340px numa tela de 1080px+ (igual a
-     * antes, sem regressão no monitor grande). */
-    height: clamp(180px, 30vh, 340px);
-    overflow-y: auto;
+    /* Sem altura fixa nem scroll próprio — cresce com o conteúdo; a página como um todo é
+     * quem rola agora (ver .content-area:has(.mon-updated) no topo deste bloco de estilos). */
 }
-.ate-list::-webkit-scrollbar { width: 5px; }
-.ate-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
-.ate-list::-webkit-scrollbar-thumb { background: rgba(38,255,147,0.25); border-radius: 3px; }
 .ate-row {
     display: flex;
     align-items: center;
