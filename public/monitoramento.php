@@ -2765,12 +2765,13 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     // reproduzido e confirmado num teste visual local com Chrome headless antes deste fix).
     //
     // Addendum de Gabriel (confirmado ao vivo): igualar exatamente à altura natural do Funil
-    // não bastava — a lista de Conversas/Grupos (8 itens) ainda precisava de scroll próprio e
-    // a linha ficava "cramped" com "Demandas em Execução" expandido. A altura fixa das duas
-    // caixas agora é ~1.34x (33-35% de margem) a altura natural do Funil TOTALMENTE EXPANDIDO —
-    // não a altura no estado atual (colapsado ou expandido) — pra sempre ter espaço de sobra
-    // suficiente pro pior caso (tudo expandido) mais uma margem confortável.
-    var FUN_ALTURA_FATOR = 1.34;
+    // não bastava — a lista de Conversas/Grupos ainda precisava de scroll próprio e a linha
+    // ficava "cramped" com "Demandas em Execução" expandido. A altura fixa das duas caixas é
+    // a altura natural do Funil TOTALMENTE EXPANDIDO — não a altura no estado atual (colapsado
+    // ou expandido) — com uma pequena margem (fator ajustado ao vivo por Gabriel via DevTools:
+    // 425px -> 325px foi o encaixe correto, caixa terminando bem depois da última linha visível
+    // "Treinamento/Validação", só um respiro pequeno — 1.34 tinha margem grande demais).
+    var FUN_ALTURA_FATOR = 1.025;
 
     // Mede a altura natural do Funil com "Demandas em Execução" forçado a expandido (mesmo que
     // o estado real no momento seja colapsado), restaurando o estado real depois de medir — só
