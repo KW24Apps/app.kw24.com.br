@@ -120,8 +120,6 @@ $nomeExibido = $portal['nome'] ?: $portal['slug'];
 
     /* ─── Layout de duas colunas (Portal BI — só nesta página) ─── */
     .portal-access-layout {
-        position: relative;
-        z-index: 1;
         display: flex;
         align-items: center;
         justify-content: center;
