@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../helpers/Database.php';
 require_once __DIR__ . '/../services/BitrixService.php';
 require_once __DIR__ . '/../services/TipoChamadoCatalogo.php';
+require_once __DIR__ . '/../services/WebhooksPessoaisAtendimento.php';
 
 /**
  * Agregação do painel "Chamados abertos" — Monitoramento KW24.
@@ -112,17 +113,39 @@ class MonitoramentoChamadosService {
 
         // Chat: resolve o chat vinculado de cada card (sempre — é o que define 'temChat'), depois
         // busca mensagens recentes dos chats encontrados (só em modo detalhado — ver docblock
-        // acima). Usa sempre o webhook principal/organizacional deste service ($this->bitrix,
-        // mesmo usado pra tudo o mais aqui) — mecanismo completamente separado do de
-        // WebhooksPessoaisAtendimento (webhooks pessoais por pessoa, usado só pelo painel
-        // Atendimento/Open Line, não aqui). Se o webhook principal não tiver acesso a algum
-        // chat específico, o card fica com chatErro (ver abaixo) — caso esperado, não é bug.
+        // acima). Acesso a esse tipo de chat (im.dialog.messages.get de um card CRM) depende
+        // estritamente de participação real na conversa — não existe bypass admin pra leitura
+        // (isso só existe pra imopenlines.*/Open Line "enviar como", usado pelo painel
+        // Atendimento, mecanismo totalmente diferente, não tocado aqui). Confirmado ao vivo que
+        // o webhook organizacional sozinho falha com ACCESS_ERROR na maioria dos chamados (14 de
+        // 15 testados). Tenta cada webhook pessoal cadastrado em WebhooksPessoaisAtendimento, em
+        // sequência, por chat ainda sem sucesso, até algum funcionar — reaproveita o CADASTRO do
+        // painel Atendimento só como uma lista de identidades pra tentar (listar(), não
+        // mapaWebhookPorUid() — não depende de bitrixUserId resolvido, só da URL do webhook em
+        // si). Chats que falham em todos ficam com o erro da última tentativa (ver chatErro).
         $itemIds        = array_column($items, 'id');
         $chatIdsPorItem = $itemIds ? $this->bitrix->getCrmChatIds(self::ENTITY_TYPE, $itemIds) : [];
 
         $mensagensPorChat = [];
         if ($detalheCompleto && $chatIdsPorItem) {
-            $mensagensPorChat = $this->bitrix->getCrmChatMessages(array_values($chatIdsPorItem), $mensagensPorChamado);
+            $chatIdsRestantes = array_values(array_unique($chatIdsPorItem));
+
+            foreach ((new WebhooksPessoaisAtendimento())->listar() as $pessoa) {
+                if (!$chatIdsRestantes) break;
+                $url = $pessoa['webhookUrl'] ?? '';
+                if ($url === '') continue;
+
+                $resultado = (new BitrixService($url))->getCrmChatMessages($chatIdsRestantes, $mensagensPorChamado);
+
+                $aindaFalhando = [];
+                foreach ($chatIdsRestantes as $chatId) {
+                    $info = $resultado[$chatId] ?? null;
+                    if ($info === null) { $aindaFalhando[] = $chatId; continue; } // sem resposta dessa identidade — tenta a próxima
+                    $mensagensPorChat[$chatId] = $info;
+                    if (!empty($info['erro'])) $aindaFalhando[] = $chatId; // ACCESS_ERROR etc — tenta a próxima
+                }
+                $chatIdsRestantes = $aindaFalhando;
+            }
         }
 
         $etapaOrdem = array_flip(array_keys(self::ETAPAS));
