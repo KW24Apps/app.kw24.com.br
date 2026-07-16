@@ -2,7 +2,6 @@
 require_once __DIR__ . '/../helpers/Database.php';
 require_once __DIR__ . '/../services/BitrixService.php';
 require_once __DIR__ . '/../services/TipoChamadoCatalogo.php';
-require_once __DIR__ . '/../services/WebhooksPessoaisAtendimento.php';
 
 /**
  * Agregação do painel "Chamados abertos" — Monitoramento KW24.
@@ -53,10 +52,6 @@ class MonitoramentoChamadosService {
         'DT1054_208:UC_F3HI83'   => 'Michael Botelho',
         'DT1054_208:UC_NUJRTQ'   => 'Treinamento/Validação',
     ];
-
-    // bitrixUserId de Gabriel Acker — mesmo roster usado em MonitoramentoEquipeService/
-    // MonitoramentoTarefasService. Único identidade usada pro chat (ver getDados()).
-    private const UID_GABRIEL = 21;
 
     private BitrixService $bitrix;
 
@@ -117,24 +112,17 @@ class MonitoramentoChamadosService {
 
         // Chat: resolve o chat vinculado de cada card (sempre — é o que define 'temChat'), depois
         // busca mensagens recentes dos chats encontrados (só em modo detalhado — ver docblock
-        // acima). O webhook de automação não é participante da maioria dos chats de card
-        // (ACCESS_ERROR) — confirmado ao vivo que o requisito real pra ler o chat completo, mesmo
-        // sem nunca ter participado dele, é o webhook pertencer a uma conta administradora do
-        // Bitrix24 (não é uma questão de "ser o responsável" — a tentativa anterior de casar por
-        // responsável era a causa errada). Usa sempre o webhook pessoal do Gabriel (conta admin,
-        // já cadastrado via WebhooksPessoaisAtendimento — mesmo registro do painel Atendimento)
-        // pra essa chamada, independente de quem é o responsável do card; sem esse webhook
-        // cadastrado, cai no webhook de automação (mesma chance de ACCESS_ERROR de antes).
+        // acima). Usa sempre o webhook principal/organizacional deste service ($this->bitrix,
+        // mesmo usado pra tudo o mais aqui) — mecanismo completamente separado do de
+        // WebhooksPessoaisAtendimento (webhooks pessoais por pessoa, usado só pelo painel
+        // Atendimento/Open Line, não aqui). Se o webhook principal não tiver acesso a algum
+        // chat específico, o card fica com chatErro (ver abaixo) — caso esperado, não é bug.
         $itemIds        = array_column($items, 'id');
         $chatIdsPorItem = $itemIds ? $this->bitrix->getCrmChatIds(self::ENTITY_TYPE, $itemIds) : [];
 
         $mensagensPorChat = [];
         if ($detalheCompleto && $chatIdsPorItem) {
-            $webhookPorUid   = (new WebhooksPessoaisAtendimento())->mapaWebhookPorUid();
-            $webhookAdminUrl = $webhookPorUid[self::UID_GABRIEL] ?? '';
-            $bitrixAdmin     = $webhookAdminUrl !== '' ? new BitrixService($webhookAdminUrl) : $this->bitrix;
-
-            $mensagensPorChat = $bitrixAdmin->getCrmChatMessages(array_values($chatIdsPorItem), $mensagensPorChamado);
+            $mensagensPorChat = $this->bitrix->getCrmChatMessages(array_values($chatIdsPorItem), $mensagensPorChamado);
         }
 
         $etapaOrdem = array_flip(array_keys(self::ETAPAS));
