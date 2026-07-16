@@ -70,7 +70,13 @@ function infraestruturaRelatorio(int $relatorioId, string $slug): array {
 
 /**
  * Grava (ou remove) o arquivo local de config que o processo Python (db.py) lê no lugar do .env.
- * Permissão restrita (0600) — mesmo usuário (kw24) roda PHP-FPM e o Gunicorn dos relatórios.
+ * Permissão restrita (0600). CORREÇÃO (jul/2026): o pool PHP-FPM que atende app.kw24.com.br
+ * roda como `www-data` (confirmado via `ps aux` em produção), não `kw24` — o comentário original
+ * aqui estava errado. `relatorios-bi/{slug}/` é dono kw24:kw24 (775), sem `www-data` no grupo
+ * kw24 — na prática isso significa que esta função, quando chamada por uma requisição web real
+ * (api/relatorio-conexao.php), muito provavelmente falha ao escrever o arquivo pelo mesmo motivo
+ * que o upload de logo falhava antes do fix de jul/2026 (ver RELATORIOS_BI.md). Não corrigido
+ * aqui — fora do escopo da tarefa que descobriu isso; risco pendente a validar/corrigir.
  */
 function escreverDbConfigJson(string $slug, array $cfg): bool {
     $dir = pastaRelatorio($slug);
