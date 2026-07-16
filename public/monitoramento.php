@@ -806,33 +806,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     color: rgba(255,255,255,.35);
     white-space: nowrap;
 }
-.tsk-filter-pill {
-    font-size: var(--mon-fs-2xs);
-    font-weight: 600;
-    padding: var(--mon-sp-3xs) var(--mon-sp-xs);
-    border-radius: 12px;
-    cursor: pointer;
-    border: 1px solid rgba(183,148,244,.35);
-    color: rgba(255,255,255,.5);
-    background: transparent;
-    transition: background .15s, color .15s, border-color .15s;
-    user-select: none;
-}
-.tsk-filter-pill:hover { border-color: rgba(183,148,244,.6); color: rgba(255,255,255,.8); }
-.tsk-filter-pill.active {
-    background: linear-gradient(90deg,#b794f4,#805ad5);
-    color: #fff;
-    border-color: transparent;
-}
-/* Pills de filtro por pessoa (Tarefas) — verde. O filtro por Tipo/Responsável de Chamados
- * abertos usa outro componente (dropdown com checkboxes, ver .cha-dropdown-*), não pills. */
-.tsk-filter-pill.pessoa { border-color: rgba(38,255,147,.35); }
-.tsk-filter-pill.pessoa:hover { border-color: rgba(38,255,147,.6); color: rgba(255,255,255,.8); }
-.tsk-filter-pill.pessoa.active {
-    background: linear-gradient(90deg,#26FF93,#1a9c5a);
-    color: #061920;
-    border-color: transparent;
-}
 /* Mesmo piso + scroll próprio de .cha-list (ver comentário lá) — mesmo painel com abas,
  * mesma regra de altura pras duas. */
 .tsk-list {
@@ -1343,7 +1316,15 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                         <div class="cha-dropdown-panel" id="cha-dropdown-pessoa-panel"></div>
                     </div>
                 </div>
-                <div class="mon-tab-filters" id="tsk-filter-row" style="display:none"></div>
+                <div class="mon-tab-filters" id="tsk-filter-row" style="display:none">
+                    <div class="cha-dropdown" id="tsk-dropdown-pessoa">
+                        <button class="cha-dropdown-trigger" onclick="tskToggleDropdown()">
+                            <span>Envolvidos · <span id="tsk-dropdown-pessoa-count">0</span></span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="cha-dropdown-panel" id="tsk-dropdown-pessoa-panel"></div>
+                    </div>
+                </div>
             </div>
 
             <div class="mon-tab-content" id="mon-tab-content-cha">
@@ -1864,27 +1845,42 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             .catch(function () { monWebhookFeedback('Erro de comunicação.', 'erro'); });
     };
 
-    // ── Filtro por pessoa (pills multi-select, 1 a 4 ativos) ──────────────────────
+    // ── Filtro por pessoa (dropdown-checklist, mesmo padrão .cha-dropdown-* de Chamados
+    // abertos/Atendimento — antes eram pills) — filtra por envolvimento como
+    // Participante/Observador (ver tskEnvolveSelecionados() abaixo), não por
+    // Responsável/Criador (esses são colunas sempre visíveis, não filtráveis, ver
+    // tskPessoaChipHtml()). Roster fixo (os 4 da equipe monitorada), default todos
+    // marcados — mesmo default de sempre, só a apresentação virou dropdown. ──────────
+    window.tskToggleDropdown = function () {
+        var el = document.getElementById('tsk-dropdown-pessoa');
+        if (el) el.classList.toggle('open');
+    };
+
     function renderFiltroPessoas(equipe) {
-        var el = document.getElementById('tsk-filter-row');
-        if (!el) return;
-        if (!equipe || !equipe.length) { el.innerHTML = ''; return; }
+        var painel  = document.getElementById('tsk-dropdown-pessoa-panel');
+        var badgeEl = document.getElementById('tsk-dropdown-pessoa-count');
+        if (!painel) return;
+        if (!equipe || !equipe.length) { painel.innerHTML = ''; if (badgeEl) badgeEl.textContent = '0'; return; }
 
         if (tskSelectedUids === null) {
             tskSelectedUids = new Set(equipe.map(function (p) { return p.bitrixUserId; }));
         }
 
-        el.innerHTML = equipe.map(function (p) {
+        painel.innerHTML = equipe.map(function (p) {
             var ativo = tskSelectedUids.has(p.bitrixUserId);
-            return '<span class="tsk-filter-pill pessoa' + (ativo ? ' active' : '') + '" onclick="tskToggleFiltro(' + p.bitrixUserId + ')">'
-                + escHtml(primeiroNome(p.nome)) + '</span>';
+            return '<label class="cha-dropdown-item">'
+                + '<input type="checkbox"' + (ativo ? ' checked' : '') + ' onchange="tskToggleFiltro(' + p.bitrixUserId + ')">'
+                + escHtml(p.nome)
+                + '</label>';
         }).join('');
+
+        if (badgeEl) badgeEl.textContent = tskSelectedUids.size;
     }
 
     window.tskToggleFiltro = function (uid) {
         if (!tskSelectedUids) return;
         if (tskSelectedUids.has(uid)) {
-            if (tskSelectedUids.size <= 1) return; // nunca deixa ficar com 0 selecionados
+            if (tskSelectedUids.size <= 1) { renderFiltroPessoas(lastTarefas && lastTarefas.equipe); return; } // nunca deixa ficar com 0 selecionados
             tskSelectedUids.delete(uid);
         } else {
             tskSelectedUids.add(uid);
