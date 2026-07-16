@@ -203,7 +203,7 @@ $nomeExibido = $portal['nome'] ?: $portal['slug'];
     /* ─── Showcase auto-rotativo (substitui o antigo card de preview único) ─── */
     .mkt-showcase {
         position: relative;
-        height: 350px;
+        height: 260px;
         background: rgba(255,255,255,0.05);
         border: 1.5px solid rgba(255,255,255,0.12);
         border-radius: 16px;
@@ -216,7 +216,7 @@ $nomeExibido = $portal['nome'] ?: $portal['slug'];
     .mkt-screen {
         position: absolute;
         inset: 0;
-        padding: 1.15rem 1.3rem 1.2rem;
+        padding: .8rem 1rem .85rem;
         display: flex;
         flex-direction: column;
         opacity: 0;
@@ -227,20 +227,20 @@ $nomeExibido = $portal['nome'] ?: $portal['slug'];
 
     .mkt-screen-label {
         flex-shrink: 0;
-        font-size: .66rem;
+        font-size: .64rem;
         text-transform: uppercase;
         letter-spacing: .07em;
         color: #26FF93;
         font-weight: 700;
-        margin-bottom: .8rem;
+        margin-bottom: .5rem;
     }
 
     .mkt-kpi-mini-row {
         flex-shrink: 0;
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        gap: .55rem;
-        margin-bottom: 1rem;
+        gap: .45rem;
+        margin-bottom: .6rem;
     }
     .mkt-kpi-mini-row.cols-2 { grid-template-columns: repeat(2, 1fr); }
 
@@ -248,8 +248,8 @@ $nomeExibido = $portal['nome'] ?: $portal['slug'];
         position: relative;
         background: rgba(255,255,255,0.045);
         border: 1px solid rgba(255,255,255,0.10);
-        border-radius: 9px;
-        padding: .5rem .5rem;
+        border-radius: 8px;
+        padding: .4rem .45rem;
         overflow: hidden;
     }
     .mkt-kpi-mini::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
@@ -258,28 +258,28 @@ $nomeExibido = $portal['nome'] ?: $portal['slug'];
     .mkt-kpi-mini.c-purple::before { background: linear-gradient(90deg,#b794f4,#805ad5); }
     .mkt-kpi-mini.c-amber::before  { background: linear-gradient(90deg,#f6ad55,#f6e05e); }
     .mkt-kpi-mini-label {
-        font-size: .56rem; text-transform: uppercase; letter-spacing: .03em;
-        color: rgba(255,255,255,.5); margin-bottom: .25rem;
+        font-size: .52rem; text-transform: uppercase; letter-spacing: .03em;
+        color: rgba(255,255,255,.5); margin-bottom: .2rem;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .mkt-kpi-mini-value { font-size: .78rem; font-weight: 700; color: #fff; white-space: nowrap; }
+    .mkt-kpi-mini-value { font-size: .72rem; font-weight: 700; color: #fff; white-space: nowrap; }
 
-    .mkt-two-col { flex: 1; min-height: 0; display: flex; gap: 1.1rem; }
+    .mkt-two-col { flex: 1; min-height: 0; display: flex; gap: .9rem; }
     .mkt-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .mkt-col-center { justify-content: center; align-items: center; }
     .mkt-col-between { justify-content: space-between; }
 
     .mkt-funnel-list { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
-    .mkt-funnel-list-row { display: flex; justify-content: space-between; align-items: center; font-size: .75rem; gap: .5rem; }
+    .mkt-funnel-list-row { display: flex; justify-content: space-between; align-items: center; font-size: .7rem; gap: .5rem; }
     .mkt-funnel-list-row .lbl { color: rgba(255,255,255,.65); }
     .mkt-funnel-list-row .val { color: #fff; font-weight: 700; white-space: nowrap; }
 
-    .mkt-donut-legend { display: flex; align-items: center; gap: 1rem; justify-content: center; height: 100%; }
+    .mkt-donut-legend { display: flex; align-items: center; gap: .8rem; justify-content: center; height: 100%; }
 
     .mkt-donut {
         position: relative;
-        width: 84px;
-        height: 84px;
+        width: 62px;
+        height: 62px;
         flex-shrink: 0;
     }
     .mkt-donut::before {
@@ -288,68 +288,68 @@ $nomeExibido = $portal['nome'] ?: $portal['slug'];
         inset: 0;
         border-radius: 50%;
         background: var(--donut-bg);
-        -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 14px), #000 calc(100% - 13px));
-        mask: radial-gradient(farthest-side, transparent calc(100% - 14px), #000 calc(100% - 13px));
+        -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 11px), #000 calc(100% - 10px));
+        mask: radial-gradient(farthest-side, transparent calc(100% - 11px), #000 calc(100% - 10px));
     }
 
-    .mkt-legend { display: flex; flex-direction: column; gap: .4rem; }
-    .mkt-legend-item { display: flex; align-items: center; gap: .5rem; font-size: .74rem; color: rgba(255,255,255,.8); white-space: nowrap; }
-    .mkt-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .mkt-legend { display: flex; flex-direction: column; gap: .3rem; }
+    .mkt-legend-item { display: flex; align-items: center; gap: .4rem; font-size: .68rem; color: rgba(255,255,255,.8); white-space: nowrap; }
+    .mkt-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
     .mkt-bar-ranking { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
-    .mkt-bar-row { display: flex; align-items: center; gap: .5rem; }
+    .mkt-bar-row { display: flex; align-items: center; gap: .45rem; }
     .mkt-bar-label {
-        width: 58px; flex-shrink: 0; font-size: .7rem; color: rgba(255,255,255,.7);
+        width: 50px; flex-shrink: 0; font-size: .66rem; color: rgba(255,255,255,.7);
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .mkt-bar-track { flex: 1; height: 9px; background: rgba(255,255,255,.08); border-radius: 5px; overflow: hidden; }
-    .mkt-bar-fill { display: block; height: 100%; border-radius: 5px; }
-    .mkt-bar-value { width: 38px; flex-shrink: 0; text-align: right; font-size: .7rem; font-weight: 700; color: #fff; }
+    .mkt-bar-track { flex: 1; height: 7px; background: rgba(255,255,255,.08); border-radius: 4px; overflow: hidden; }
+    .mkt-bar-fill { display: block; height: 100%; border-radius: 4px; }
+    .mkt-bar-value { width: 32px; flex-shrink: 0; text-align: right; font-size: .66rem; font-weight: 700; color: #fff; }
 
     .mkt-bar-fill.c-cyan,   .mkt-funnel-stage-bar.c-cyan   { background: #0DC2FF; }
     .mkt-bar-fill.c-green,  .mkt-funnel-stage-bar.c-green  { background: #26FF93; }
     .mkt-bar-fill.c-purple, .mkt-funnel-stage-bar.c-purple { background: #b794f4; }
     .mkt-bar-fill.c-amber,  .mkt-funnel-stage-bar.c-amber  { background: #f6ad55; }
 
-    .mkt-line-wrap { flex-shrink: 0; margin-bottom: .7rem; }
-    .mkt-line-months { display: flex; justify-content: space-between; margin-top: .3rem; padding: 0 .1rem; }
-    .mkt-line-months span { font-size: .6rem; color: rgba(255,255,255,.45); }
-    .mkt-line-legend { display: flex; gap: 1rem; margin-top: .5rem; }
-    .mkt-line-legend-item { display: flex; align-items: center; gap: .4rem; font-size: .68rem; color: rgba(255,255,255,.75); }
-    .mkt-line-swatch { width: 16px; height: 2px; border-radius: 2px; display: inline-block; }
+    .mkt-line-wrap { flex-shrink: 0; margin-bottom: .5rem; }
+    .mkt-line-months { display: flex; justify-content: space-between; margin-top: .2rem; padding: 0 .1rem; }
+    .mkt-line-months span { font-size: .54rem; color: rgba(255,255,255,.45); }
+    .mkt-line-legend { display: flex; gap: .8rem; margin-top: .35rem; }
+    .mkt-line-legend-item { display: flex; align-items: center; gap: .35rem; font-size: .62rem; color: rgba(255,255,255,.75); }
+    .mkt-line-swatch { width: 14px; height: 2px; border-radius: 2px; display: inline-block; }
     .mkt-line-swatch.solid { background: #0DC2FF; }
     .mkt-line-swatch.dashed { background: repeating-linear-gradient(90deg,#f6ad55 0 4px, transparent 4px 7px); }
 
     .mkt-callout {
         background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.09);
-        border-radius: 9px; padding: .55rem .65rem;
+        border-radius: 8px; padding: .4rem .5rem;
     }
-    .mkt-callout-label { font-size: .6rem; text-transform: uppercase; letter-spacing: .03em; color: rgba(255,255,255,.5); margin-bottom: .2rem; }
-    .mkt-callout-value { font-size: .82rem; font-weight: 700; color: #fff; }
-    .mkt-callout-delta { font-size: .65rem; color: #26FF93; margin-left: .35rem; font-weight: 600; }
+    .mkt-callout-label { font-size: .56rem; text-transform: uppercase; letter-spacing: .03em; color: rgba(255,255,255,.5); margin-bottom: .15rem; }
+    .mkt-callout-value { font-size: .74rem; font-weight: 700; color: #fff; }
+    .mkt-callout-delta { font-size: .58rem; color: #26FF93; margin-left: .3rem; font-weight: 600; }
 
-    .mkt-sparkline { flex: 1; display: flex; align-items: flex-end; justify-content: space-between; gap: .4rem; padding-bottom: .1rem; }
+    .mkt-sparkline { flex: 1; display: flex; align-items: flex-end; justify-content: space-between; gap: .3rem; padding-bottom: .1rem; }
     .mkt-sparkline-bar { flex: 1; border-radius: 3px 3px 0 0; background: linear-gradient(180deg,#0DC2FF,#086B8D); }
 
     .mkt-funnel-chart { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
-    .mkt-funnel-stage { display: flex; flex-direction: column; gap: .25rem; }
-    .mkt-funnel-stage-head { display: flex; justify-content: space-between; font-size: .68rem; color: rgba(255,255,255,.75); }
+    .mkt-funnel-stage { display: flex; flex-direction: column; gap: .2rem; }
+    .mkt-funnel-stage-head { display: flex; justify-content: space-between; font-size: .62rem; color: rgba(255,255,255,.75); }
     .mkt-funnel-stage-head b { color: #fff; }
-    .mkt-funnel-stage-bar { height: 13px; border-radius: 4px; }
+    .mkt-funnel-stage-bar { height: 10px; border-radius: 4px; }
 
-    .mkt-gauge { position: relative; width: 96px; height: 96px; flex-shrink: 0; }
+    .mkt-gauge { position: relative; width: 72px; height: 72px; flex-shrink: 0; }
     .mkt-gauge::before {
         content: '';
         position: absolute;
         inset: 0;
         border-radius: 50%;
         background: var(--gauge-bg);
-        -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 16px), #000 calc(100% - 15px));
-        mask: radial-gradient(farthest-side, transparent calc(100% - 16px), #000 calc(100% - 15px));
+        -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 12px), #000 calc(100% - 11px));
+        mask: radial-gradient(farthest-side, transparent calc(100% - 12px), #000 calc(100% - 11px));
     }
     .mkt-gauge-inner { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-    .mkt-gauge-number { font-size: 1.05rem; font-weight: 700; color: #fff; line-height: 1; }
-    .mkt-gauge-caption { font-size: .52rem; color: rgba(255,255,255,.6); text-transform: uppercase; letter-spacing: .03em; margin-top: .2rem; text-align: center; line-height: 1.2; }
+    .mkt-gauge-number { font-size: .88rem; font-weight: 700; color: #fff; line-height: 1; }
+    .mkt-gauge-caption { font-size: .42rem; color: rgba(255,255,255,.6); text-transform: uppercase; letter-spacing: .03em; margin-top: .15rem; text-align: center; line-height: 1.15; }
 
     .mkt-cta-text { font-size: .85rem; line-height: 1.5; color: rgba(255,255,255,.85); margin: 1.1rem 0 .75rem 0; }
 
@@ -478,9 +478,9 @@ $nomeExibido = $portal['nome'] ?: $portal['slug'];
                 <div class="mkt-screen" data-screen="3">
                     <div class="mkt-screen-label">Evolução mensal</div>
                     <div class="mkt-line-wrap">
-                        <svg viewBox="0 0 300 80" width="100%" height="80" preserveAspectRatio="none">
-                            <polyline points="10,60 62,52 114,45 166,38 218,30 270,18" fill="none" stroke="#0DC2FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-                            <polyline points="10,55 62,50 114,46 166,42 218,36 270,32" fill="none" stroke="#f6ad55" stroke-width="2" stroke-dasharray="5,4" stroke-linecap="round" stroke-linejoin="round" />
+                        <svg viewBox="0 0 300 60" width="100%" height="60" preserveAspectRatio="none">
+                            <polyline points="10,45 62,39 114,34 166,29 218,23 270,14" fill="none" stroke="#0DC2FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                            <polyline points="10,41 62,38 114,35 166,32 218,27 270,24" fill="none" stroke="#f6ad55" stroke-width="2" stroke-dasharray="5,4" stroke-linecap="round" stroke-linejoin="round" />
                         </svg>
                         <div class="mkt-line-months"><span>Jan</span><span>Fev</span><span>Mar</span><span>Abr</span><span>Mai</span><span>Jun</span></div>
                         <div class="mkt-line-legend">
