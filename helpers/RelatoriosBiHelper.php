@@ -219,6 +219,64 @@ function schemaExcelRelatorio(string $slug): string {
 }
 
 /**
+ * Parseia e valida um único arquivo .xlsx (cabeçalho + linhas de dados) — não toca o
+ * banco, só interpreta o arquivo em si. Reaproveitada tanto na criação/adição de
+ * tabelas (processarUploadTabelasExcel) quanto na atualização de dados de uma tabela
+ * já existente (ver api/relatorio-conexao.php, action=detectar-atualizar-tabela /
+ * atualizar-tabela-excel) — mesma validação de cabeçalho vazio/duplicado em ambos os
+ * fluxos, nunca duplicada.
+ *
+ * @param string $rotulo usado nas mensagens de erro (ex.: "Tabela 'clientes'")
+ * @return array{sucesso:bool, erro?:string, colunas?:array<string>, tipos?:array<string>,
+ *   linhas?:array<array>, cabecalho_original?:array, colunas_ajustadas?:array<string>}
+ */
+function parseArquivoExcelTabela(string $tmpPath, string $rotulo): array {
+    try {
+        $lido = XlsxReader::ler($tmpPath);
+    } catch (XlsxLerException $e) {
+        return ['sucesso' => false, 'erro' => "{$rotulo}: " . $e->getMessage()];
+    }
+    $cabecalho = $lido['cabecalho'];
+    $linhas    = $lido['linhas'];
+
+    if (!$linhas) {
+        return ['sucesso' => false, 'erro' => "{$rotulo}: arquivo sem linhas de dados"];
+    }
+
+    $colunas = [];
+    $colunasAjustadas = [];
+    foreach ($cabecalho as $idx => $h) {
+        $original = (string)($h ?? '');
+        [$colNome, $foiFallback] = sanitizarIdentificadorComFallback($original, 'coluna', $idx + 1);
+        if ($foiFallback) {
+            $rotuloOriginal = trim($original) === '' ? '(vazio)' : $original;
+            $colunasAjustadas[] = "coluna " . ($idx + 1) . " (\"{$rotuloOriginal}\") -> \"{$colNome}\"";
+        }
+        $colunas[] = $colNome;
+    }
+    if (count($colunas) !== count(array_unique($colunas))) {
+        $porNome = [];
+        foreach ($colunas as $idx => $nome) $porNome[$nome][] = ($idx + 1) . " (\"{$cabecalho[$idx]}\")";
+        $detalhes = [];
+        foreach ($porNome as $nome => $posicoes) {
+            if (count($posicoes) > 1) $detalhes[] = "'{$nome}' nas colunas " . implode(', ', $posicoes);
+        }
+        return ['sucesso' => false, 'erro' => "{$rotulo}: cabeçalho com colunas duplicadas depois de normalizado — " . implode('; ', $detalhes)];
+    }
+
+    $tipos = [];
+    foreach (array_keys($colunas) as $idx) {
+        $valoresColuna = array_map(fn($linha) => $linha[$idx] ?? null, $linhas);
+        $tipos[] = inferirTipoColuna($valoresColuna);
+    }
+
+    return [
+        'sucesso' => true, 'colunas' => $colunas, 'tipos' => $tipos, 'linhas' => $linhas,
+        'cabecalho_original' => $cabecalho, 'colunas_ajustadas' => $colunasAjustadas,
+    ];
+}
+
+/**
  * Valida, parseia e cria de fato (schema + tabelas + dados, numa transação própria no
  * banco relatorios_bi_excel) as tabelas Excel enviadas via $_POST/$_FILES. Não mexe em
  * nada no kwconfig (relatorios_bi/relatorios_bi_conexoes) — quem chama decide o que
@@ -273,48 +331,12 @@ function processarUploadTabelasExcel(string $schema, array $nomesTabelas, array 
     // ── Parse + validação de TODOS os arquivos antes de criar qualquer coisa no banco ──
     $parseados = [];
     foreach ($tabelasValidas as $t) {
-        try {
-            $lido = XlsxReader::ler($t['tmp_path']);
-        } catch (XlsxLerException $e) {
-            return ['sucesso' => false, 'erro' => "Tabela '{$t['nome_original']}': " . $e->getMessage()];
-        }
-        $cabecalho = $lido['cabecalho'];
-        $linhas    = $lido['linhas'];
-
-        if (!$linhas) {
-            return ['sucesso' => false, 'erro' => "Tabela '{$t['nome_original']}': arquivo sem linhas de dados"];
-        }
-
-        $colunas = [];
-        $colunasAjustadas = []; // pra avisar o admin quais headers foram renomeados
-        foreach ($cabecalho as $idx => $h) {
-            $original = (string)($h ?? '');
-            [$colNome, $foiFallback] = sanitizarIdentificadorComFallback($original, 'coluna', $idx + 1);
-            if ($foiFallback) {
-                $rotuloOriginal = trim($original) === '' ? '(vazio)' : $original;
-                $colunasAjustadas[] = "coluna " . ($idx + 1) . " (\"{$rotuloOriginal}\") -> \"{$colNome}\"";
-            }
-            $colunas[] = $colNome;
-        }
-        if (count($colunas) !== count(array_unique($colunas))) {
-            $porNome = [];
-            foreach ($colunas as $idx => $nome) $porNome[$nome][] = ($idx + 1) . " (\"{$cabecalho[$idx]}\")";
-            $detalhes = [];
-            foreach ($porNome as $nome => $posicoes) {
-                if (count($posicoes) > 1) $detalhes[] = "'{$nome}' nas colunas " . implode(', ', $posicoes);
-            }
-            return ['sucesso' => false, 'erro' => "Tabela '{$t['nome_original']}': cabeçalho com colunas duplicadas depois de normalizado — " . implode('; ', $detalhes)];
-        }
-
-        $tipos = [];
-        foreach (array_keys($colunas) as $idx) {
-            $valoresColuna = array_map(fn($linha) => $linha[$idx] ?? null, $linhas);
-            $tipos[] = inferirTipoColuna($valoresColuna);
-        }
+        $parse = parseArquivoExcelTabela($t['tmp_path'], "Tabela '{$t['nome_original']}'");
+        if (!$parse['sucesso']) return $parse;
 
         $parseados[] = [
-            'nome' => $t['nome'], 'colunas' => $colunas, 'tipos' => $tipos, 'linhas' => $linhas,
-            'colunas_ajustadas' => $colunasAjustadas,
+            'nome' => $t['nome'], 'colunas' => $parse['colunas'], 'tipos' => $parse['tipos'],
+            'linhas' => $parse['linhas'], 'colunas_ajustadas' => $parse['colunas_ajustadas'],
         ];
     }
 
@@ -368,5 +390,162 @@ function processarUploadTabelasExcel(string $schema, array $nomesTabelas, array 
         'sucesso'           => true,
         'tabelas_criadas'   => array_column($parseados, 'nome'),
         'colunas_ajustadas' => $ajustesPorTabela,
+    ];
+}
+
+/**
+ * Colunas REAIS de uma tabela Excel, direto do information_schema — nunca uma lista
+ * em cache (config JSONB não guarda estrutura de coluna, só nomes de tabela). Usado
+ * no fluxo de atualização de dados pra reconciliar contra o arquivo novo.
+ *
+ * @return array<string,string> nome da coluna => tipo Postgres ('text'/'numeric'/'date'/...),
+ *   na ordem real das colunas (ordinal_position). Vazio se a tabela não existir.
+ */
+function colunasReaisTabelaExcel(PDO $excelPdo, string $schema, string $tabela): array {
+    $stmt = $excelPdo->prepare(
+        'SELECT column_name, data_type FROM information_schema.columns
+          WHERE table_schema = :schema AND table_name = :tabela
+          ORDER BY ordinal_position'
+    );
+    $stmt->execute(['schema' => $schema, 'tabela' => $tabela]);
+    $out = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $out[$row['column_name']] = $row['data_type'];
+    }
+    return $out;
+}
+
+/**
+ * Compara as colunas de um arquivo recém-parseado (parseArquivoExcelTabela) contra as
+ * colunas REAIS já existentes numa tabela Excel. Nome igual (exato, já sanitizado) é
+ * auto-vinculado, sem revisão — qualquer coluna do arquivo novo sem correspondência
+ * exata precisa de decisão do admin (nunca resolvido sozinho/silenciosamente): mapear
+ * pra uma coluna existente (rename/typo) ou criar como coluna nova.
+ *
+ * @return array{colunas_existentes:array<string>, colunas_batem:array<string>, colunas_revisao:array}
+ */
+function compararColunasAtualizacao(array $colunasReais, array $colunasParseadas, array $tiposParseados, array $cabecalhoOriginal): array {
+    $colunasBatem   = [];
+    $colunasRevisao = [];
+    foreach ($colunasParseadas as $idx => $col) {
+        if (array_key_exists($col, $colunasReais)) {
+            $colunasBatem[] = $col;
+        } else {
+            $colunasRevisao[] = [
+                'coluna'            => $col,
+                'tipo_inferido'     => $tiposParseados[$idx],
+                'cabecalho_original'=> (string)($cabecalhoOriginal[$idx] ?? $col),
+            ];
+        }
+    }
+    return [
+        'colunas_existentes' => array_keys($colunasReais),
+        'colunas_batem'      => $colunasBatem,
+        'colunas_revisao'    => $colunasRevisao,
+    ];
+}
+
+/**
+ * Aplica a atualização de dados de uma tabela Excel já existente — modo 'atualizar'
+ * (insere as linhas do arquivo novo por cima, sem apagar nada) ou 'substituir' (apaga
+ * as linhas atuais e insere só as do arquivo novo). Em AMBOS os modos, nenhuma coluna
+ * existente é removida — uma coluna ausente no arquivo novo só significa NULL pras
+ * linhas recém-inseridas (ver RELATORIOS_BI.md).
+ *
+ * Sempre relê as colunas reais do banco (nunca confia em lista vinda do cliente) e
+ * revalida o mapeamento contra elas — inclusive rejeitando duas colunas do arquivo
+ * mapeadas pra mesma coluna existente (ambíguo).
+ *
+ * @param array $parse retorno de parseArquivoExcelTabela() (já validado, sucesso=true)
+ * @param array $mapeamento coluna-do-arquivo-novo (já sanitizada, só as SEM correspondência
+ *   exata) => nome de coluna existente pra vincular, ou null/vazio pra criar como nova.
+ * @return array{sucesso:bool, erro?:string, linhas_inseridas?:int, colunas_criadas?:array<string>}
+ */
+function atualizarDadosTabelaExcel(string $schema, string $tabela, string $modo, array $parse, array $mapeamento): array {
+    if (!in_array($modo, ['substituir', 'atualizar'], true)) {
+        return ['sucesso' => false, 'erro' => 'Modo inválido'];
+    }
+
+    $excelPdo = getExcelPdo();
+    $colunasReais = colunasReaisTabelaExcel($excelPdo, $schema, $tabela);
+    if (!$colunasReais) {
+        return ['sucesso' => false, 'erro' => 'Tabela não encontrada ou sem colunas'];
+    }
+
+    // ── Resolve o destino (nome de coluna real) de cada coluna do arquivo novo ──
+    $destinoPorColuna  = []; // colunaArquivo => nomeColunaReal (existente ou nova)
+    $colunasNovasCriar = []; // nomeColunaReal => tipo lógico ('text'/'numeric'/'date'), só as que precisam ALTER TABLE
+    $usadasComoDestino = []; // nomeColunaReal => colunaArquivo, detecta 2 mapeadas pra mesma
+
+    foreach ($parse['colunas'] as $idx => $col) {
+        if (array_key_exists($col, $colunasReais)) {
+            $destino = $col; // match exato — auto-vinculado, ignora qualquer mapeamento pra ela
+        } else {
+            if (!array_key_exists($col, $mapeamento)) {
+                return ['sucesso' => false, 'erro' => "Coluna '{$col}' sem decisão de mapeamento (vincular a uma existente ou criar nova)"];
+            }
+            $escolha = $mapeamento[$col];
+            if ($escolha === null || $escolha === '') {
+                $destino = $col; // cria como nova coluna, com o próprio nome sanitizado
+                $colunasNovasCriar[$destino] = $parse['tipos'][$idx];
+            } else {
+                if (!array_key_exists($escolha, $colunasReais)) {
+                    return ['sucesso' => false, 'erro' => "Coluna existente '{$escolha}' (mapeamento de '{$col}') não encontrada na tabela"];
+                }
+                $destino = $escolha;
+            }
+        }
+
+        if (isset($usadasComoDestino[$destino]) && $usadasComoDestino[$destino] !== $col) {
+            return ['sucesso' => false, 'erro' => "Duas colunas do arquivo novo ('{$usadasComoDestino[$destino]}' e '{$col}') foram mapeadas pra mesma coluna existente '{$destino}' — escolha mapeamentos diferentes"];
+        }
+        $usadasComoDestino[$destino] = $col;
+
+        $destinoPorColuna[$col] = $destino;
+    }
+
+    $tabelaQuoted = quoteIdent($schema) . '.' . quoteIdent($tabela);
+
+    $excelPdo->beginTransaction();
+    try {
+        foreach ($colunasNovasCriar as $nome => $tipoLogico) {
+            $tipoSql = ['numeric' => 'numeric', 'date' => 'date'][$tipoLogico] ?? 'text';
+            $excelPdo->exec('ALTER TABLE ' . $tabelaQuoted . ' ADD COLUMN ' . quoteIdent($nome) . ' ' . $tipoSql);
+            $colunasReais[$nome] = $tipoSql; // agora existe de verdade — usado abaixo pra decidir normalização de data
+        }
+
+        if ($modo === 'substituir') {
+            $excelPdo->exec('TRUNCATE TABLE ' . $tabelaQuoted); // só apaga LINHAS — nenhuma coluna é removida
+        }
+
+        $colunasDestinoOrdenadas = array_values($destinoPorColuna); // mesma ordem de $parse['colunas']
+        $colunasQuoted = implode(', ', array_map('quoteIdent', $colunasDestinoOrdenadas));
+        $placeholders  = implode(', ', array_fill(0, count($colunasDestinoOrdenadas), '?'));
+        $stmt = $excelPdo->prepare("INSERT INTO {$tabelaQuoted} ({$colunasQuoted}) VALUES ({$placeholders})");
+
+        foreach ($parse['linhas'] as $linha) {
+            $valores = [];
+            foreach ($parse['colunas'] as $idx => $col) {
+                $destino     = $destinoPorColuna[$col];
+                $tipoDestino = $colunasReais[$destino] ?? 'text'; // tipo REAL da coluna de destino, não o inferido do arquivo
+                $v = $linha[$idx] ?? null;
+                $vazio = ($v === null || trim((string)$v) === '');
+                if (!$vazio && $tipoDestino === 'date') $v = normalizarValorData((string)$v);
+                $valores[] = $vazio ? null : $v;
+            }
+            $stmt->execute($valores);
+        }
+
+        $excelPdo->commit();
+    } catch (Exception $e) {
+        $excelPdo->rollBack();
+        error_log('[relatorios-bi-excel] falha ao atualizar dados da tabela: ' . $e->getMessage());
+        return ['sucesso' => false, 'erro' => 'Falha ao atualizar os dados: ' . $e->getMessage()];
+    }
+
+    return [
+        'sucesso'          => true,
+        'linhas_inseridas' => count($parse['linhas']),
+        'colunas_criadas'  => array_keys($colunasNovasCriar),
     ];
 }

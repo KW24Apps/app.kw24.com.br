@@ -133,6 +133,112 @@ try {
         exit;
     }
 
+    // ── detectar-atualizar-tabela ─────────────────────────────────────────────
+    // Passo 1 do fluxo de atualização de dados de uma tabela Excel já existente:
+    // parseia o arquivo novo e compara contra as colunas REAIS da tabela (sempre via
+    // information_schema, nunca cache). Não escreve nada no banco — só detecta o que
+    // precisa de revisão do admin antes de aplicar (ver action=atualizar-tabela-excel).
+    if ($action === 'detectar-atualizar-tabela' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $relatorioId = (int)($_POST['relatorio_id'] ?? 0);
+        $tabela      = trim($_POST['tabela'] ?? '');
+        if (!$relatorioId || $tabela === '') { echo json_encode(['erro' => 'relatorio_id e tabela são obrigatórios']); exit; }
+
+        $relatorio = $db->fetchOne('SELECT id, slug FROM relatorios_bi WHERE id = :id', ['id' => $relatorioId]);
+        if (!$relatorio) { echo json_encode(['erro' => 'Relatório não encontrado']); exit; }
+
+        $conexao = $db->fetchOne('SELECT tipo_conexao, config FROM relatorios_bi_conexoes WHERE relatorio_id = :id', ['id' => $relatorioId]);
+        if (!$conexao || $conexao['tipo_conexao'] !== 'excel') {
+            echo json_encode(['erro' => 'Este relatório não é do tipo Excel']);
+            exit;
+        }
+        $cfgAtual = json_decode($conexao['config'], true) ?? [];
+        $schema   = $cfgAtual['schema'] ?? schemaExcelRelatorio($relatorio['slug']);
+        if (!in_array($tabela, $cfgAtual['tabelas'] ?? [], true)) {
+            echo json_encode(['erro' => 'Tabela não pertence a este relatório']);
+            exit;
+        }
+
+        $arquivo = $_FILES['arquivo'] ?? null;
+        if (!$arquivo || ($arquivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            echo json_encode(['erro' => 'Arquivo é obrigatório']);
+            exit;
+        }
+
+        $parse = parseArquivoExcelTabela($arquivo['tmp_name'], "Tabela '{$tabela}'");
+        if (!$parse['sucesso']) { echo json_encode(['erro' => $parse['erro']]); exit; }
+
+        try {
+            $excelPdo = getExcelPdo();
+            $colunasReais = colunasReaisTabelaExcel($excelPdo, $schema, $tabela);
+        } catch (Exception $e) {
+            echo json_encode(['erro' => 'Falha ao ler a estrutura atual da tabela: ' . $e->getMessage()]);
+            exit;
+        }
+        if (!$colunasReais) { echo json_encode(['erro' => 'Tabela não encontrada no banco']); exit; }
+
+        $comparacao = compararColunasAtualizacao($colunasReais, $parse['colunas'], $parse['tipos'], $parse['cabecalho_original']);
+
+        echo json_encode([
+            'sucesso'           => true,
+            'linhas'            => count($parse['linhas']),
+            'colunas_ajustadas' => $parse['colunas_ajustadas'],
+            'colunas_existentes'=> $comparacao['colunas_existentes'],
+            'colunas_batem'     => $comparacao['colunas_batem'],
+            'colunas_revisao'   => $comparacao['colunas_revisao'],
+        ]);
+        exit;
+    }
+
+    // ── atualizar-tabela-excel ─────────────────────────────────────────────────
+    // Passo 2 (aplicação) do fluxo acima — reparseia o mesmo arquivo (nunca reaproveita
+    // nada do passo 1 vindo do cliente, só a decisão de mapeamento) e relê as colunas
+    // reais de novo antes de aplicar. modo='substituir' apaga as linhas atuais;
+    // 'atualizar' só insere por cima. Nenhum dos dois modos remove coluna existente.
+    if ($action === 'atualizar-tabela-excel' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $relatorioId = (int)($_POST['relatorio_id'] ?? 0);
+        $tabela      = trim($_POST['tabela'] ?? '');
+        $modo        = trim($_POST['modo'] ?? '');
+        $mapeamento  = json_decode($_POST['mapeamento'] ?? '{}', true);
+        if (!is_array($mapeamento)) $mapeamento = [];
+        if (!$relatorioId || $tabela === '') { echo json_encode(['erro' => 'relatorio_id e tabela são obrigatórios']); exit; }
+
+        $relatorio = $db->fetchOne('SELECT id, slug FROM relatorios_bi WHERE id = :id', ['id' => $relatorioId]);
+        if (!$relatorio) { echo json_encode(['erro' => 'Relatório não encontrado']); exit; }
+
+        $conexao = $db->fetchOne('SELECT tipo_conexao, config FROM relatorios_bi_conexoes WHERE relatorio_id = :id', ['id' => $relatorioId]);
+        if (!$conexao || $conexao['tipo_conexao'] !== 'excel') {
+            echo json_encode(['erro' => 'Este relatório não é do tipo Excel']);
+            exit;
+        }
+        $cfgAtual = json_decode($conexao['config'], true) ?? [];
+        $schema   = $cfgAtual['schema'] ?? schemaExcelRelatorio($relatorio['slug']);
+        if (!in_array($tabela, $cfgAtual['tabelas'] ?? [], true)) {
+            echo json_encode(['erro' => 'Tabela não pertence a este relatório']);
+            exit;
+        }
+
+        $arquivo = $_FILES['arquivo'] ?? null;
+        if (!$arquivo || ($arquivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            echo json_encode(['erro' => 'Arquivo é obrigatório']);
+            exit;
+        }
+
+        $parse = parseArquivoExcelTabela($arquivo['tmp_name'], "Tabela '{$tabela}'");
+        if (!$parse['sucesso']) { echo json_encode(['erro' => $parse['erro']]); exit; }
+
+        $resultado = atualizarDadosTabelaExcel($schema, $tabela, $modo, $parse, $mapeamento);
+        if (!$resultado['sucesso']) { echo json_encode(['erro' => $resultado['erro']]); exit; }
+
+        echo json_encode([
+            'sucesso'           => true,
+            'modo'              => $modo,
+            'linhas_inseridas'  => $resultado['linhas_inseridas'],
+            'colunas_criadas'   => $resultado['colunas_criadas'],
+            'colunas_ajustadas' => $parse['colunas_ajustadas'],
+        ]);
+        exit;
+    }
+
     // ── save ────────────────────────────────────────────────────────────────
     if ($action === 'save' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $body        = json_decode(file_get_contents('php://input'), true) ?? [];

@@ -777,6 +777,42 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
     color: rgba(255,255,255,0.4);
     white-space: nowrap;
 }
+.rbi-tabela-existente-btn-atualizar {
+    flex-shrink: 0;
+    background: rgba(13,194,255,0.12);
+    border: 1px solid rgba(13,194,255,0.35);
+    border-radius: 6px;
+    color: #0DC2FF;
+    font-family: 'Inter', sans-serif;
+    font-size: .72rem;
+    font-weight: 600;
+    padding: .3rem .55rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s;
+}
+.rbi-tabela-existente-btn-atualizar:hover { background: rgba(13,194,255,0.22); }
+
+/* ── Modal "Atualizar dados da tabela" (Substituir/Atualizar + revisão de colunas) ── */
+.rbi-atualizar-revisao-row {
+    display: flex;
+    flex-direction: column;
+    gap: .4rem;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,184,0,0.3);
+    border-radius: 8px;
+    padding: .55rem .7rem;
+}
+.rbi-atualizar-revisao-titulo {
+    font-family: 'Inter', sans-serif;
+    font-size: .78rem;
+    color: #ffb800;
+}
+.rbi-atualizar-resumo-item {
+    font-family: 'Inter', sans-serif;
+    font-size: .78rem;
+    color: rgba(255,255,255,0.75);
+}
 
 /* ── Aba Geral — "Publicar relatório" (substitui o toggle Sim/Não enquanto em_construcao) ── */
 .rbi-btn-publicar {
@@ -1113,6 +1149,70 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
         </div>
     </div>
 </div>
+
+<!-- Modal "Atualizar dados da tabela" (Excel) — 3 passos: anexo+modo -> revisão de
+     colunas sem correspondência exata (só quando necessário) -> confirmação. -->
+<div class="rbi-overlay" id="rbi-atualizar-overlay">
+    <div class="rbi-modal rbi-create-modal" id="rbi-atualizar-modal">
+        <div class="rbi-modal-head">
+            <span class="rbi-modal-title">Atualizar dados da tabela</span>
+            <button class="rbi-modal-close" id="rbi-atualizar-close" title="Fechar">&times;</button>
+        </div>
+
+        <input type="hidden" id="rbi-atualizar-relatorio-id">
+
+        <div class="rbi-field">
+            <label class="rbi-field-label">Tabela</label>
+            <span class="rbi-infra-value" id="rbi-atualizar-tabela-label" style="text-align:left">—</span>
+        </div>
+
+        <!-- Passo 1: anexo do arquivo novo + escolha de modo -->
+        <div id="rbi-atualizar-passo-1">
+            <div class="rbi-field">
+                <label class="rbi-field-label">Arquivo novo (.xlsx)</label>
+                <div class="rbi-file-attach">
+                    <input type="file" class="rbi-file-attach-input" id="rbi-atualizar-arquivo" accept=".xlsx">
+                    <button type="button" class="rbi-file-attach-btn" id="rbi-atualizar-arquivo-btn"><i class="ti ti-upload"></i> Escolher</button>
+                    <span class="rbi-file-attach-name" id="rbi-atualizar-arquivo-name">
+                        <i class="ti ti-circle-check-filled"></i>
+                        <span class="rbi-file-attach-name-text"></span>
+                        <button type="button" class="rbi-file-attach-clear" title="Remover arquivo" id="rbi-atualizar-arquivo-clear"><i class="ti ti-x"></i></button>
+                    </span>
+                </div>
+            </div>
+            <div class="rbi-field">
+                <label class="rbi-field-label">Modo</label>
+                <div class="rbi-vis-row">
+                    <button type="button" class="rbi-vis-btn active-vis" id="rbi-atualizar-modo-atualizar" data-val="atualizar">Atualizar<br><small style="font-weight:400">soma às linhas atuais</small></button>
+                    <button type="button" class="rbi-vis-btn" id="rbi-atualizar-modo-substituir" data-val="substituir">Substituir<br><small style="font-weight:400">apaga e recria as linhas</small></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Passo 2: revisão de colunas do arquivo novo sem correspondência exata -->
+        <div id="rbi-atualizar-passo-2" style="display:none">
+            <p class="rbi-delete-warn" style="margin:0">As colunas abaixo do arquivo novo não têm correspondência exata com nenhuma coluna já existente na tabela. Para cada uma, escolha vincular a uma coluna existente (ex.: renomeio/erro de digitação) ou criar como coluna nova. Nenhuma coluna existente é removida em nenhum caso.</p>
+            <div id="rbi-atualizar-revisao-list" style="display:flex;flex-direction:column;gap:.6rem;margin-top:.75rem"></div>
+        </div>
+
+        <!-- Passo 3: resumo + confirmação (Substituir exige digitar o nome da tabela) -->
+        <div id="rbi-atualizar-passo-3" style="display:none">
+            <div class="rbi-infra-box" id="rbi-atualizar-resumo"></div>
+            <div class="rbi-delete-box" id="rbi-atualizar-substituir-confirm" style="display:none;margin-top:.75rem">
+                <label class="rbi-field-label" style="color:#ff8080">Confirmar substituição</label>
+                <p class="rbi-delete-warn">Ação permanente — todas as linhas atuais desta tabela serão apagadas e substituídas pelas do arquivo novo. Nenhuma coluna é removida. Digite o nome da tabela para confirmar.</p>
+                <input type="text" class="rbi-field-input" id="rbi-atualizar-substituir-input" placeholder="Digite o nome da tabela para confirmar" autocomplete="off">
+            </div>
+        </div>
+
+        <div class="rbi-conn-msg" id="rbi-atualizar-msg"></div>
+
+        <div class="rbi-modal-footer">
+            <button class="rbi-btn-cancel" id="rbi-atualizar-cancel">Cancelar</button>
+            <button class="rbi-btn-save"   id="rbi-atualizar-btn-next">Analisar arquivo</button>
+        </div>
+    </div>
+</div>
 <?php endif; ?>
 
 <!-- Tooltip de usuários (chip "N usuários") -->
@@ -1386,9 +1486,15 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
                         return '<div class="rbi-tabela-existente-row">'
                             + '<span class="rbi-tabela-existente-nome" title="' + escHtml(t.nome) + '">' + escHtml(t.nome) + '</span>'
                             + '<span class="rbi-tabela-existente-linhas">' + escHtml(linhasTxt) + '</span>'
+                            + '<button type="button" class="rbi-tabela-existente-btn-atualizar" data-tabela="' + escHtml(t.nome) + '">Atualizar</button>'
                             + '</div>';
                     }).join('')
                     : '<span class="rbi-empty" style="padding:.25rem 0">Nenhuma tabela ainda.</span>';
+                connTabelasExistentesList.querySelectorAll('.rbi-tabela-existente-btn-atualizar').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        abrirModalAtualizarTabela(parseInt(connRelId.value, 10), btn.getAttribute('data-tabela'));
+                    });
+                });
             }
         } else {
             if (connBtnSave) connBtnSave.textContent = 'Testar e salvar';
@@ -1500,6 +1606,258 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
             connBtnSave.disabled = false;
             connBtnSave.textContent = connTipoAtual === 'excel' ? 'Salvar novas tabelas' : 'Testar e salvar';
         });
+    });
+
+    // ── Modal "Atualizar dados da tabela" (Excel — Substituir/Atualizar + revisão
+    // de colunas sem correspondência exata) — 3 passos, um único botão de avançar
+    // que muda de texto/ação conforme o passo atual (mesmo padrão de connBtnSave). ──
+    const atualizarOverlay         = document.getElementById('rbi-atualizar-overlay');
+    const atualizarRelId           = document.getElementById('rbi-atualizar-relatorio-id');
+    const atualizarTabelaLabel     = document.getElementById('rbi-atualizar-tabela-label');
+    const atualizarPasso1          = document.getElementById('rbi-atualizar-passo-1');
+    const atualizarPasso2          = document.getElementById('rbi-atualizar-passo-2');
+    const atualizarPasso3          = document.getElementById('rbi-atualizar-passo-3');
+    const atualizarArquivoInput    = document.getElementById('rbi-atualizar-arquivo');
+    const atualizarArquivoBtn      = document.getElementById('rbi-atualizar-arquivo-btn');
+    const atualizarArquivoName     = document.getElementById('rbi-atualizar-arquivo-name');
+    const atualizarArquivoClear    = document.getElementById('rbi-atualizar-arquivo-clear');
+    const atualizarModoAtualizarBtn  = document.getElementById('rbi-atualizar-modo-atualizar');
+    const atualizarModoSubstituirBtn = document.getElementById('rbi-atualizar-modo-substituir');
+    const atualizarRevisaoList     = document.getElementById('rbi-atualizar-revisao-list');
+    const atualizarResumo          = document.getElementById('rbi-atualizar-resumo');
+    const atualizarSubstituirBox   = document.getElementById('rbi-atualizar-substituir-confirm');
+    const atualizarSubstituirInput = document.getElementById('rbi-atualizar-substituir-input');
+    const atualizarMsg             = document.getElementById('rbi-atualizar-msg');
+    const atualizarBtnNext         = document.getElementById('rbi-atualizar-btn-next');
+    const atualizarCancelBtn       = document.getElementById('rbi-atualizar-cancel');
+    const atualizarCloseBtn        = document.getElementById('rbi-atualizar-close');
+
+    var atualizarEstado = null; // { relatorioId, tabela, passo, ultimaResposta }
+
+    function atualizarShowMsg(texto, tipo) {
+        if (!atualizarMsg) return;
+        atualizarMsg.textContent = texto;
+        atualizarMsg.className = 'rbi-conn-msg show ' + (tipo || 'erro');
+    }
+    function atualizarClearMsg() {
+        if (!atualizarMsg) return;
+        atualizarMsg.className = 'rbi-conn-msg';
+        atualizarMsg.textContent = '';
+    }
+
+    function atualizarModoAtual() {
+        return (atualizarModoSubstituirBtn && atualizarModoSubstituirBtn.classList.contains('active-vis')) ? 'substituir' : 'atualizar';
+    }
+    function setAtualizarModo(modo) {
+        if (atualizarModoAtualizarBtn)  atualizarModoAtualizarBtn.classList.toggle('active-vis', modo === 'atualizar');
+        if (atualizarModoSubstituirBtn) atualizarModoSubstituirBtn.classList.toggle('active-vis', modo === 'substituir');
+    }
+    if (atualizarModoAtualizarBtn)  atualizarModoAtualizarBtn.addEventListener('click',  function () { setAtualizarModo('atualizar'); });
+    if (atualizarModoSubstituirBtn) atualizarModoSubstituirBtn.addEventListener('click', function () { setAtualizarModo('substituir'); });
+
+    function atualizarRefletirAnexo() {
+        var arquivo = atualizarArquivoInput.files[0];
+        var txt = atualizarArquivoName.querySelector('.rbi-file-attach-name-text');
+        if (arquivo) {
+            atualizarArquivoBtn.style.display = 'none';
+            txt.textContent = arquivo.name;
+            atualizarArquivoName.title = arquivo.name;
+            atualizarArquivoName.classList.add('attached');
+        } else {
+            atualizarArquivoBtn.style.display = '';
+            txt.textContent = '';
+            atualizarArquivoName.title = '';
+            atualizarArquivoName.classList.remove('attached');
+        }
+    }
+    if (atualizarArquivoBtn)   atualizarArquivoBtn.addEventListener('click', function () { atualizarArquivoInput.click(); });
+    if (atualizarArquivoInput) atualizarArquivoInput.addEventListener('change', atualizarRefletirAnexo);
+    if (atualizarArquivoClear) atualizarArquivoClear.addEventListener('click', function () {
+        atualizarArquivoInput.value = '';
+        atualizarRefletirAnexo();
+    });
+
+    // Chamada a partir do botão "Atualizar" de cada linha em "Tabelas existentes"
+    // (ver renderConexaoPorTipo acima). Reabre sempre do zero — passo 1.
+    function abrirModalAtualizarTabela(relatorioId, tabela) {
+        if (!atualizarOverlay) return;
+        atualizarEstado = { relatorioId: relatorioId, tabela: tabela, passo: 1 };
+        atualizarRelId.value = relatorioId;
+        atualizarTabelaLabel.textContent = tabela;
+        atualizarArquivoInput.value = '';
+        atualizarRefletirAnexo();
+        setAtualizarModo('atualizar');
+        atualizarRevisaoList.innerHTML = '';
+        atualizarResumo.innerHTML = '';
+        atualizarSubstituirBox.style.display = 'none';
+        atualizarSubstituirInput.value = '';
+        atualizarClearMsg();
+        atualizarPasso1.style.display = '';
+        atualizarPasso2.style.display = 'none';
+        atualizarPasso3.style.display = 'none';
+        atualizarBtnNext.textContent = 'Analisar arquivo';
+        atualizarBtnNext.disabled = false;
+        atualizarOverlay.classList.add('open');
+    }
+    function fecharModalAtualizarTabela() {
+        atualizarOverlay.classList.remove('open');
+        atualizarEstado = null;
+    }
+    if (atualizarCancelBtn) atualizarCancelBtn.addEventListener('click', fecharModalAtualizarTabela);
+    if (atualizarCloseBtn)  atualizarCloseBtn.addEventListener('click', fecharModalAtualizarTabela);
+
+    // Uma linha por coluna do arquivo novo SEM correspondência exata — select com
+    // "criar como nova" (padrão) ou vincular a uma das colunas reais já existentes.
+    function renderRevisaoColunas(colunasRevisao, colunasExistentes) {
+        atualizarRevisaoList.innerHTML = colunasRevisao.map(function (c) {
+            var opts = '<option value="">Criar como nova coluna</option>' +
+                colunasExistentes.map(function (nome) {
+                    return '<option value="' + escHtml(nome) + '">Vincular a: ' + escHtml(nome) + '</option>';
+                }).join('');
+            return '<div class="rbi-atualizar-revisao-row" data-coluna="' + escHtml(c.coluna) + '">' +
+                '<span class="rbi-atualizar-revisao-titulo">"' + escHtml(c.cabecalho_original) + '" &rarr; ' + escHtml(c.coluna) + ' (tipo inferido: ' + escHtml(c.tipo_inferido) + ')</span>' +
+                '<select class="rbi-field-input rbi-atualizar-revisao-select">' + opts + '</select>' +
+            '</div>';
+        }).join('');
+    }
+
+    // { colunaDoArquivo: nomeColunaExistente | null } — null = criar como nova.
+    // Colunas que já batem por nome exato não aparecem aqui (nem precisam).
+    function atualizarColetarMapeamento() {
+        var mapeamento = {};
+        atualizarRevisaoList.querySelectorAll('.rbi-atualizar-revisao-row').forEach(function (row) {
+            var coluna  = row.getAttribute('data-coluna');
+            var escolha = row.querySelector('.rbi-atualizar-revisao-select').value;
+            mapeamento[coluna] = escolha || null;
+        });
+        return mapeamento;
+    }
+
+    function renderResumoPasso3(res) {
+        var modo = atualizarModoAtual();
+        var mapeamento = atualizarColetarMapeamento();
+        var novas    = Object.keys(mapeamento).filter(function (c) { return !mapeamento[c]; });
+        var mapeadas = Object.keys(mapeamento).filter(function (c) { return !!mapeamento[c]; });
+        var linhas = [];
+        if (res.colunas_ajustadas && res.colunas_ajustadas.length) {
+            linhas.push('<div class="rbi-atualizar-resumo-item">Cabeçalhos ajustados automaticamente: ' + res.colunas_ajustadas.map(escHtml).join('; ') + '</div>');
+        }
+        linhas.push('<div class="rbi-atualizar-resumo-item">Arquivo: ' + (res.linhas || 0) + ' linha(s) de dados</div>');
+        linhas.push('<div class="rbi-atualizar-resumo-item">Colunas com correspondência exata: ' + (res.colunas_batem ? res.colunas_batem.length : 0) + '</div>');
+        if (novas.length)    linhas.push('<div class="rbi-atualizar-resumo-item">Colunas novas a criar: ' + novas.map(escHtml).join(', ') + '</div>');
+        if (mapeadas.length) linhas.push('<div class="rbi-atualizar-resumo-item">Colunas vinculadas: ' + mapeadas.map(function (c) { return escHtml(c) + ' &rarr; ' + escHtml(mapeamento[c]); }).join(', ') + '</div>');
+        linhas.push('<div class="rbi-atualizar-resumo-item">Modo: ' + (modo === 'substituir' ? 'Substituir (apaga as linhas atuais)' : 'Atualizar (soma às linhas atuais)') + '</div>');
+        atualizarResumo.innerHTML = linhas.join('');
+        atualizarSubstituirBox.style.display = modo === 'substituir' ? 'flex' : 'none';
+    }
+
+    // Substituir é destrutivo — botão de confirmar só habilita depois de digitar o
+    // nome exato da tabela, mesmo padrão já usado pra excluir relatório rascunho.
+    if (atualizarSubstituirInput) {
+        atualizarSubstituirInput.addEventListener('input', function () {
+            var bate = atualizarEstado && atualizarSubstituirInput.value.trim() === atualizarEstado.tabela;
+            atualizarBtnNext.disabled = !bate;
+        });
+    }
+
+    if (atualizarBtnNext) atualizarBtnNext.addEventListener('click', function () {
+        if (!atualizarEstado) return;
+        atualizarClearMsg();
+
+        // ── Passo 1 -> analisa o arquivo (parse + comparação contra colunas reais) ──
+        if (atualizarEstado.passo === 1) {
+            var arquivo = atualizarArquivoInput.files[0];
+            if (!arquivo) { atualizarShowMsg('Anexe um arquivo .xlsx antes de continuar.', 'erro'); return; }
+
+            var formData = new FormData();
+            formData.append('relatorio_id', atualizarEstado.relatorioId);
+            formData.append('tabela', atualizarEstado.tabela);
+            formData.append('arquivo', arquivo);
+
+            atualizarBtnNext.disabled = true;
+            atualizarBtnNext.textContent = 'Analisando...';
+            fetch('/api/relatorio-conexao.php?action=detectar-atualizar-tabela', { method: 'POST', body: formData })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    atualizarBtnNext.disabled = false;
+                    if (!res.sucesso) { atualizarShowMsg(res.erro || 'Erro ao analisar o arquivo.', 'erro'); return; }
+
+                    atualizarEstado.ultimaResposta = res;
+
+                    // Colunas com correspondência exata são sempre auto-vinculadas e nunca
+                    // aparecem em revisão — a revisão só existe se sobrar algo pra decidir.
+                    if (res.colunas_revisao && res.colunas_revisao.length) {
+                        renderRevisaoColunas(res.colunas_revisao, res.colunas_existentes || []);
+                        atualizarEstado.passo = 2;
+                        atualizarPasso1.style.display = 'none';
+                        atualizarPasso2.style.display = '';
+                        atualizarBtnNext.textContent = 'Continuar';
+                    } else {
+                        atualizarEstado.passo = 3;
+                        atualizarPasso1.style.display = 'none';
+                        renderResumoPasso3(res);
+                        atualizarPasso3.style.display = '';
+                        atualizarBtnNext.textContent = 'Confirmar atualização';
+                        atualizarBtnNext.disabled = atualizarModoAtual() === 'substituir';
+                    }
+                })
+                .catch(function () {
+                    atualizarBtnNext.disabled = false;
+                    atualizarShowMsg('Erro de rede ao analisar o arquivo.', 'erro');
+                });
+            return;
+        }
+
+        // ── Passo 2 -> mapeamento preenchido, segue pra confirmação ──
+        if (atualizarEstado.passo === 2) {
+            atualizarEstado.passo = 3;
+            atualizarPasso2.style.display = 'none';
+            renderResumoPasso3(atualizarEstado.ultimaResposta || {});
+            atualizarPasso3.style.display = '';
+            atualizarBtnNext.textContent = 'Confirmar atualização';
+            atualizarBtnNext.disabled = atualizarModoAtual() === 'substituir';
+            return;
+        }
+
+        // ── Passo 3 -> aplica de fato (reenvia o mesmo arquivo — nunca reaproveita
+        // dados já parseados do passo 1, o servidor reparseia e relê as colunas
+        // reais de novo antes de gravar qualquer coisa) ──
+        if (atualizarEstado.passo === 3) {
+            var arquivoFinal = atualizarArquivoInput.files[0];
+            if (!arquivoFinal) { atualizarShowMsg('Arquivo não encontrado — cancele e reabra o fluxo.', 'erro'); return; }
+
+            var formDataAplicar = new FormData();
+            formDataAplicar.append('relatorio_id', atualizarEstado.relatorioId);
+            formDataAplicar.append('tabela', atualizarEstado.tabela);
+            formDataAplicar.append('arquivo', arquivoFinal);
+            formDataAplicar.append('modo', atualizarModoAtual());
+            formDataAplicar.append('mapeamento', JSON.stringify(atualizarColetarMapeamento()));
+
+            var relatorioIdParaRecarregar = atualizarEstado.relatorioId;
+            atualizarBtnNext.disabled = true;
+            atualizarBtnNext.textContent = 'Aplicando...';
+            fetch('/api/relatorio-conexao.php?action=atualizar-tabela-excel', { method: 'POST', body: formDataAplicar })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    if (res.sucesso) {
+                        atualizarShowMsg('Tabela atualizada com sucesso (' + res.linhas_inseridas + ' linha(s) inserida(s)).', 'ok');
+                        setTimeout(function () {
+                            fecharModalAtualizarTabela();
+                            loadConexaoConfig(relatorioIdParaRecarregar);
+                        }, 900);
+                    } else {
+                        atualizarBtnNext.disabled = false;
+                        atualizarBtnNext.textContent = 'Confirmar atualização';
+                        atualizarShowMsg(res.erro || 'Erro ao atualizar.', 'erro');
+                    }
+                })
+                .catch(function () {
+                    atualizarBtnNext.disabled = false;
+                    atualizarBtnNext.textContent = 'Confirmar atualização';
+                    atualizarShowMsg('Erro de rede ao atualizar.', 'erro');
+                });
+            return;
+        }
     });
 
     // ── Modal "Criar relatório" (admin_interno only — elementos null pra quem não é) ──
