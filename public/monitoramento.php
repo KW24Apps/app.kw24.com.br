@@ -954,12 +954,14 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 
 /* ===== MONITORAMENTO KW24 — Funil (volume: criados / finalizados, SPA 1054 / Funil 208) ===== */
 /* align-self:flex-start — Funil NUNCA estica pra acompanhar a altura de Atendimento (mesmo
- * com align-items:stretch padrão em .topo-row). É o contrário que se quer: Atendimento é
- * quem deve copiar a altura NATURAL do Funil (medida via JS, ver monSincronizarAlturaAtendimento()),
- * não o Funil esticando pra acompanhar uma lista de conversas que pode ter qualquer tamanho.
- * Sem isso, a altura de .ate-section (a mais alta das duas, ex.: 12 conversas) definia a
- * linha inteira e o Funil só "seguia", deixando um vão vazio abaixo de "Outros" — o bug
- * relatado ao vivo. */
+ * com align-items:stretch padrão em .topo-row) — importante pra medir a altura NATURAL do seu
+ * conteúdo via JS (ver monSincronizarAlturaAtendimento()). A altura final de AMBAS as caixas
+ * (Funil e Atendimento) é FIXA e aplicada via style.height por JS: não é a altura natural do
+ * Funil no estado atual (colapsado ou expandido), e sim a altura natural do Funil TOTALMENTE
+ * EXPANDIDO × ~1.34 (margem de ~33-35% pedida por Gabriel depois de confirmar ao vivo que só
+ * igualar às alturas deixava a lista de Conversas/Grupos sem espaço de sobra e a linha
+ * "cramped" com "Demandas em Execução" expandido). Expandir/recolher NÃO muda a altura da
+ * caixa — só o espaço vazio sobrando por baixo do conteúdo. */
 .fun-box {
     background: rgba(255,255,255,0.05);
     border: 1.5px solid rgba(255,255,255,0.10);
@@ -1130,17 +1132,11 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     letter-spacing: .06em;
     color: rgba(255,255,255,.4);
 }
-/* Altura FIXA, igual à do Funil — tentativa anterior (via align-items:stretch "de graça") não
- * funcionava: sem nenhuma restrição de altura vinda de fora, .topo-row calcula sua própria
- * altura como o MAIOR conteúdo natural entre os dois lados — com 12 conversas (mais alto que
- * o Funil), era o Atendimento que dava a altura da linha, e o Funil só esticava pra
- * acompanhar (vão vazio abaixo de "Outros", o bug relatado ao vivo e confirmado num teste
- * visual local antes deste fix). Corrigido com medição real via JS: .fun-box tem
- * align-self:flex-start (nunca estica, sempre mostra sua altura natural verdadeira) e
- * monSincronizarAlturaAtendimento() lê essa altura (fun-section.offsetHeight) e aplica como
- * altura FIXA (style.height) em #ate-section, depois de Funil e Atendimento carregarem. Com
- * uma altura explícita definida, min-height:0 + overflow-y:auto aqui passam a valer de
- * verdade — a lista rola dentro dela mesma quando não cabe, em vez de crescer a caixa. */
+/* Altura FIXA, ver monSincronizarAlturaAtendimento() e o comentário em .fun-box acima — não é
+ * mais igual à altura natural do Funil no estado atual, e sim ~1.34x a altura natural do Funil
+ * totalmente expandido (margem extra pedida por Gabriel). Com uma altura explícita definida,
+ * min-height:0 + overflow-y:auto aqui passam a valer de verdade — a lista rola dentro dela
+ * mesma quando não cabe, em vez de crescer a caixa. */
 .ate-list {
     flex: 1;
     min-height: 0;
@@ -2767,13 +2763,47 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     // lista de conversas mais alta que o Funil, era ela que dava a altura da linha, e o
     // Funil só esticava pra acompanhar — vão vazio embaixo de "Outros", bug relatado ao vivo,
     // reproduzido e confirmado num teste visual local com Chrome headless antes deste fix).
-    // Fun-box tem align-self:flex-start (nunca estica, sempre reporta sua altura NATURAL
-    // verdadeira) — lida aqui e aplicada como altura FIXA em #ate-section via JS.
+    //
+    // Addendum de Gabriel (confirmado ao vivo): igualar exatamente à altura natural do Funil
+    // não bastava — a lista de Conversas/Grupos (8 itens) ainda precisava de scroll próprio e
+    // a linha ficava "cramped" com "Demandas em Execução" expandido. A altura fixa das duas
+    // caixas agora é ~1.34x (33-35% de margem) a altura natural do Funil TOTALMENTE EXPANDIDO —
+    // não a altura no estado atual (colapsado ou expandido) — pra sempre ter espaço de sobra
+    // suficiente pro pior caso (tudo expandido) mais uma margem confortável.
+    var FUN_ALTURA_FATOR = 1.34;
+
+    // Mede a altura natural do Funil com "Demandas em Execução" forçado a expandido (mesmo que
+    // o estado real no momento seja colapsado), restaurando o estado real depois de medir — só
+    // um "flicker" de render síncrono, invisível pro usuário (sem repaint entre as duas chamadas).
+    function monAlturaFunilExpandido() {
+        var fun = document.getElementById('fun-section');
+        if (!fun || !lastFunilBuckets.length) return 0;
+
+        var estadoReal = monExecucaoExpandida;
+        if (!estadoReal) {
+            monExecucaoExpandida = true;
+            renderFunilDistribuicao(lastFunilBuckets);
+        }
+        var altura = fun.offsetHeight;
+        if (!estadoReal) {
+            monExecucaoExpandida = false;
+            renderFunilDistribuicao(lastFunilBuckets);
+        }
+        return altura;
+    }
+
     function monSincronizarAlturaAtendimento() {
         var ate = document.getElementById('ate-section');
         var fun = document.getElementById('fun-section');
         if (!ate || !fun) return;
-        ate.style.height = fun.offsetHeight + 'px';
+
+        fun.style.height = ''; // solta a altura fixa antes de medir o conteúdo natural de novo
+        var alturaExpandida = monAlturaFunilExpandido();
+        if (!alturaExpandida) return;
+
+        var alturaFixa = Math.round(alturaExpandida * FUN_ALTURA_FATOR) + 'px';
+        fun.style.height = alturaFixa;
+        ate.style.height = alturaFixa;
     }
 
     // ── Carregamento geral (Equipe + Chamados abertos + Tarefas + Funil + Atendimento) ──
