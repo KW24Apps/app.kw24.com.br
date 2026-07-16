@@ -1139,10 +1139,31 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .ate-list::-webkit-scrollbar { width: 5px; }
 .ate-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
 .ate-list::-webkit-scrollbar-thumb { background: rgba(38,255,147,0.25); border-radius: 3px; }
-.ate-row {
-    display: flex;
-    align-items: center;
+/* Colunas alinhadas (Conversa/Responsável/Tempo) — mesmo padrão de grid compartilhado
+ * cabeçalho+linhas já usado em Chamados abertos/Tarefas (.cha-thead/.cha-row-main). */
+.ate-thead {
+    display: grid;
+    grid-template-columns: 10px 1fr minmax(90px, 0.3fr) minmax(90px, 0.25fr);
     gap: var(--mon-sp-base);
+    align-items: center;
+    padding: var(--mon-sp-2xs) var(--mon-sp-lg);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0;
+}
+.ate-th {
+    font-size: var(--mon-fs-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: rgba(255,255,255,.35);
+    white-space: nowrap;
+}
+.ate-th.tempo { text-align: right; }
+.ate-row {
+    display: grid;
+    grid-template-columns: 10px 1fr minmax(90px, 0.3fr) minmax(90px, 0.25fr);
+    gap: var(--mon-sp-base);
+    align-items: center;
     padding: var(--mon-sp-2xs) var(--mon-sp-lg);
     border-bottom: 1px solid rgba(255,255,255,0.06);
     text-decoration: none;
@@ -1151,7 +1172,6 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .ate-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .ate-dot.aguardando { background: #fc8181; }
 .ate-dot.respondido { background: #48bb78; }
-.ate-row-main { display: flex; min-width: 0; flex: 1; }
 .ate-row-titulo {
     color: #fff;
     font-size: var(--mon-fs-sm);
@@ -1159,13 +1179,14 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
 }
 .ate-row-tempo {
-    flex-shrink: 0;
     font-size: var(--mon-fs-xs);
     color: rgba(255,255,255,.5);
     font-family: 'Inter', monospace;
     white-space: nowrap;
+    text-align: right;
 }
 .ate-row-tempo.aguardando { color: #fc8181; font-weight: 600; }
 /* Agrupamento "Aguardando atendimento" (ninguém reclamou) vs "Sendo atendida" (ver
@@ -1183,12 +1204,15 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 }
 .ate-group-header.alerta { color: #fc8181; }
 .ate-row-responsavel {
-    flex-shrink: 0;
     font-size: var(--mon-fs-xs);
     color: rgba(38,255,147,.85);
     font-weight: 600;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
 }
+.ate-row-responsavel.vazio { color: rgba(255,255,255,.3); font-weight: 400; }
 /* Abas "Conversas" / "Grupos" dentro do Atendimento — mesmo padrão visual/interação de
  * .mon-tabs-bar/.mon-tab (Chamados abertos/Tarefas), reaproveitado aqui via IDs próprios
  * (ateTrocarAba(), independente de monTrocarAba()). Grupo de WhatsApp fica isolado das
@@ -1222,14 +1246,35 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                 <span class="mon-tab-title"><i class="fab fa-whatsapp"></i>Grupos</span>
                 <span class="mon-tab-count" id="ate-grupo-count">0</span>
             </div>
+            <div class="mon-tab-filters" id="ate-filtros">
+                <div class="cha-dropdown" id="ate-dropdown-pessoa">
+                    <button class="cha-dropdown-trigger" onclick="ateToggleDropdown()">
+                        <span>Responsável · <span id="ate-dropdown-pessoa-count">0</span></span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="cha-dropdown-panel" id="ate-dropdown-pessoa-panel"></div>
+                </div>
+            </div>
         </div>
         <div class="mon-tab-content" id="ate-tab-content-conv">
             <div class="ate-kpis" id="ate-kpis"></div>
+            <div class="ate-thead">
+                <span></span>
+                <span class="ate-th">Conversa</span>
+                <span class="ate-th">Responsável</span>
+                <span class="ate-th tempo">Tempo</span>
+            </div>
             <div class="ate-list" id="ate-list">
                 <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
             </div>
         </div>
         <div class="mon-tab-content" id="ate-tab-content-grupo" style="display:none">
+            <div class="ate-thead">
+                <span></span>
+                <span class="ate-th">Grupo</span>
+                <span class="ate-th">Responsável</span>
+                <span class="ate-th tempo">Tempo</span>
+            </div>
             <div class="ate-list" id="ate-grupo-list">
                 <div class="mon-empty"><i class="fas fa-spinner fa-spin"></i><div>Carregando…</div></div>
             </div>
@@ -2392,6 +2437,9 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         return h + 'h' + (m ? ' ' + m + 'min' : '');
     }
 
+    // Colunas alinhadas (Conversa/Responsável/Tempo, ver .ate-thead) — Responsável sempre
+    // renderizado (com "—" quando não há, mesmo padrão de .cha-sem-resp em Chamados abertos),
+    // pra não quebrar o alinhamento entre linhas.
     function ateRowHtml(c) {
         var dotClasse   = c.aguardando ? 'aguardando' : 'respondido';
         var tempoClasse = c.aguardando ? ' aguardando' : '';
@@ -2400,14 +2448,12 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             : '';
         var responsavelHtml = c.reclamadaPor
             ? '<span class="ate-row-responsavel">' + escHtml(c.reclamadaPor) + '</span>'
-            : '';
+            : '<span class="ate-row-responsavel vazio">—</span>';
 
         // Só o nome/título da conversa — sem a prévia da última mensagem (removida: encurta a
         // linha, ajuda mais linhas caberem na altura fixa do card, ver monSincronizarAlturaAtendimento()).
         var body = '<span class="ate-dot ' + dotClasse + '"></span>'
-            + '<span class="ate-row-main">'
-                + '<span class="ate-row-titulo">' + escHtml(c.titulo) + '</span>'
-            + '</span>'
+            + '<span class="ate-row-titulo" title="' + escHtml(c.titulo) + '">' + escHtml(c.titulo) + '</span>'
             + responsavelHtml
             + '<span class="ate-row-tempo' + tempoClasse + '">' + escHtml(tempoTexto) + '</span>';
 
@@ -2424,12 +2470,16 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         var tabGrupo = document.getElementById('mon-tab-ate-grupo');
         var contConv  = document.getElementById('ate-tab-content-conv');
         var contGrupo = document.getElementById('ate-tab-content-grupo');
+        var filtros   = document.getElementById('ate-filtros');
         if (!tabConv || !tabGrupo || !contConv || !contGrupo) return;
 
         tabConv.classList.toggle('active', ateAbaAtiva === 'conv');
         tabGrupo.classList.toggle('active', ateAbaAtiva === 'grupo');
         contConv.style.display  = ateAbaAtiva === 'conv'  ? 'flex' : 'none';
         contGrupo.style.display = ateAbaAtiva === 'grupo' ? 'flex' : 'none';
+        // Filtro por Responsável só existe na aba Conversas — Grupos não tem responsável
+        // único (sempre abertos pra fila toda), ver relatório da tarefa.
+        if (filtros) filtros.style.display = ateAbaAtiva === 'conv' ? 'flex' : 'none';
     }
 
     window.ateTrocarAba = function (aba) {
@@ -2440,7 +2490,75 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 
     ateAtualizarAbas();
 
+    // ── Filtro por Responsável (Conversas) — dropdown-checklist, mesmo padrão de
+    // Chamados abertos (ver .cha-dropdown-*), roster fixo = identidades cadastradas
+    // (data.identidades), default todos marcados. "aguardando_atendimento" (não reclamada)
+    // e status indeterminado (fallback com < 2 webhooks) sempre passam — não são de uma
+    // pessoa só pra filtrar. ──────────────────────────────────────────────────────────
+    var ateSelectedPessoas   = null;      // Set de nomes (string) — null = não inicializado
+    var atePessoasConhecidas = new Set();
+    var lastAtendimento      = null;
+
+    window.ateToggleDropdown = function () {
+        var el = document.getElementById('ate-dropdown-pessoa');
+        if (el) el.classList.toggle('open');
+    };
+
+    function ateRenderFiltroPessoas(identidades) {
+        var painel  = document.getElementById('ate-dropdown-pessoa-panel');
+        var badgeEl = document.getElementById('ate-dropdown-pessoa-count');
+        if (!painel) return;
+
+        identidades = identidades || [];
+        if (ateSelectedPessoas === null) ateSelectedPessoas = new Set();
+
+        // Nome genuinamente novo (nunca visto) entra marcado por padrão — "mostrar todo
+        // mundo" também vale pra identidade cadastrada depois do primeiro carregamento.
+        identidades.forEach(function (nome) {
+            if (!atePessoasConhecidas.has(nome)) {
+                atePessoasConhecidas.add(nome);
+                ateSelectedPessoas.add(nome);
+            }
+        });
+
+        painel.innerHTML = identidades.length
+            ? identidades.map(function (nome) {
+                var ativo = ateSelectedPessoas.has(nome);
+                var nomeEscapado = escHtml(nome).replace(/'/g, "\\'");
+                return '<label class="cha-dropdown-item">'
+                    + '<input type="checkbox"' + (ativo ? ' checked' : '') + ' onchange="ateTogglePessoaFiltro(\'' + nomeEscapado + '\')">'
+                    + escHtml(nome)
+                    + '</label>';
+            }).join('')
+            : '<div class="cha-dropdown-empty">Nenhum webhook pessoal cadastrado.</div>';
+
+        if (badgeEl) badgeEl.textContent = ateSelectedPessoas.size;
+    }
+
+    window.ateTogglePessoaFiltro = function (nome) {
+        if (!ateSelectedPessoas) return;
+        var identidades = lastAtendimento ? lastAtendimento.identidades : [];
+        if (ateSelectedPessoas.has(nome)) {
+            if (ateSelectedPessoas.size <= 1) { ateRenderFiltroPessoas(identidades); return; } // nunca deixa ficar com 0 selecionados
+            ateSelectedPessoas.delete(nome);
+        } else {
+            ateSelectedPessoas.add(nome);
+        }
+        ateRenderFiltroPessoas(identidades);
+        if (lastAtendimento) renderAtendimento(lastAtendimento);
+    };
+
+    // Passa se: não reclamada (visível pra fila toda, não é de ninguém pra filtrar),
+    // indeterminada (statusFila null — modo com < 2 webhooks, filtro não é confiável aqui),
+    // ou reclamada por alguém marcado no filtro.
+    function atePassaFiltroPessoa(c) {
+        if (c.statusFila !== 'em_atendimento') return true;
+        if (!ateSelectedPessoas || !ateSelectedPessoas.size) return true;
+        return ateSelectedPessoas.has(c.reclamadaPor);
+    }
+
     function renderAtendimento(data) {
+        lastAtendimento = data;
         var kpisEl      = document.getElementById('ate-kpis');
         var listEl      = document.getElementById('ate-list');
         var grupoListEl = document.getElementById('ate-grupo-list');
@@ -2454,6 +2572,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             if (grupoCntEl) grupoCntEl.textContent = '0';
             return;
         }
+
+        ateRenderFiltroPessoas(data.identidades);
 
         var grupos = data.grupos || [];
         if (grupoCntEl) grupoCntEl.textContent = grupos.length;
@@ -2473,7 +2593,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             + '<div class="ate-kpi"><span class="ate-kpi-value' + (ativas.aguardando ? ' alerta' : '') + '">' + ativas.aguardando + '</span><span class="ate-kpi-label">Aguardando resposta</span></div>'
             + '<div class="ate-kpi"><span class="ate-kpi-value">' + escHtml(tempoTxt) + '</span><span class="ate-kpi-label">Tempo médio de resposta</span></div>';
 
-        var conversas = data.conversas || [];
+        var conversas = (data.conversas || []).filter(atePassaFiltroPessoa);
         if (!conversas.length) {
             listEl.innerHTML = '<div class="mon-empty"><i class="fas fa-check-circle"></i><div>Nenhuma conversa ativa no momento.</div></div>';
             return;
