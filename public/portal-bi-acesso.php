@@ -126,6 +126,18 @@ $nomeExibido = $portal['nome'] ?: $portal['slug'];
         overflow-wrap: break-word;
     }
 
+    /* Normalização do logo do cliente (login-header img) — sem GD/Imagick disponível no
+       servidor pra reencodar no upload, o enquadramento é garantido aqui via CSS: largura
+       máxima igual à do logo KW24 original (login.css, 220px) + altura máxima nova, sem
+       forçar width/height fixos — o navegador escala mantendo a proporção original,
+       nunca estica/distorce, então um logo muito largo ou muito alto (enviado por um
+       cliente) sempre cabe no mesmo espaço reservado, igual ao que o logo KW24 já ocupava. */
+    .login-header img {
+        max-height: 90px;
+        width: auto;
+        height: auto;
+    }
+
     /* ─── Layout de duas colunas (Portal BI — só nesta página) ─── */
     .portal-access-layout {
         display: flex;
@@ -158,22 +170,6 @@ $nomeExibido = $portal['nome'] ?: $portal['slug'];
         height: auto;
         margin-bottom: .9rem;
         filter: drop-shadow(1px 2px 4px rgba(0,0,0,.2));
-    }
-
-    .mkt-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: .4rem;
-        padding: .35rem .9rem;
-        border-radius: 999px;
-        background: rgba(38,255,147,0.12);
-        border: 1px solid rgba(38,255,147,0.35);
-        color: #26FF93;
-        font-size: .72rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: .06em;
-        margin-bottom: 1.25rem;
     }
 
     .mkt-headline {
@@ -426,7 +422,6 @@ $nomeExibido = $portal['nome'] ?: $portal['slug'];
 
         <aside class="mkt-panel" aria-hidden="true">
             <img class="mkt-kw24-logo" src="/assets/img/03_KW24_BRANCO1.png" alt="KW24 - Sistemas Harmônicos">
-            <span class="mkt-pill"><i class="fas fa-chart-line"></i> KW24 · Relatórios BI</span>
             <h2 class="mkt-headline">Visão completa do seu negócio, sempre atualizada</h2>
             <p class="mkt-subheadline">Conectamos aos seus dados onde eles estiverem e transformamos tudo em relatórios visuais, interativos e feitos sob medida para a sua empresa.</p>
 
@@ -591,7 +586,7 @@ $nomeExibido = $portal['nome'] ?: $portal['slug'];
                 </div>
             </div>
 
-            <p class="mkt-cta-text">Organize seus dados agora e melhore a visão do seu negócio.</p>
+            <p class="mkt-cta-text">Quer ver isso funcionando na sua empresa? Fale com o nosso time.</p>
             <script data-b24-form="click/103/443ca3" data-skip-moving="true">(function(w,d,u){var s=d.createElement('script');s.async=true;s.src=u+'?'+(Date.now()/180000|0);var h=d.getElementsByTagName('script')[0];h.parentNode.insertBefore(s,h);})(window,document,'https://cdn.bitrix24.com.br/b19990279/crm/form/loader_103.js');</script>
         </aside>
     </div>
