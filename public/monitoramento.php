@@ -743,6 +743,13 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     text-overflow: ellipsis;
     min-width: 0;
 }
+/* Destaque independente por data dentro da mesma célula (mockup Option C, aprovado por
+ * Gabriel) — "criado" e "previsão" coloridos separadamente, não a célula toda: criado fica
+ * âmbar quando o chamado tem mais de 30 dias (envelhecido); previsão fica coral quando a data
+ * já passou (atrasada). As duas condições são independentes — uma linha pode ter só uma, as
+ * duas, ou nenhuma colorida. */
+.cha-data-criado.envelhecido { color: #f6ad55; font-weight: 600; }
+.cha-data-previsao.atrasada { color: #e2726b; font-weight: 600; }
 .cha-solicitante {
     font-size: var(--mon-fs-base);
     color: rgba(255,255,255,.65);
@@ -2102,13 +2109,30 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             ? escHtml(c.resumo)
             : '<span style="color:rgba(255,255,255,.35)">Sem resumo</span>';
 
-        var dataHtml = fmtDiaMes((c.createdTime || '').slice(0, 10)) + (c.previsao ? ' / ' + fmtDiaMes(c.previsao) : '');
+        // Highlight independente por data (mockup Option C): "criado" fica âmbar com mais de 30
+        // dias, "previsão" fica coral se já passou — condições independentes, ver .cha-data-
+        // criado.envelhecido/.cha-data-previsao.atrasada.
+        var criadoIso        = (c.createdTime || '').slice(0, 10);
+        var hojeIso           = chaHojeIso();
+        var criadoEnvelhecido = criadoIso !== '' && criadoIso < chaSubtrairDias(hojeIso, 30);
+        var criadoHtml = '<span class="cha-data-criado' + (criadoEnvelhecido ? ' envelhecido' : '') + '">'
+            + escHtml(fmtDiaMes(criadoIso)) + '</span>';
+
+        var previsaoHtml = '';
+        if (c.previsao) {
+            var previsaoAtrasada = c.previsao < hojeIso;
+            previsaoHtml = ' / <span class="cha-data-previsao' + (previsaoAtrasada ? ' atrasada' : '') + '">'
+                + escHtml(fmtDiaMes(c.previsao)) + '</span>';
+        }
+
+        var dataHtml   = criadoHtml + previsaoHtml;
+        var dataTitulo = fmtDiaMes(criadoIso) + (c.previsao ? ' / ' + fmtDiaMes(c.previsao) : '');
 
         return '<div class="cha-row">'
             + '<div class="cha-row-main" onclick="chaToggle(' + c.id + ')">'
                 + '<button class="cha-chevron-btn" id="cha-btn-' + c.id + '"><i class="fas fa-chevron-right" style="font-size:.7rem"></i></button>'
                 + '<div class="cha-row-chamado">' + idHtml + '<span class="cha-row-title" title="' + escHtml(c.titulo) + '">' + escHtml(c.titulo) + '</span></div>'
-                + '<span class="cha-data" title="' + escHtml(dataHtml) + '">' + escHtml(dataHtml) + '</span>'
+                + '<span class="cha-data" title="' + escHtml(dataTitulo) + '">' + dataHtml + '</span>'
                 + '<span class="cha-empresa" title="' + escHtml(c.empresaNome || '') + '">' + escHtml(c.empresaNome || '—') + '</span>'
                 + '<span class="cha-badge" title="' + escHtml(c.tipoLabel) + '" style="background:' + c.tipoCor + '22;color:' + c.tipoCor + ';border:1px solid ' + c.tipoCor + '55">' + escHtml(c.tipoLabel) + '</span>'
                 + (c.prioridadeLabel
@@ -2386,6 +2410,18 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     function fmtDiaMes(iso) {
         var p = (iso || '').split('-');
         return p.length === 3 ? (p[2] + '/' + p[1]) : '';
+    }
+
+    // Data de hoje em "YYYY-MM-DD" local (não UTC) — comparável por string com createdTime/
+    // previsao (mesmo formato), usado pelo highlight da coluna Criado/Prev. em chaRowHtml().
+    function chaHojeIso() {
+        var d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    function chaSubtrairDias(iso, dias) {
+        var d = new Date(iso + 'T00:00:00');
+        d.setDate(d.getDate() - dias);
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
 
     var FUN_DIST_CORES = {
