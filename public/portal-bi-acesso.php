@@ -200,74 +200,86 @@ $nomeExibido = $portal['nome'] ?: $portal['slug'];
 
     .mkt-feature-chip i { color: #26FF93; font-size: .95rem; }
 
-    /* Card de preview do relatório (exemplo estático, sem dados reais) */
-    .mkt-preview-card {
+    /* ─── Showcase auto-rotativo (substitui o antigo card de preview único) ─── */
+    .mkt-showcase {
+        position: relative;
+        height: 350px;
         background: rgba(255,255,255,0.05);
         border: 1.5px solid rgba(255,255,255,0.12);
         border-radius: 16px;
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         box-shadow: 0 10px 40px rgba(0,0,0,.15);
-        padding: 1.25rem 1.4rem 1.5rem;
-    }
-
-    .mkt-preview-caption {
-        font-size: .68rem;
-        text-transform: uppercase;
-        letter-spacing: .05em;
-        color: rgba(255,255,255,.45);
-        margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-        gap: .4rem;
-    }
-
-    .mkt-kpi-row {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: .6rem;
-        margin-bottom: 1.4rem;
-    }
-
-    .mkt-kpi {
-        background: rgba(255,255,255,0.045);
-        border: 1px solid rgba(255,255,255,0.10);
-        border-radius: 10px;
-        padding: .6rem .55rem;
-        position: relative;
         overflow: hidden;
     }
 
-    .mkt-kpi::before {
-        content: '';
+    .mkt-screen {
         position: absolute;
-        top: 0; left: 0; right: 0;
-        height: 3px;
-    }
-    .mkt-kpi-a::before { background: linear-gradient(90deg,#f6ad55,#f6e05e); }
-    .mkt-kpi-b::before { background: linear-gradient(90deg,#0DC2FF,#0080aa); }
-    .mkt-kpi-c::before { background: linear-gradient(90deg,#b794f4,#805ad5); }
-    .mkt-kpi-d::before { background: linear-gradient(90deg,#26FF93,#059669); }
-
-    .mkt-kpi-label {
-        font-size: .6rem;
-        text-transform: uppercase;
-        letter-spacing: .04em;
-        color: rgba(255,255,255,.5);
-        margin-bottom: .3rem;
-    }
-    .mkt-kpi-value { font-size: .85rem; font-weight: 700; color: #fff; }
-
-    .mkt-donut-row {
+        inset: 0;
+        padding: 1.15rem 1.3rem 1.2rem;
         display: flex;
-        align-items: center;
-        gap: 1.5rem;
+        flex-direction: column;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .6s ease;
     }
+    .mkt-screen.active { opacity: 1; pointer-events: auto; }
+
+    .mkt-screen-label {
+        flex-shrink: 0;
+        font-size: .66rem;
+        text-transform: uppercase;
+        letter-spacing: .07em;
+        color: #26FF93;
+        font-weight: 700;
+        margin-bottom: .8rem;
+    }
+
+    .mkt-kpi-mini-row {
+        flex-shrink: 0;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: .55rem;
+        margin-bottom: 1rem;
+    }
+    .mkt-kpi-mini-row.cols-2 { grid-template-columns: repeat(2, 1fr); }
+
+    .mkt-kpi-mini {
+        position: relative;
+        background: rgba(255,255,255,0.045);
+        border: 1px solid rgba(255,255,255,0.10);
+        border-radius: 9px;
+        padding: .5rem .5rem;
+        overflow: hidden;
+    }
+    .mkt-kpi-mini::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .mkt-kpi-mini.c-cyan::before   { background: linear-gradient(90deg,#0DC2FF,#0080aa); }
+    .mkt-kpi-mini.c-green::before  { background: linear-gradient(90deg,#26FF93,#059669); }
+    .mkt-kpi-mini.c-purple::before { background: linear-gradient(90deg,#b794f4,#805ad5); }
+    .mkt-kpi-mini.c-amber::before  { background: linear-gradient(90deg,#f6ad55,#f6e05e); }
+    .mkt-kpi-mini-label {
+        font-size: .56rem; text-transform: uppercase; letter-spacing: .03em;
+        color: rgba(255,255,255,.5); margin-bottom: .25rem;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .mkt-kpi-mini-value { font-size: .78rem; font-weight: 700; color: #fff; white-space: nowrap; }
+
+    .mkt-two-col { flex: 1; min-height: 0; display: flex; gap: 1.1rem; }
+    .mkt-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .mkt-col-center { justify-content: center; align-items: center; }
+    .mkt-col-between { justify-content: space-between; }
+
+    .mkt-funnel-list { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+    .mkt-funnel-list-row { display: flex; justify-content: space-between; align-items: center; font-size: .75rem; gap: .5rem; }
+    .mkt-funnel-list-row .lbl { color: rgba(255,255,255,.65); }
+    .mkt-funnel-list-row .val { color: #fff; font-weight: 700; white-space: nowrap; }
+
+    .mkt-donut-legend { display: flex; align-items: center; gap: 1rem; justify-content: center; height: 100%; }
 
     .mkt-donut {
         position: relative;
-        width: 92px;
-        height: 92px;
+        width: 84px;
+        height: 84px;
         flex-shrink: 0;
     }
     .mkt-donut::before {
@@ -275,27 +287,71 @@ $nomeExibido = $portal['nome'] ?: $portal['slug'];
         position: absolute;
         inset: 0;
         border-radius: 50%;
-        background: conic-gradient(#0DC2FF 0deg 198deg, #26FF93 198deg 306deg, #b794f4 306deg 360deg);
+        background: var(--donut-bg);
+        -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 14px), #000 calc(100% - 13px));
+        mask: radial-gradient(farthest-side, transparent calc(100% - 14px), #000 calc(100% - 13px));
+    }
+
+    .mkt-legend { display: flex; flex-direction: column; gap: .4rem; }
+    .mkt-legend-item { display: flex; align-items: center; gap: .5rem; font-size: .74rem; color: rgba(255,255,255,.8); white-space: nowrap; }
+    .mkt-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+    .mkt-bar-ranking { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+    .mkt-bar-row { display: flex; align-items: center; gap: .5rem; }
+    .mkt-bar-label {
+        width: 58px; flex-shrink: 0; font-size: .7rem; color: rgba(255,255,255,.7);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .mkt-bar-track { flex: 1; height: 9px; background: rgba(255,255,255,.08); border-radius: 5px; overflow: hidden; }
+    .mkt-bar-fill { display: block; height: 100%; border-radius: 5px; }
+    .mkt-bar-value { width: 38px; flex-shrink: 0; text-align: right; font-size: .7rem; font-weight: 700; color: #fff; }
+
+    .mkt-bar-fill.c-cyan,   .mkt-funnel-stage-bar.c-cyan   { background: #0DC2FF; }
+    .mkt-bar-fill.c-green,  .mkt-funnel-stage-bar.c-green  { background: #26FF93; }
+    .mkt-bar-fill.c-purple, .mkt-funnel-stage-bar.c-purple { background: #b794f4; }
+    .mkt-bar-fill.c-amber,  .mkt-funnel-stage-bar.c-amber  { background: #f6ad55; }
+
+    .mkt-line-wrap { flex-shrink: 0; margin-bottom: .7rem; }
+    .mkt-line-months { display: flex; justify-content: space-between; margin-top: .3rem; padding: 0 .1rem; }
+    .mkt-line-months span { font-size: .6rem; color: rgba(255,255,255,.45); }
+    .mkt-line-legend { display: flex; gap: 1rem; margin-top: .5rem; }
+    .mkt-line-legend-item { display: flex; align-items: center; gap: .4rem; font-size: .68rem; color: rgba(255,255,255,.75); }
+    .mkt-line-swatch { width: 16px; height: 2px; border-radius: 2px; display: inline-block; }
+    .mkt-line-swatch.solid { background: #0DC2FF; }
+    .mkt-line-swatch.dashed { background: repeating-linear-gradient(90deg,#f6ad55 0 4px, transparent 4px 7px); }
+
+    .mkt-callout {
+        background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.09);
+        border-radius: 9px; padding: .55rem .65rem;
+    }
+    .mkt-callout-label { font-size: .6rem; text-transform: uppercase; letter-spacing: .03em; color: rgba(255,255,255,.5); margin-bottom: .2rem; }
+    .mkt-callout-value { font-size: .82rem; font-weight: 700; color: #fff; }
+    .mkt-callout-delta { font-size: .65rem; color: #26FF93; margin-left: .35rem; font-weight: 600; }
+
+    .mkt-sparkline { flex: 1; display: flex; align-items: flex-end; justify-content: space-between; gap: .4rem; padding-bottom: .1rem; }
+    .mkt-sparkline-bar { flex: 1; border-radius: 3px 3px 0 0; background: linear-gradient(180deg,#0DC2FF,#086B8D); }
+
+    .mkt-funnel-chart { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+    .mkt-funnel-stage { display: flex; flex-direction: column; gap: .25rem; }
+    .mkt-funnel-stage-head { display: flex; justify-content: space-between; font-size: .68rem; color: rgba(255,255,255,.75); }
+    .mkt-funnel-stage-head b { color: #fff; }
+    .mkt-funnel-stage-bar { height: 13px; border-radius: 4px; }
+
+    .mkt-gauge { position: relative; width: 96px; height: 96px; flex-shrink: 0; }
+    .mkt-gauge::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background: var(--gauge-bg);
         -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 16px), #000 calc(100% - 15px));
         mask: radial-gradient(farthest-side, transparent calc(100% - 16px), #000 calc(100% - 15px));
     }
-    .mkt-donut-number {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.3rem;
-        font-weight: 700;
-        color: #fff;
-    }
+    .mkt-gauge-inner { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .mkt-gauge-number { font-size: 1.05rem; font-weight: 700; color: #fff; line-height: 1; }
+    .mkt-gauge-caption { font-size: .52rem; color: rgba(255,255,255,.6); text-transform: uppercase; letter-spacing: .03em; margin-top: .2rem; text-align: center; line-height: 1.2; }
 
-    .mkt-legend { display: flex; flex-direction: column; gap: .45rem; }
-    .mkt-legend-item { display: flex; align-items: center; gap: .5rem; font-size: .78rem; color: rgba(255,255,255,.8); white-space: nowrap; }
-    .mkt-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-    .mkt-legend-dot.alfa { background: #0DC2FF; }
-    .mkt-legend-dot.beta { background: #26FF93; }
-    .mkt-legend-dot.gama { background: #b794f4; }
+    .mkt-cta-text { font-size: .85rem; line-height: 1.5; color: rgba(255,255,255,.85); margin: 1.1rem 0 .75rem 0; }
 
     /* Abaixo de 992px: some o painel de marketing, mantém a experiência atual do login */
     @media (max-width: 992px) {
@@ -361,39 +417,163 @@ $nomeExibido = $portal['nome'] ?: $portal['slug'];
                 <div class="mkt-feature-chip"><i class="fas fa-sliders"></i> Feito sob medida</div>
             </div>
 
-            <div class="mkt-preview-card">
-                <div class="mkt-preview-caption"><i class="fas fa-circle-info"></i> Exemplo ilustrativo, dados fictícios</div>
-
-                <div class="mkt-kpi-row">
-                    <div class="mkt-kpi mkt-kpi-a">
-                        <div class="mkt-kpi-label">Receita total</div>
-                        <div class="mkt-kpi-value">R$ 12.480</div>
+            <div class="mkt-showcase">
+                <div class="mkt-screen active" data-screen="1">
+                    <div class="mkt-screen-label">Visão geral</div>
+                    <div class="mkt-kpi-mini-row">
+                        <div class="mkt-kpi-mini c-cyan"><div class="mkt-kpi-mini-label">Receita</div><div class="mkt-kpi-mini-value">R$ 12.480</div></div>
+                        <div class="mkt-kpi-mini c-green"><div class="mkt-kpi-mini-label">Ativas</div><div class="mkt-kpi-mini-value">R$ 9.320</div></div>
+                        <div class="mkt-kpi-mini c-purple"><div class="mkt-kpi-mini-label">Indicações</div><div class="mkt-kpi-mini-value">R$ 1.150</div></div>
+                        <div class="mkt-kpi-mini c-amber"><div class="mkt-kpi-mini-label">Ticket méd.</div><div class="mkt-kpi-mini-value">R$ 890</div></div>
                     </div>
-                    <div class="mkt-kpi mkt-kpi-b">
-                        <div class="mkt-kpi-label">Contas ativas</div>
-                        <div class="mkt-kpi-value">R$ 9.320</div>
-                    </div>
-                    <div class="mkt-kpi mkt-kpi-c">
-                        <div class="mkt-kpi-label">Indicações</div>
-                        <div class="mkt-kpi-value">R$ 1.150</div>
-                    </div>
-                    <div class="mkt-kpi mkt-kpi-d">
-                        <div class="mkt-kpi-label">Ticket médio</div>
-                        <div class="mkt-kpi-value">R$ 890</div>
+                    <div class="mkt-two-col">
+                        <div class="mkt-col">
+                            <div class="mkt-funnel-list">
+                                <div class="mkt-funnel-list-row"><span class="lbl">Coleta docs</span><span class="val">R$ 4.230</span></div>
+                                <div class="mkt-funnel-list-row"><span class="lbl">Triagem</span><span class="val">R$ 1.980</span></div>
+                                <div class="mkt-funnel-list-row"><span class="lbl">Proposta</span><span class="val">R$ 3.640</span></div>
+                            </div>
+                        </div>
+                        <div class="mkt-col mkt-col-center">
+                            <div class="mkt-donut-legend">
+                                <div class="mkt-donut" style="--donut-bg: conic-gradient(#0DC2FF 0% 30%, #26FF93 30% 52%, #b794f4 52% 70%, rgba(255,255,255,.12) 70% 100%);"></div>
+                                <div class="mkt-legend">
+                                    <div class="mkt-legend-item"><span class="mkt-legend-dot" style="background:#0DC2FF"></span> Prod A · 30%</div>
+                                    <div class="mkt-legend-item"><span class="mkt-legend-dot" style="background:#26FF93"></span> Prod B · 22%</div>
+                                    <div class="mkt-legend-item"><span class="mkt-legend-dot" style="background:#b794f4"></span> Prod C · 18%</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="mkt-donut-row">
-                    <div class="mkt-donut">
-                        <span class="mkt-donut-number">32</span>
+                <div class="mkt-screen" data-screen="2">
+                    <div class="mkt-screen-label">Comparativo por vendedor</div>
+                    <div class="mkt-kpi-mini-row">
+                        <div class="mkt-kpi-mini c-cyan"><div class="mkt-kpi-mini-label">Vendas</div><div class="mkt-kpi-mini-value">R$ 8.814</div></div>
+                        <div class="mkt-kpi-mini c-green"><div class="mkt-kpi-mini-label">Ativas</div><div class="mkt-kpi-mini-value">R$ 8.064</div></div>
+                        <div class="mkt-kpi-mini c-purple"><div class="mkt-kpi-mini-label">Indic.</div><div class="mkt-kpi-mini-value">R$ 750</div></div>
+                        <div class="mkt-kpi-mini c-amber"><div class="mkt-kpi-mini-label">Ticket</div><div class="mkt-kpi-mini-value">R$ 1.101</div></div>
                     </div>
-                    <div class="mkt-legend">
-                        <div class="mkt-legend-item"><span class="mkt-legend-dot alfa"></span> Unidade Alfa · 55%</div>
-                        <div class="mkt-legend-item"><span class="mkt-legend-dot beta"></span> Unidade Beta · 30%</div>
-                        <div class="mkt-legend-item"><span class="mkt-legend-dot gama"></span> Unidade Gama · 15%</div>
+                    <div class="mkt-two-col">
+                        <div class="mkt-col">
+                            <div class="mkt-bar-ranking">
+                                <div class="mkt-bar-row"><span class="mkt-bar-label">Vend. A</span><span class="mkt-bar-track"><span class="mkt-bar-fill c-cyan" style="width:88%"></span></span><span class="mkt-bar-value">88%</span></div>
+                                <div class="mkt-bar-row"><span class="mkt-bar-label">Vend. B</span><span class="mkt-bar-track"><span class="mkt-bar-fill c-green" style="width:64%"></span></span><span class="mkt-bar-value">64%</span></div>
+                                <div class="mkt-bar-row"><span class="mkt-bar-label">Vend. C</span><span class="mkt-bar-track"><span class="mkt-bar-fill c-purple" style="width:41%"></span></span><span class="mkt-bar-value">41%</span></div>
+                            </div>
+                        </div>
+                        <div class="mkt-col mkt-col-center">
+                            <div class="mkt-donut-legend">
+                                <div class="mkt-donut" style="--donut-bg: conic-gradient(#26FF93 0% 75%, #0DC2FF 75% 100%);"></div>
+                                <div class="mkt-legend">
+                                    <div class="mkt-legend-item"><span class="mkt-legend-dot" style="background:#26FF93"></span> Ativo · 75%</div>
+                                    <div class="mkt-legend-item"><span class="mkt-legend-dot" style="background:#0DC2FF"></span> Indic. · 25%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mkt-screen" data-screen="3">
+                    <div class="mkt-screen-label">Evolução mensal</div>
+                    <div class="mkt-line-wrap">
+                        <svg viewBox="0 0 300 80" width="100%" height="80" preserveAspectRatio="none">
+                            <polyline points="10,60 62,52 114,45 166,38 218,30 270,18" fill="none" stroke="#0DC2FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                            <polyline points="10,55 62,50 114,46 166,42 218,36 270,32" fill="none" stroke="#f6ad55" stroke-width="2" stroke-dasharray="5,4" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        <div class="mkt-line-months"><span>Jan</span><span>Fev</span><span>Mar</span><span>Abr</span><span>Mai</span><span>Jun</span></div>
+                        <div class="mkt-line-legend">
+                            <div class="mkt-line-legend-item"><span class="mkt-line-swatch solid"></span> Receita</div>
+                            <div class="mkt-line-legend-item"><span class="mkt-line-swatch dashed"></span> Meta</div>
+                        </div>
+                    </div>
+                    <div class="mkt-two-col">
+                        <div class="mkt-col mkt-col-between">
+                            <div class="mkt-callout">
+                                <div class="mkt-callout-label">Receita (jun)</div>
+                                <div class="mkt-callout-value">R$ 2.890<span class="mkt-callout-delta">+18% vs mai</span></div>
+                            </div>
+                            <div class="mkt-callout">
+                                <div class="mkt-callout-label">Meta (jun)</div>
+                                <div class="mkt-callout-value">R$ 2.650<span class="mkt-callout-delta">atingida</span></div>
+                            </div>
+                        </div>
+                        <div class="mkt-col">
+                            <div class="mkt-sparkline">
+                                <span class="mkt-sparkline-bar" style="height:35%"></span>
+                                <span class="mkt-sparkline-bar" style="height:48%"></span>
+                                <span class="mkt-sparkline-bar" style="height:55%"></span>
+                                <span class="mkt-sparkline-bar" style="height:62%"></span>
+                                <span class="mkt-sparkline-bar" style="height:78%"></span>
+                                <span class="mkt-sparkline-bar" style="height:100%"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mkt-screen" data-screen="4">
+                    <div class="mkt-screen-label">Top categorias</div>
+                    <div class="mkt-kpi-mini-row cols-2">
+                        <div class="mkt-kpi-mini c-cyan"><div class="mkt-kpi-mini-label">Categorias ativas</div><div class="mkt-kpi-mini-value">24</div></div>
+                        <div class="mkt-kpi-mini c-green"><div class="mkt-kpi-mini-label">Top categoria</div><div class="mkt-kpi-mini-value">18%</div></div>
+                    </div>
+                    <div class="mkt-two-col">
+                        <div class="mkt-col mkt-col-center">
+                            <div class="mkt-donut" style="--donut-bg: conic-gradient(#0DC2FF 0% 18%, #26FF93 18% 31%, #b794f4 31% 44%, #f6ad55 44% 56%, rgba(255,255,255,.12) 56% 100%);"></div>
+                        </div>
+                        <div class="mkt-col">
+                            <div class="mkt-bar-ranking">
+                                <div class="mkt-bar-row"><span class="mkt-bar-label">Categ. A</span><span class="mkt-bar-track"><span class="mkt-bar-fill c-cyan" style="width:18%"></span></span><span class="mkt-bar-value">18%</span></div>
+                                <div class="mkt-bar-row"><span class="mkt-bar-label">Categ. B</span><span class="mkt-bar-track"><span class="mkt-bar-fill c-green" style="width:13%"></span></span><span class="mkt-bar-value">13%</span></div>
+                                <div class="mkt-bar-row"><span class="mkt-bar-label">Categ. C</span><span class="mkt-bar-track"><span class="mkt-bar-fill c-purple" style="width:13%"></span></span><span class="mkt-bar-value">13%</span></div>
+                                <div class="mkt-bar-row"><span class="mkt-bar-label">Outros</span><span class="mkt-bar-track"><span class="mkt-bar-fill c-amber" style="width:22%"></span></span><span class="mkt-bar-value">22%</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mkt-screen" data-screen="5">
+                    <div class="mkt-screen-label">Funil de vendas</div>
+                    <div class="mkt-kpi-mini-row cols-2">
+                        <div class="mkt-kpi-mini c-cyan"><div class="mkt-kpi-mini-label">Conversão</div><div class="mkt-kpi-mini-value">14,5%</div></div>
+                        <div class="mkt-kpi-mini c-purple"><div class="mkt-kpi-mini-label">Ciclo médio</div><div class="mkt-kpi-mini-value">23 dias</div></div>
+                    </div>
+                    <div class="mkt-two-col">
+                        <div class="mkt-col">
+                            <div class="mkt-funnel-chart">
+                                <div class="mkt-funnel-stage">
+                                    <div class="mkt-funnel-stage-head"><span>Visitantes</span><b>1.240</b></div>
+                                    <div class="mkt-funnel-stage-bar c-cyan" style="width:100%"></div>
+                                </div>
+                                <div class="mkt-funnel-stage">
+                                    <div class="mkt-funnel-stage-head"><span>Leads</span><b>860</b></div>
+                                    <div class="mkt-funnel-stage-bar c-green" style="width:69%"></div>
+                                </div>
+                                <div class="mkt-funnel-stage">
+                                    <div class="mkt-funnel-stage-head"><span>Oportunidades</span><b>410</b></div>
+                                    <div class="mkt-funnel-stage-bar c-purple" style="width:33%"></div>
+                                </div>
+                                <div class="mkt-funnel-stage">
+                                    <div class="mkt-funnel-stage-head"><span>Clientes</span><b>180</b></div>
+                                    <div class="mkt-funnel-stage-bar c-amber" style="width:15%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mkt-col mkt-col-center">
+                            <div class="mkt-gauge" style="--gauge-bg: conic-gradient(#26FF93 0% 78%, rgba(255,255,255,.10) 78% 100%);">
+                                <div class="mkt-gauge-inner">
+                                    <div class="mkt-gauge-number">78%</div>
+                                    <div class="mkt-gauge-caption">da meta<br>mensal</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <p class="mkt-cta-text">Organize seus dados agora e melhore a visão do seu negócio.</p>
+            <script data-b24-form="click/103/443ca3" data-skip-moving="true">(function(w,d,u){var s=d.createElement('script');s.async=true;s.src=u+'?'+(Date.now()/180000|0);var h=d.getElementsByTagName('script')[0];h.parentNode.insertBefore(s,h);})(window,document,'https://cdn.bitrix24.com.br/b19990279/crm/form/loader_103.js');</script>
         </aside>
     </div>
 
@@ -404,6 +584,18 @@ $nomeExibido = $portal['nome'] ?: $portal['slug'];
                 var s=d.createElement('script');s.async=true;s.src=u+'?'+(Date.now()/60000|0);
                 var h=d.getElementsByTagName('script')[0];h.parentNode.insertBefore(s,h);
         })(window,document,'https://cdn.bitrix24.com.br/b19990279/crm/site_button/loader_7_pmlhcu.js');
+    </script>
+    <script>
+        (function () {
+            var screens = document.querySelectorAll('.mkt-showcase .mkt-screen');
+            if (screens.length < 2) return;
+            var idx = 0;
+            setInterval(function () {
+                screens[idx].classList.remove('active');
+                idx = (idx + 1) % screens.length;
+                screens[idx].classList.add('active');
+            }, 4000);
+        })();
     </script>
 </body>
 </html>
