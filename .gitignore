@@ -46,3 +46,8 @@ relatorios-bi/*/_tunnel.py
 # Config de conexão gerado pelo painel (api/relatorio-conexao.php) — contém credenciais reais.
 # Substitui o .env manual; NUNCA vai para o repositório.
 .dbconfig.json
+
+# Logos de clientes enviados via upload (Portal BI — relatorios_bi.logo_path / portais_bi.logo_path).
+# Gerados em runtime pelo painel; NUNCA versionados — sobrevivem a deploys porque `git pull`
+# nunca apaga arquivo não rastreado (mesmo princípio do .dbconfig.json acima).
+assets/img/logos-clientes/

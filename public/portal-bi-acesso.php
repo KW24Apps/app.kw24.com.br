@@ -32,6 +32,14 @@ if (!$portal['ativo']) {
 
 $reportUrl = '/relatorios-bi/' . $rSlug . '/';
 
+// ── Logo do cliente — 2 níveis com fallback: portal (override) → relatório (padrão) → KW24 ──
+$stmtRelLogo = $pdo->prepare('SELECT logo_path FROM relatorios_bi WHERE slug = ? LIMIT 1');
+$stmtRelLogo->execute([$rSlug]);
+$relatorioLogoPath = $stmtRelLogo->fetchColumn() ?: null;
+
+$KW24_LOGO = '/assets/img/03_KW24_BRANCO1.png';
+$loginLogoUrl = $portal['logo_path'] ?: ($relatorioLogoPath ?: $KW24_LOGO);
+
 // ── Sessão de portal BI já existe e é válida para este portal ──────────────
 if (isset($_SESSION['portal_bi'])
     && ($_SESSION['portal_bi']['portal_id']       ?? 0)  === (int)$portal['id']
@@ -140,6 +148,16 @@ $nomeExibido = $portal['nome'] ?: $portal['slug'];
         flex: 1 1 480px;
         max-width: 540px;
         color: #fff;
+    }
+
+    /* Logo real da KW24 — painel agora é a superfície de "quem fornece isso"; o card de
+       login à esquerda mostra o logo do CLIENTE (ver $loginLogoUrl acima), não mais o da KW24. */
+    .mkt-kw24-logo {
+        display: block;
+        max-width: 130px;
+        height: auto;
+        margin-bottom: .9rem;
+        filter: drop-shadow(1px 2px 4px rgba(0,0,0,.2));
     }
 
     .mkt-pill {
@@ -373,7 +391,7 @@ $nomeExibido = $portal['nome'] ?: $portal['slug'];
     <div class="portal-access-layout">
         <div class="login-container">
             <div class="login-header">
-                <img src="/assets/img/03_KW24_BRANCO1.png" alt="KW24 - Sistemas Harmônicos">
+                <img src="<?= htmlspecialchars($loginLogoUrl) ?>" alt="<?= htmlspecialchars($nomeExibido) ?>">
             </div>
 
             <div class="portal-name-badge">
@@ -407,6 +425,7 @@ $nomeExibido = $portal['nome'] ?: $portal['slug'];
         </div>
 
         <aside class="mkt-panel" aria-hidden="true">
+            <img class="mkt-kw24-logo" src="/assets/img/03_KW24_BRANCO1.png" alt="KW24 - Sistemas Harmônicos">
             <span class="mkt-pill"><i class="fas fa-chart-line"></i> KW24 · Relatórios BI</span>
             <h2 class="mkt-headline">Visão completa do seu negócio, sempre atualizada</h2>
             <p class="mkt-subheadline">Conectamos aos seus dados onde eles estiverem e transformamos tudo em relatórios visuais, interativos e feitos sob medida para a sua empresa.</p>

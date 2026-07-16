@@ -460,6 +460,29 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
 }
 .rbi-btn-open:hover { background: #08aadd; }
 
+/* ── Logo do relatório (aba Geral, admin_interno only) — padrão pra portais sem override ── */
+.rbi-logo-row { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; }
+.rbi-logo-preview {
+    width: 44px; height: 44px; object-fit: contain; border-radius: 8px;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); padding: .2rem;
+}
+.rbi-logo-empty { font-size: .72rem; color: rgba(255,255,255,.35); }
+.rbi-btn-logo-upload {
+    display: inline-flex; align-items: center; gap: .35rem;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 7px; color: rgba(255,255,255,.8); font-size: .72rem; font-weight: 600;
+    padding: .4rem .75rem; cursor: pointer; transition: background .15s;
+}
+.rbi-btn-logo-upload:hover { background: rgba(255,255,255,0.15); }
+.rbi-btn-logo-remove {
+    background: none; border: none; color: #fc8181; font-size: .72rem; font-weight: 600;
+    cursor: pointer; padding: .4rem .5rem;
+}
+.rbi-btn-logo-remove:hover { text-decoration: underline; }
+.rbi-logo-msg { font-size: .68rem; margin-top: .4rem; }
+.rbi-logo-msg.erro { color: #fc8181; }
+.rbi-logo-msg.ok   { color: #26FF93; }
+
 /* ── Tabs do modal de configuração (Geral | Conexão — Conexão admin_interno only) ── */
 .rbi-tab-bar {
     display: flex;
@@ -988,6 +1011,25 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
                 <input type="text" class="rbi-field-input" id="rbi-edit-nome" autocomplete="off">
             </div>
 
+            <?php if ($_rtIsAdmin): ?>
+            <!-- Logo padrão do relatório — usado no card de login do Portal BI por qualquer
+                 portal deste relatório que não tenha seu próprio logo (ver portais-bi.php).
+                 Upload é imediato (não depende do botão Salvar) — o próprio input dispara o POST. -->
+            <div class="rbi-field">
+                <label class="rbi-field-label">Logo do relatório <span style="text-transform:none;font-weight:400;color:rgba(255,255,255,.3)">(padrão para portais sem logo próprio)</span></label>
+                <div class="rbi-logo-row">
+                    <img id="rbi-logo-preview" class="rbi-logo-preview" style="display:none" alt="Logo atual">
+                    <span id="rbi-logo-empty" class="rbi-logo-empty">Nenhum — usa o logo KW24</span>
+                    <label class="rbi-btn-logo-upload">
+                        <i class="ti ti-upload"></i> Enviar logo
+                        <input type="file" id="rbi-logo-input" accept=".png,.jpg,.jpeg,.svg" style="display:none">
+                    </label>
+                    <button type="button" class="rbi-btn-logo-remove" id="rbi-logo-remove-btn" style="display:none">Remover</button>
+                </div>
+                <div id="rbi-logo-msg" class="rbi-logo-msg" style="display:none"></div>
+            </div>
+            <?php endif; ?>
+
             <div class="rbi-field">
                 <label class="rbi-field-label">Visibilidade</label>
                 <div class="rbi-vis-row">
@@ -1271,6 +1313,70 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
     const btnGrid    = document.getElementById('rbi-view-grid');
     const btnList    = document.getElementById('rbi-view-list');
 
+    // ── Logo do relatório (admin_interno only — elementos null pra quem não é admin) ──
+    const logoPreview  = document.getElementById('rbi-logo-preview');
+    const logoEmpty    = document.getElementById('rbi-logo-empty');
+    const logoInput    = document.getElementById('rbi-logo-input');
+    const logoRemoveBtn = document.getElementById('rbi-logo-remove-btn');
+    const logoMsg      = document.getElementById('rbi-logo-msg');
+
+    function logoShowMsg(texto, tipo) {
+        if (!logoMsg) return;
+        logoMsg.textContent = texto;
+        logoMsg.className = 'rbi-logo-msg ' + tipo;
+        logoMsg.style.display = '';
+    }
+    function renderLogoPreview(logoPath) {
+        if (!logoPreview) return;
+        if (logoPath) {
+            logoPreview.src = logoPath + '?t=' + Date.now(); // evita cache do navegador após reupload
+            logoPreview.style.display = '';
+            if (logoEmpty) logoEmpty.style.display = 'none';
+            if (logoRemoveBtn) logoRemoveBtn.style.display = '';
+        } else {
+            logoPreview.style.display = 'none';
+            if (logoEmpty) logoEmpty.style.display = '';
+            if (logoRemoveBtn) logoRemoveBtn.style.display = 'none';
+        }
+    }
+    if (logoInput) {
+        logoInput.addEventListener('change', function () {
+            const file = logoInput.files && logoInput.files[0];
+            if (!file) return;
+            const fd = new FormData();
+            fd.append('id', editId.value);
+            fd.append('logo', file);
+            if (logoMsg) logoMsg.style.display = 'none';
+            fetch('/api/relatorios-bi.php?action=upload-logo', { method: 'POST', body: fd })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    if (res.success) {
+                        renderLogoPreview(res.logo_path);
+                        logoShowMsg('Logo atualizado.', 'ok');
+                    } else {
+                        logoShowMsg(res.erro || 'Erro ao enviar logo', 'erro');
+                    }
+                })
+                .catch(function () { logoShowMsg('Erro de rede ao enviar logo.', 'erro'); })
+                .finally(function () { logoInput.value = ''; });
+        });
+    }
+    if (logoRemoveBtn) {
+        logoRemoveBtn.addEventListener('click', function () {
+            fetch('/api/relatorios-bi.php?action=remove-logo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: parseInt(editId.value) }),
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (res.success) { renderLogoPreview(null); logoShowMsg('Logo removido.', 'ok'); }
+                else logoShowMsg(res.erro || 'Erro ao remover logo', 'erro');
+            })
+            .catch(function () { logoShowMsg('Erro de rede ao remover logo.', 'erro'); });
+        });
+    }
+
     // ── Tabs do modal (Geral | Conexão — Conexão só existe no DOM para admin_interno) ──
     const tabBtnGeral   = document.getElementById('rbi-tab-btn-geral');
     const tabBtnConexao = document.getElementById('rbi-tab-btn-conexao');
@@ -1468,6 +1574,8 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
         editNome.value = card.nome_amigavel;
         setVis(card.visivel !== false);
         setConstrucao(card.em_construcao === true);
+        renderLogoPreview(card.logo_path || null);
+        if (logoMsg) logoMsg.style.display = 'none';
         switchTab('geral'); // sempre abre na aba Geral, independente da aba deixada aberta da última vez
         if (lixeiraConfirmInput) lixeiraConfirmInput.value = '';
         if (btnLixeiraConfirm)   btnLixeiraConfirm.disabled = true;

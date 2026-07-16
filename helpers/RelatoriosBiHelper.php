@@ -81,6 +81,81 @@ function escreverDbConfigJson(string $slug, array $cfg): bool {
     return $ok;
 }
 
+// ── Logo de cliente (relatorios_bi.logo_path / portais_bi.logo_path) ───────────────
+// Armazenamento: assets/img/logos-clientes/ dentro do próprio webroot — gitignored
+// (nunca versionado, ver .gitignore), então sobrevive normalmente a deploys: `git pull`
+// só atualiza arquivos rastreados, nunca apaga o que está fora do controle do git.
+// Nome de arquivo determinístico ({prefixo}_{id}.{ext}) — reupload sempre sobrescreve,
+// sem acumular lixo; se a extensão mudar entre uploads, o arquivo antigo é removido antes.
+const RBI_LOGO_DIR      = __DIR__ . '/../assets/img/logos-clientes';
+const RBI_LOGO_URL_BASE = '/assets/img/logos-clientes';
+const RBI_LOGO_MAX_BYTES = 2 * 1024 * 1024; // 2MB — suficiente para um logo, evita abuso
+
+/**
+ * Valida e salva um logo enviado via upload (PNG/JPG/SVG, até 2MB). Nunca lança —
+ * retorna ['sucesso' => bool, 'erro' => string] em falha ou
+ * ['sucesso' => true, 'logo_path' => '/assets/img/logos-clientes/...'] em sucesso.
+ *
+ * @param array|null $arquivo uma entrada de $_FILES (ex.: $_FILES['logo'] ?? null)
+ * @param string $prefixo 'relatorio' ou 'portal' — namespace do arquivo no disco
+ * @param int $id id da linha (relatorios_bi.id ou portais_bi.id)
+ */
+function validarESalvarLogo(?array $arquivo, string $prefixo, int $id): array {
+    if (!$arquivo || ($arquivo['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+        return ['sucesso' => false, 'erro' => 'Nenhum arquivo enviado'];
+    }
+    if ($arquivo['error'] !== UPLOAD_ERR_OK) {
+        return ['sucesso' => false, 'erro' => 'Falha no upload do arquivo'];
+    }
+    if ($arquivo['size'] <= 0 || $arquivo['size'] > RBI_LOGO_MAX_BYTES) {
+        return ['sucesso' => false, 'erro' => 'Arquivo inválido ou maior que 2MB'];
+    }
+
+    $nomeOriginal = $arquivo['name'] ?? '';
+    $extOriginal  = strtolower(pathinfo($nomeOriginal, PATHINFO_EXTENSION));
+    $mime         = @mime_content_type($arquivo['tmp_name']) ?: '';
+
+    $ext = null;
+    if ($mime === 'image/png') {
+        $ext = 'png';
+    } elseif (in_array($mime, ['image/jpeg', 'image/jpg'], true)) {
+        $ext = 'jpg';
+    } elseif ($mime === 'image/svg+xml' || ($extOriginal === 'svg' && str_contains($mime, 'xml'))) {
+        // fileinfo às vezes detecta SVG como text/xml genérico — checa a extensão original
+        // como segundo sinal, mas SEMPRE inspeciona o conteúdo antes de aceitar.
+        $conteudo = @file_get_contents($arquivo['tmp_name']);
+        if ($conteudo === false || stripos($conteudo, '<svg') === false || stripos($conteudo, '<script') !== false) {
+            return ['sucesso' => false, 'erro' => 'Arquivo SVG inválido ou não permitido'];
+        }
+        $ext = 'svg';
+    }
+    if ($ext === null) {
+        return ['sucesso' => false, 'erro' => 'Tipo de arquivo inválido — use PNG, JPG ou SVG'];
+    }
+
+    if (!is_dir(RBI_LOGO_DIR) && !@mkdir(RBI_LOGO_DIR, 0755, true) && !is_dir(RBI_LOGO_DIR)) {
+        return ['sucesso' => false, 'erro' => 'Falha ao preparar diretório de armazenamento'];
+    }
+
+    removerArquivoLogo($prefixo, $id); // limpa arquivo antigo (extensão pode ter mudado)
+
+    $nomeArquivo = "{$prefixo}_{$id}.{$ext}";
+    $destino     = RBI_LOGO_DIR . '/' . $nomeArquivo;
+    if (!@move_uploaded_file($arquivo['tmp_name'], $destino)) {
+        return ['sucesso' => false, 'erro' => 'Falha ao salvar o arquivo no servidor'];
+    }
+    @chmod($destino, 0644);
+
+    return ['sucesso' => true, 'logo_path' => RBI_LOGO_URL_BASE . '/' . $nomeArquivo];
+}
+
+/** Remove qualquer logo já salvo para {prefixo}_{id}, em qualquer extensão. */
+function removerArquivoLogo(string $prefixo, int $id): void {
+    foreach ((glob(RBI_LOGO_DIR . "/{$prefixo}_{$id}.*") ?: []) as $antigo) {
+        @unlink($antigo);
+    }
+}
+
 /**
  * Homóglifos cirílicos comuns (visualmente idênticos a letras latinas) — comum em
  * exports de ferramentas de terceiros (ex.: Bitrix Contact Center) que acabam

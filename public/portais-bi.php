@@ -99,6 +99,29 @@ $_pbiVisiveis = $_pbiIsAdmin ? null : ($_SESSION['relatorios_visiveis'] ?? []);
 .portais-input-row { display: flex; gap: .5rem; }
 .portais-input-row .portais-input { flex: 1; }
 
+/* Logo do portal — override opcional do logo padrão do relatório (só em modo edição,
+   já que precisa de um id existente pra associar o arquivo — mesmo padrão de "Nova senha"). */
+.portais-logo-row { display: flex; align-items: center; gap: .55rem; flex-wrap: wrap; }
+.portais-logo-preview {
+    width: 38px; height: 38px; object-fit: contain; border-radius: 7px;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); padding: .15rem;
+}
+.portais-logo-empty { font-size: .68rem; color: rgba(255,255,255,.3); }
+.portais-btn-logo-upload {
+    display: inline-flex; align-items: center; gap: .3rem;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 7px; color: rgba(255,255,255,.75); font-size: .68rem; font-weight: 600;
+    padding: .35rem .65rem; cursor: pointer; transition: background .15s;
+}
+.portais-btn-logo-upload:hover { background: rgba(255,255,255,0.16); }
+.portais-btn-logo-remove {
+    background: none; border: none; color: #fc8181; font-size: .68rem; font-weight: 600;
+    cursor: pointer; padding: .35rem .4rem;
+}
+.portais-logo-msg { font-size: .65rem; margin-top: .3rem; }
+.portais-logo-msg.ok  { color: #26FF93; }
+.portais-logo-msg.err { color: #fc8181; }
+
 /* Multi-select custom */
 .portais-multisel {
     background: rgba(255,255,255,0.08);
@@ -372,6 +395,23 @@ $_pbiVisiveis = $_pbiIsAdmin ? null : ($_SESSION['relatorios_visiveis'] ?? []);
                     <div class="portais-field">
                         <label>Nome</label>
                         <input type="text" class="portais-input" id="pbi-nome" placeholder="Referência interna">
+                    </div>
+
+                    <!-- Logo próprio deste portal — sobrepõe o logo padrão do relatório. Só faz
+                         sentido em edição (upload precisa de um id de portal já existente),
+                         mesmo padrão de visibilidade condicional já usado por "Nova senha" abaixo. -->
+                    <div class="portais-field" id="pbi-logo-field" style="display:none">
+                        <label>Logo do portal <span style="text-transform:none;font-weight:400;color:rgba(255,255,255,.3)">(sobrepõe o logo do relatório)</span></label>
+                        <div class="portais-logo-row">
+                            <img id="pbi-logo-preview" class="portais-logo-preview" style="display:none" alt="Logo atual">
+                            <span id="pbi-logo-empty" class="portais-logo-empty">Nenhum — usa o logo do relatório</span>
+                            <label class="portais-btn-logo-upload">
+                                <i class="fas fa-upload"></i> Enviar
+                                <input type="file" id="pbi-logo-input" accept=".png,.jpg,.jpeg,.svg" style="display:none">
+                            </label>
+                            <button type="button" class="portais-btn-logo-remove" id="pbi-logo-remove-btn" style="display:none">Remover</button>
+                        </div>
+                        <div id="pbi-logo-msg" class="portais-logo-msg" style="display:none"></div>
                     </div>
 
                     <div class="portais-field" id="pbi-senha-field">
@@ -896,8 +936,73 @@ $_pbiVisiveis = $_pbiIsAdmin ? null : ($_SESSION['relatorios_visiveis'] ?? []);
         document.getElementById('pbi-cancel-btn').style.display        = '';
         document.getElementById('pbi-senha-field').style.display       = 'none';
         document.getElementById('pbi-nova-senha-field').style.display  = '';
+        document.getElementById('pbi-logo-field').style.display        = '';
+        pbiRenderLogoPreview(p.logo_path || null);
         pbiOpenModal();
     };
+
+    // ── Logo do portal (só em edição — precisa de um id de portal já existente) ──
+    function pbiRenderLogoPreview(logoPath) {
+        var preview = document.getElementById('pbi-logo-preview');
+        var empty   = document.getElementById('pbi-logo-empty');
+        var remove  = document.getElementById('pbi-logo-remove-btn');
+        var msg     = document.getElementById('pbi-logo-msg');
+        if (msg) msg.style.display = 'none';
+        if (logoPath) {
+            preview.src = logoPath + '?t=' + Date.now();
+            preview.style.display = '';
+            empty.style.display  = 'none';
+            remove.style.display = '';
+        } else {
+            preview.style.display = 'none';
+            empty.style.display  = '';
+            remove.style.display = 'none';
+        }
+    }
+    function pbiLogoMsg(texto, isErr) {
+        var msg = document.getElementById('pbi-logo-msg');
+        if (!msg) return;
+        msg.textContent = texto;
+        msg.className = 'portais-logo-msg ' + (isErr ? 'err' : 'ok');
+        msg.style.display = '';
+    }
+    var pbiLogoInput = document.getElementById('pbi-logo-input');
+    if (pbiLogoInput) {
+        pbiLogoInput.addEventListener('change', function () {
+            var file = pbiLogoInput.files && pbiLogoInput.files[0];
+            var id   = document.getElementById('pbi-edit-id').value;
+            if (!file || !id) return;
+            var fd = new FormData();
+            fd.append('id', id);
+            fd.append('logo', file);
+            fetch('/api/portais-bi.php?action=upload-logo', { method: 'POST', body: fd })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    if (res.sucesso) { pbiRenderLogoPreview(res.logo_path); pbiLogoMsg('Logo atualizado.', false); }
+                    else pbiLogoMsg(res.erro || 'Erro ao enviar logo', true);
+                })
+                .catch(function () { pbiLogoMsg('Erro de rede ao enviar logo.', true); })
+                .finally(function () { pbiLogoInput.value = ''; });
+        });
+    }
+    var pbiLogoRemoveBtn = document.getElementById('pbi-logo-remove-btn');
+    if (pbiLogoRemoveBtn) {
+        pbiLogoRemoveBtn.addEventListener('click', function () {
+            var id = document.getElementById('pbi-edit-id').value;
+            if (!id) return;
+            fetch('/api/portais-bi.php?action=remove-logo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: parseInt(id) }),
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (res.sucesso) { pbiRenderLogoPreview(null); pbiLogoMsg('Logo removido.', false); }
+                else pbiLogoMsg(res.erro || 'Erro ao remover logo', true);
+            })
+            .catch(function () { pbiLogoMsg('Erro de rede ao remover logo.', true); });
+        });
+    }
 
     window.pbiToggle = function (id) {
         fetch('/api/portais-bi.php?action=toggle', {
@@ -951,6 +1056,8 @@ $_pbiVisiveis = $_pbiIsAdmin ? null : ($_SESSION['relatorios_visiveis'] ?? []);
         document.getElementById('pbi-nome').value       = '';
         document.getElementById('pbi-senha').value      = '';
         document.getElementById('pbi-nova-senha').value = '';
+        document.getElementById('pbi-logo-field').style.display = 'none';
+        pbiRenderLogoPreview(null);
 
         // Volta ao estado padrão do toggle (Parceiro/Oportunidade) sem disparar fetch —
         // o modal já vai fechar em seguida.

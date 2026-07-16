@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/../services/AuthenticationService.php';
 require_once __DIR__ . '/../helpers/Database.php';
+require_once __DIR__ . '/../helpers/RelatoriosBiHelper.php';
 
 header('Content-Type: application/json');
 
@@ -23,7 +24,7 @@ if ($action === 'list') {
     // Na lixeira (lixeira_em preenchido) some do hub INTEIRO, admin incluído — só aparece
     // na tela dedicada Lixeira (api/relatorio-excluir.php?action=lixeira-list).
     $rows = $db->fetchAll(
-        'SELECT id, slug, nome_amigavel, visivel, em_construcao FROM relatorios_bi WHERE lixeira_em IS NULL ORDER BY ordem ASC'
+        'SELECT id, slug, nome_amigavel, visivel, em_construcao, logo_path FROM relatorios_bi WHERE lixeira_em IS NULL ORDER BY ordem ASC'
     );
 
     // "Em construção" (Etapa 2 do self-service): visível SÓ para admin_interno,
@@ -129,6 +130,52 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $row = $db->fetchAll('SELECT slug FROM relatorios_bi WHERE id = :id', [':id' => $id]);
     echo json_encode(['success' => true, 'slug' => $row[0]['slug'] ?? '']);
+    exit;
+}
+
+// Logo padrão do relatório — decisão de nível admin (afeta todos os portais sem
+// override próprio), por isso restrito a admin_interno mesmo a aba Geral sendo
+// visível a todo mundo.
+if ($action === 'upload-logo' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (($auth->getCurrentUser()['perfil'] ?? '') !== 'admin_interno') {
+        http_response_code(403);
+        echo json_encode(['erro' => 'Acesso restrito a administradores']);
+        exit;
+    }
+    $id = (int)($_POST['id'] ?? 0);
+    if (!$id) {
+        http_response_code(400);
+        echo json_encode(['erro' => 'id inválido']);
+        exit;
+    }
+    $resultado = validarESalvarLogo($_FILES['logo'] ?? null, 'relatorio', $id);
+    if (!$resultado['sucesso']) {
+        echo json_encode(['erro' => $resultado['erro']]);
+        exit;
+    }
+    $db->execute('UPDATE relatorios_bi SET logo_path = :logo WHERE id = :id', [
+        ':logo' => $resultado['logo_path'], ':id' => $id,
+    ]);
+    echo json_encode(['success' => true, 'logo_path' => $resultado['logo_path']]);
+    exit;
+}
+
+if ($action === 'remove-logo' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (($auth->getCurrentUser()['perfil'] ?? '') !== 'admin_interno') {
+        http_response_code(403);
+        echo json_encode(['erro' => 'Acesso restrito a administradores']);
+        exit;
+    }
+    $body = json_decode(file_get_contents('php://input'), true) ?? [];
+    $id   = (int)($body['id'] ?? 0);
+    if (!$id) {
+        http_response_code(400);
+        echo json_encode(['erro' => 'id inválido']);
+        exit;
+    }
+    removerArquivoLogo('relatorio', $id);
+    $db->execute('UPDATE relatorios_bi SET logo_path = NULL WHERE id = :id', [':id' => $id]);
+    echo json_encode(['success' => true]);
     exit;
 }
 

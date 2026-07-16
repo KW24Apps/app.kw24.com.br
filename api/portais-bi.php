@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../services/AuthenticationService.php';
 require_once __DIR__ . '/../helpers/Database.php';
 require_once __DIR__ . '/../services/NimbusTaxPortalSync.php';
+require_once __DIR__ . '/../helpers/RelatoriosBiHelper.php';
 
 header('Content-Type: application/json');
 
@@ -48,7 +49,7 @@ try {
     // ── GET: list all portals ───────────────────────────────────────────────
     if ($action === 'list' && $_SERVER['REQUEST_METHOD'] === 'GET') {
         $sqlList = 'SELECT id, relatorio_slug, filter_type, filter_values, filter_labels,
-                    slug, nome, embed_token, ativo,
+                    slug, nome, embed_token, ativo, logo_path,
                     ct_indicador_values, ct_indicador_labels,
                     ct_contab_values, ct_contab_labels, ct_completo,
                     to_char(created_at, \'DD/MM/YYYY\') AS created_fmt
@@ -429,6 +430,34 @@ try {
             ];
             NimbusTaxPortalSync::sync($oldForSync, null, null);
         }
+
+        echo json_encode(['sucesso' => true]);
+        exit;
+    }
+
+    // ── POST: upload-logo / remove-logo (override do portal — mesmo gate de acesso
+    // do resto do arquivo: admin_interno ou pode_criar_portal) ────────────────────
+    if ($action === 'upload-logo' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $id = (int)($_POST['id'] ?? 0);
+        if (!$id) { echo json_encode(['erro' => 'ID inválido']); exit; }
+
+        $resultado = validarESalvarLogo($_FILES['logo'] ?? null, 'portal', $id);
+        if (!$resultado['sucesso']) { echo json_encode(['erro' => $resultado['erro']]); exit; }
+
+        $pdo->prepare('UPDATE portais_bi SET logo_path = ? WHERE id = ?')
+            ->execute([$resultado['logo_path'], $id]);
+
+        echo json_encode(['sucesso' => true, 'logo_path' => $resultado['logo_path']]);
+        exit;
+    }
+
+    if ($action === 'remove-logo' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $body = json_decode(file_get_contents('php://input'), true) ?? [];
+        $id   = (int)($body['id'] ?? 0);
+        if (!$id) { echo json_encode(['erro' => 'ID inválido']); exit; }
+
+        removerArquivoLogo('portal', $id);
+        $pdo->prepare('UPDATE portais_bi SET logo_path = NULL WHERE id = ?')->execute([$id]);
 
         echo json_encode(['sucesso' => true]);
         exit;
