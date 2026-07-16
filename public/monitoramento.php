@@ -1032,8 +1032,29 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     align-items: center;
     gap: var(--mon-sp-base);
     margin-bottom: .4rem;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background .15s;
 }
 .fun-dist-row:last-child { margin-bottom: 0; }
+.fun-dist-row:hover { background: rgba(255,255,255,.03); }
+/* Bucket/sub-item usado como filtro ativo do Chamados abertos (ver monFiltrarPorEtapaBucket()/
+ * monFiltrarPorSubItem()) — destaque visual pra indicar qual está filtrando agora. */
+.fun-dist-row.ativo { background: rgba(13,194,255,.10); }
+.fun-dist-row.ativo .fun-dist-label { color: #fff; font-weight: 700; }
+.fun-dist-chevron {
+    flex: 0 0 14px;
+    text-align: center;
+    font-size: var(--mon-fs-2xs);
+    color: rgba(255,255,255,.4);
+    cursor: pointer;
+}
+.fun-dist-chevron:hover { color: #fff; }
+.fun-dist-chevron-vazio { flex: 0 0 14px; }
+/* Sub-itens de "Demandas em Execução" — só aparecem quando expandido (ver
+ * monToggleExecucaoExpandida()), indentados e mais discretos que os buckets principais. */
+.fun-dist-subitem { padding-left: var(--mon-sp-lg); }
+.fun-dist-subitem .fun-dist-label { color: rgba(255,255,255,.5); font-size: var(--mon-fs-xs); }
 .fun-dist-label {
     flex: 0 0 clamp(110px, 11vw, 150px);
     min-width: 0;
@@ -2296,7 +2317,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         chaRenderFiltroPessoas(todos);
 
         var visiveis = todos.filter(function (c) {
-            return chaSelectedTipos.has(chaChaveTipo(c)) && chaPassaFiltroPessoa(c);
+            return chaSelectedTipos.has(chaChaveTipo(c)) && chaPassaFiltroPessoa(c) && monPassaFiltroEtapa(c);
         });
         visiveis = chaAplicarOrdenacao(visiveis);
 
@@ -2340,38 +2361,105 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     }
 
     var FUN_DIST_CORES = {
-        'Fila - Desenvolvimento': '#b794f4',
-        'Fila - Suporte':         '#0DC2FF',
-        'Pendente Cliente':       '#f6ad55',
-        'Treinamento/Validação':  '#a0aec0',
-        'Demandas - KW24':        '#26FF93',
-        // As 4 barras por pessoa (antes um único bucket "Atribuído a um colaborador")
-        // compartilham a mesma cor — se agrupam visualmente como "atribuído a alguém".
-        'Gabriel Acker':   '#ecc94b',
-        'Jeferson Santos': '#ecc94b',
-        'Tainá Oliveira':  '#ecc94b',
-        'Michael Botelho': '#ecc94b',
-        'Outros':                 '#718096',
+        'Fila - Desenvolvimento':     '#b794f4',
+        'Fila - Suporte':             '#0DC2FF',
+        'Fila - Demandas Programadas':'#26FF93',
+        'Demandas em Execução':       '#f6ad55',
+    };
+    var FUN_DIST_COR_SUBITEM = '#a0aec0'; // sub-itens de "Demandas em Execução" — neutro, secundário
+
+    // ── Clique-pra-filtrar o Chamados abertos a partir de um bucket/sub-item do Funil ──
+    // { chave, stages } | null — chave identifica QUEM está filtrando agora (pra saber se um
+    // clique é "no mesmo de novo" e pra destacar visualmente o item ativo, ver funDistRowHtml()).
+    var monEtapaFiltro         = null;
+    var monExecucaoExpandida   = false;
+    var lastFunilBuckets       = [];
+
+    function monPassaFiltroEtapa(c) {
+        if (!monEtapaFiltro) return true;
+        return monEtapaFiltro.stages.indexOf(c.etapa) !== -1;
+    }
+
+    // Clique num bucket de nível 1 (individual OU "Demandas em Execução" recolhido/como um
+    // todo) — clicar de novo no mesmo limpa o filtro (mostra tudo de novo).
+    window.monFiltrarPorEtapaBucket = function (idx) {
+        var bucket = lastFunilBuckets[idx];
+        if (!bucket) return;
+        var chave = 'b' + idx;
+        monEtapaFiltro = (monEtapaFiltro && monEtapaFiltro.chave === chave)
+            ? null
+            : { chave: chave, stages: bucket.stages };
+        renderFunilDistribuicao(lastFunilBuckets);
+        if (lastChamados) renderChamados(lastChamados);
     };
 
-    function funDistRowHtml(bucket, maxTotal) {
-        var cor    = FUN_DIST_CORES[bucket.label] || '#a0aec0';
+    // Clique num sub-item (só existe quando "Demandas em Execução" está expandido) — clicar de
+    // novo no mesmo sub-item NÃO limpa pra "mostrar tudo", volta 1 nível: pro filtro agregado
+    // dos 6 juntos (não é "de ninguém" — o usuário ainda estava dentro do agregado).
+    window.monFiltrarPorSubItem = function (idxAgregado, idxSub) {
+        var agregado = lastFunilBuckets[idxAgregado];
+        if (!agregado || !agregado.subItens) return;
+        var sub = agregado.subItens[idxSub];
+        if (!sub) return;
+        var chave         = 'b' + idxAgregado + 's' + idxSub;
+        var chaveAgregado = 'b' + idxAgregado;
+        monEtapaFiltro = (monEtapaFiltro && monEtapaFiltro.chave === chave)
+            ? { chave: chaveAgregado, stages: agregado.stages }
+            : { chave: chave, stages: sub.stages };
+        renderFunilDistribuicao(lastFunilBuckets);
+        if (lastChamados) renderChamados(lastChamados);
+    };
+
+    // Só expande/recolhe — não filtra nada (clique separado do clique-pra-filtrar do resto da
+    // linha, ver stopPropagation() no HTML do chevron).
+    window.monToggleExecucaoExpandida = function () {
+        monExecucaoExpandida = !monExecucaoExpandida;
+        renderFunilDistribuicao(lastFunilBuckets);
+    };
+
+    function funDistRowHtml(bucket, idx, maxTotal) {
+        var cor     = FUN_DIST_CORES[bucket.label] || '#a0aec0';
         var largura = maxTotal > 0 ? Math.round((bucket.total / maxTotal) * 100) : 0;
-        return '<div class="fun-dist-row">'
+        var chave   = 'b' + idx;
+        var ativo   = monEtapaFiltro && monEtapaFiltro.chave === chave;
+        var temSub  = !!(bucket.subItens && bucket.subItens.length);
+        var chevron = temSub
+            ? '<i class="fas fa-chevron-' + (monExecucaoExpandida ? 'down' : 'right') + ' fun-dist-chevron" onclick="event.stopPropagation();monToggleExecucaoExpandida()"></i>'
+            : '<span class="fun-dist-chevron-vazio"></span>';
+
+        var linha = '<div class="fun-dist-row' + (ativo ? ' ativo' : '') + '" onclick="monFiltrarPorEtapaBucket(' + idx + ')">'
+            + chevron
             + '<span class="fun-dist-label" title="' + escHtml(bucket.label) + '">' + escHtml(bucket.label) + '</span>'
             + '<span class="fun-dist-track"><span class="fun-dist-fill" style="width:' + largura + '%;background:' + cor + '"></span></span>'
             + '<span class="fun-dist-value">' + bucket.total + '</span>'
             + '</div>';
+
+        if (temSub && monExecucaoExpandida) {
+            var maxSub = bucket.subItens.reduce(function (m, s) { return Math.max(m, s.total); }, 0);
+            linha += bucket.subItens.map(function (sub, idxSub) {
+                var larguraSub = maxSub > 0 ? Math.round((sub.total / maxSub) * 100) : 0;
+                var chaveSub   = 'b' + idx + 's' + idxSub;
+                var ativoSub   = monEtapaFiltro && monEtapaFiltro.chave === chaveSub;
+                return '<div class="fun-dist-row fun-dist-subitem' + (ativoSub ? ' ativo' : '') + '" onclick="monFiltrarPorSubItem(' + idx + ',' + idxSub + ')">'
+                    + '<span class="fun-dist-chevron-vazio"></span>'
+                    + '<span class="fun-dist-label" title="' + escHtml(sub.label) + '">' + escHtml(sub.label) + '</span>'
+                    + '<span class="fun-dist-track"><span class="fun-dist-fill" style="width:' + larguraSub + '%;background:' + FUN_DIST_COR_SUBITEM + '"></span></span>'
+                    + '<span class="fun-dist-value">' + sub.total + '</span>'
+                    + '</div>';
+            }).join('');
+        }
+
+        return linha;
     }
 
     function renderFunilDistribuicao(buckets) {
         var el = document.getElementById('fun-dist-rows');
         if (!el) return;
 
-        var visiveis = (buckets || []).filter(function (b) { return b.label !== 'Outros' || b.total > 0; });
-        var maxTotal = visiveis.reduce(function (m, b) { return Math.max(m, b.total); }, 0);
+        lastFunilBuckets = buckets || [];
+        var maxTotal = lastFunilBuckets.reduce(function (m, b) { return Math.max(m, b.total); }, 0);
 
-        el.innerHTML = visiveis.map(function (b) { return funDistRowHtml(b, maxTotal); }).join('');
+        el.innerHTML = lastFunilBuckets.map(function (b, idx) { return funDistRowHtml(b, idx, maxTotal); }).join('');
     }
 
     function renderFunil(data) {

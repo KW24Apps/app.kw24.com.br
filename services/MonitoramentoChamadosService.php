@@ -189,6 +189,7 @@ class MonitoramentoChamadosService {
                 'prioridade'     => $prioridade,
                 'prioridadeLabel'=> self::PRIORIDADES[$prioridade]['label'] ?? null,
                 'prioridadeCor'  => self::PRIORIDADES[$prioridade]['cor'] ?? '#a0aec0',
+                'etapa'          => $stageId, // stageId bruto — usado pelo clique-pra-filtrar do gráfico de distribuição do Funil
                 'etapaLabel'     => self::ETAPAS[$stageId] ?? $stageId, // defensivo — não deveria faltar (ver nota da classe)
                 'empresaId'      => $companyId ?: null,
                 'empresaNome'    => $companyId ? ($nomesEmpresas[$companyId] ?? "Empresa #{$companyId}") : null,

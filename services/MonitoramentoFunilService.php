@@ -21,28 +21,29 @@ class MonitoramentoFunilService {
     // MonitoramentoChamadosService (soma bate com o total bruto do funil, sem estágio
     // esquecido). Duplicado aqui (não reaproveita a outra classe) pela mesma convenção já
     // usada no resto do código pra esse tipo de mapa pequeno e autocontido.
-    private const STAGE_DEV       = 'DT1054_208:NEW';
-    private const STAGE_SUPORTE   = 'DT1054_208:PREPARATION';
-    private const STAGE_KW24      = 'DT1054_208:UC_ZZ9RPV';
-    private const STAGE_CLIENTE   = 'DT1054_208:UC_UNOPWM';
-    private const STAGE_TREINO    = 'DT1054_208:UC_NUJRTQ';
-    private const STAGE_PROGRAMADAS = 'DT1054_208:CLIENT'; // não pedido como bucket próprio — cai em "Outros"
+    private const STAGE_DEV         = 'DT1054_208:NEW';
+    private const STAGE_SUPORTE     = 'DT1054_208:PREPARATION';
+    private const STAGE_PROGRAMADAS = 'DT1054_208:CLIENT';
 
-    // Estágio pessoal de cada um dos 4 da equipe no Funil 208 — vira 1 barra por pessoa na
-    // distribuição (ver distribuicaoAbertos()), não mais somado num bucket único.
-    private const STAGE_PESSOA_NOMES = [
+    // Os 6 estágios agregados no bucket "Demandas em Execução" (ver distribuicaoAbertos()) —
+    // 1 total somado + sub-itens expansíveis com a contagem individual de cada um.
+    private const STAGES_EXECUCAO = [
+        'DT1054_208:UC_UNOPWM' => 'Pendente Cliente',
         'DT1054_208:UC_1GHUI5' => 'Gabriel Acker',
         'DT1054_208:UC_ASEGSF' => 'Jeferson Santos',
         'DT1054_208:UC_DBW95I' => 'Tainá Oliveira',
         'DT1054_208:UC_F3HI83' => 'Michael Botelho',
+        'DT1054_208:UC_NUJRTQ' => 'Treinamento/Validação',
     ];
-    private const STAGES_PESSOA = [
-        'DT1054_208:UC_1GHUI5', 'DT1054_208:UC_ASEGSF', 'DT1054_208:UC_DBW95I', 'DT1054_208:UC_F3HI83',
-    ];
+
+    // 3 individuais + 6 agregados = os 9 estágios não-terminais reais do Funil 208 (confirmado
+    // ao vivo no Bitrix24) — "Demandas - KW24" (DT1054_208:UC_ZZ9RPV) existia aqui antes, mas
+    // foi confirmado que esse estágio não existe mais no funil real (sempre renderizava 0) —
+    // removido inteiramente, sem deixar referência morta.
     private const STAGES_ABERTOS = [
-        self::STAGE_DEV, self::STAGE_SUPORTE, self::STAGE_KW24, self::STAGE_PROGRAMADAS, self::STAGE_CLIENTE,
-        'DT1054_208:UC_1GHUI5', 'DT1054_208:UC_ASEGSF', 'DT1054_208:UC_DBW95I', 'DT1054_208:UC_F3HI83',
-        self::STAGE_TREINO,
+        self::STAGE_DEV, self::STAGE_SUPORTE, self::STAGE_PROGRAMADAS,
+        'DT1054_208:UC_UNOPWM', 'DT1054_208:UC_1GHUI5', 'DT1054_208:UC_ASEGSF',
+        'DT1054_208:UC_DBW95I', 'DT1054_208:UC_F3HI83', 'DT1054_208:UC_NUJRTQ',
     ];
 
     private BitrixService $bitrix;
@@ -86,12 +87,17 @@ class MonitoramentoFunilService {
      * atenção" (idade/estágio parado) — isso continua fora de escopo, aguardando os campos que o
      * usuário vai trazer depois. Aqui é só a foto atual de "quanto tem em cada fila".
      *
-     * Os 4 estágios por pessoa (Equipe) viram 1 barra cada, nomeada com o nome da pessoa —
-     * mesmos números já mostrados por pessoa no painel Equipe, só que aqui como parte da
-     * distribuição geral. "Outros" pega qualquer estágio aberto não nomeado explicitamente
-     * (hoje só "Fila - Demandas Programadas"), garantindo que a soma dos buckets sempre bata
-     * com o total de chamados abertos mostrado no painel Chamados abertos — nunca deve ficar
-     * de fora silenciosamente.
+     * 3 buckets individuais (Fila - Desenvolvimento/Suporte/Demandas Programadas) + 1 bucket
+     * agregado "Demandas em Execução" (soma dos 6 estágios de STAGES_EXECUCAO, com 'subItens'
+     * pro front expandir e mostrar a contagem individual de cada um). Nenhum "Outros" catch-all
+     * mais — os 9 estágios de STAGES_ABERTOS cobrem exatamente todos os estágios não-terminais
+     * reais do funil (confirmado ao vivo), então a soma dos buckets sempre bate com o total de
+     * chamados abertos do painel Chamados abertos sem precisar de um balde genérico.
+     *
+     * 'stages' em cada bucket/sub-item é a lista de stageId que ele representa — usada pelo
+     * front pro clique-pra-filtrar do Chamados abertos (ver monFiltrarPorEtapa() em
+     * monitoramento.php): clicar um bucket individual ou um sub-item filtra por 1 stageId só;
+     * clicar o bucket agregado (recolhido) filtra pelos 6 de uma vez.
      */
     private function distribuicaoAbertos(): array {
         $items = $this->bitrix->listItems(
@@ -107,25 +113,24 @@ class MonitoramentoFunilService {
             if (isset($contagem[$stage])) $contagem[$stage]++;
         }
 
-        $nomeados = array_merge(
-            [self::STAGE_DEV, self::STAGE_SUPORTE, self::STAGE_CLIENTE, self::STAGE_TREINO, self::STAGE_KW24],
-            self::STAGES_PESSOA
-        );
-        $outros = array_sum($contagem) - array_sum(array_intersect_key($contagem, array_flip($nomeados)));
-
-        $buckets = [
-            ['label' => 'Fila - Desenvolvimento', 'total' => $contagem[self::STAGE_DEV]],
-            ['label' => 'Fila - Suporte',          'total' => $contagem[self::STAGE_SUPORTE]],
-            ['label' => 'Pendente Cliente',        'total' => $contagem[self::STAGE_CLIENTE]],
-            ['label' => 'Treinamento/Validação',   'total' => $contagem[self::STAGE_TREINO]],
-            ['label' => 'Demandas - KW24',         'total' => $contagem[self::STAGE_KW24]],
-        ];
-        foreach (self::STAGE_PESSOA_NOMES as $stage => $nome) {
-            $buckets[] = ['label' => $nome, 'total' => $contagem[$stage]];
+        $subItens      = [];
+        $totalExecucao = 0;
+        foreach (self::STAGES_EXECUCAO as $stage => $label) {
+            $totalExecucao += $contagem[$stage];
+            $subItens[] = ['label' => $label, 'total' => $contagem[$stage], 'stages' => [$stage]];
         }
-        $buckets[] = ['label' => 'Outros', 'total' => $outros];
 
-        return $buckets;
+        return [
+            ['label' => 'Fila - Desenvolvimento',     'total' => $contagem[self::STAGE_DEV],         'stages' => [self::STAGE_DEV]],
+            ['label' => 'Fila - Suporte',              'total' => $contagem[self::STAGE_SUPORTE],     'stages' => [self::STAGE_SUPORTE]],
+            ['label' => 'Fila - Demandas Programadas', 'total' => $contagem[self::STAGE_PROGRAMADAS], 'stages' => [self::STAGE_PROGRAMADAS]],
+            [
+                'label'    => 'Demandas em Execução',
+                'total'    => $totalExecucao,
+                'stages'   => array_keys(self::STAGES_EXECUCAO),
+                'subItens' => $subItens,
+            ],
+        ];
     }
 
     /**
