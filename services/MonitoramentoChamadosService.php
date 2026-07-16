@@ -26,6 +26,7 @@ class MonitoramentoChamadosService {
     private const F_SOLICITANTE = 'ufCrm41_1737477724'; // Solicitante (texto livre, não é usuário Bitrix)
     private const F_RESUMO      = 'ufCrm41_1727788277'; // Comentário Resumo (texto longo, exibido só ao expandir)
     private const F_PRIORIDADE  = 'ufCrm41_1742220550'; // Prioridade
+    private const F_PREVISAO    = 'ufCrm41_1737476106'; // Data Prevista para término do Chamado (não obrigatório)
 
     // Cores reaproveitadas da paleta já usada em Tipo/Equipe (nenhuma cor nova) — ordenadas por
     // urgência visual: Urgente o mais alarmante (vermelho, mesmo tom de erro/atrasada), Baixa a
@@ -37,10 +38,13 @@ class MonitoramentoChamadosService {
         21816 => ['label' => 'Baixa',   'cor' => '#a0aec0'],
     ];
 
+    // Ordem real do pipeline do Funil 208 (mesmo critério já validado em
+    // MonitoramentoFunilService — "Demandas - KW24"/UC_ZZ9RPV confirmado morto, removido) — usada
+    // tanto pro filtro de estágios abertos quanto pro sort por Etapa no frontend (etapaOrdem,
+    // abaixo), que precisa da posição no pipeline, não da ordem alfabética do label.
     private const ETAPAS = [
         'DT1054_208:NEW'         => 'Fila - Desenvolvimento',
         'DT1054_208:PREPARATION' => 'Fila - Suporte',
-        'DT1054_208:UC_ZZ9RPV'   => 'Demandas - KW24',
         'DT1054_208:CLIENT'      => 'Fila - Demandas Programadas',
         'DT1054_208:UC_UNOPWM'   => 'Pendente Cliente',
         'DT1054_208:UC_1GHUI5'   => 'Gabriel Acker',
@@ -49,6 +53,10 @@ class MonitoramentoChamadosService {
         'DT1054_208:UC_F3HI83'   => 'Michael Botelho',
         'DT1054_208:UC_NUJRTQ'   => 'Treinamento/Validação',
     ];
+
+    // bitrixUserId de Gabriel Acker — mesmo roster usado em MonitoramentoEquipeService/
+    // MonitoramentoTarefasService. Único identidade usada pro chat (ver getDados()).
+    private const UID_GABRIEL = 21;
 
     private BitrixService $bitrix;
 
@@ -75,7 +83,7 @@ class MonitoramentoChamadosService {
         // Sem filtro por Tipo aqui de propósito — um tipo novo que apareça no futuro (fora do
         // catálogo conhecido) deve continuar aparecendo no painel (cai em "Outros" no
         // frontend), não desaparecer silenciosamente por não estar numa lista fixa.
-        $selectFields = ['id', self::F_NOME, 'title', self::F_TIPO, self::F_PRIORIDADE, 'stageId', self::F_RESP, 'createdTime', self::F_SOLICITANTE, 'companyId'];
+        $selectFields = ['id', self::F_NOME, 'title', self::F_TIPO, self::F_PRIORIDADE, 'stageId', self::F_RESP, 'createdTime', self::F_SOLICITANTE, 'companyId', self::F_PREVISAO];
         if ($detalheCompleto) $selectFields[] = self::F_RESUMO;
 
         $items = $this->bitrix->listItems(
@@ -109,39 +117,27 @@ class MonitoramentoChamadosService {
 
         // Chat: resolve o chat vinculado de cada card (sempre — é o que define 'temChat'), depois
         // busca mensagens recentes dos chats encontrados (só em modo detalhado — ver docblock
-        // acima). O webhook de automação frequentemente não é participante do chat de um card
-        // (ACCESS_ERROR) — quando o(s) responsável(is) do card têm webhook pessoal cadastrado
-        // (ver WebhooksPessoaisAtendimento, mesmo registro usado pelo painel Atendimento), usa o
-        // webhook do primeiro responsável cadastrado pra esse card específico, evitando o erro.
-        // Sem nenhum responsável cadastrado, cai no comportamento de sempre (webhook de
-        // automação, mesma chance de ACCESS_ERROR de hoje — caso esperado, não é bug).
+        // acima). O webhook de automação não é participante da maioria dos chats de card
+        // (ACCESS_ERROR) — confirmado ao vivo que o requisito real pra ler o chat completo, mesmo
+        // sem nunca ter participado dele, é o webhook pertencer a uma conta administradora do
+        // Bitrix24 (não é uma questão de "ser o responsável" — a tentativa anterior de casar por
+        // responsável era a causa errada). Usa sempre o webhook pessoal do Gabriel (conta admin,
+        // já cadastrado via WebhooksPessoaisAtendimento — mesmo registro do painel Atendimento)
+        // pra essa chamada, independente de quem é o responsável do card; sem esse webhook
+        // cadastrado, cai no webhook de automação (mesma chance de ACCESS_ERROR de antes).
         $itemIds        = array_column($items, 'id');
         $chatIdsPorItem = $itemIds ? $this->bitrix->getCrmChatIds(self::ENTITY_TYPE, $itemIds) : [];
 
         $mensagensPorChat = [];
         if ($detalheCompleto && $chatIdsPorItem) {
-            $webhookPorUid = (new WebhooksPessoaisAtendimento())->mapaWebhookPorUid();
+            $webhookPorUid   = (new WebhooksPessoaisAtendimento())->mapaWebhookPorUid();
+            $webhookAdminUrl = $webhookPorUid[self::UID_GABRIEL] ?? '';
+            $bitrixAdmin     = $webhookAdminUrl !== '' ? new BitrixService($webhookAdminUrl) : $this->bitrix;
 
-            // Agrupa chatIds por identidade (automação vs. cada webhook pessoal) — 1 chamada
-            // batch por identidade, não 1 por chamado.
-            $chatIdsPorIdentidade = []; // chave: '' (automação) ou webhookUrl => [chatId, ...]
-            foreach ($items as $it) {
-                $id     = (int)$it['id'];
-                $chatId = $chatIdsPorItem[$id] ?? null;
-                if ($chatId === null) continue;
-
-                $webhookUrl = '';
-                foreach ((array)($it[self::F_RESP] ?? []) as $uid) {
-                    if (isset($webhookPorUid[(int)$uid])) { $webhookUrl = $webhookPorUid[(int)$uid]; break; }
-                }
-                $chatIdsPorIdentidade[$webhookUrl][] = $chatId;
-            }
-
-            foreach ($chatIdsPorIdentidade as $webhookUrl => $chatIds) {
-                $bitrixIdentidade = $webhookUrl === '' ? $this->bitrix : new BitrixService($webhookUrl);
-                $mensagensPorChat += $bitrixIdentidade->getCrmChatMessages($chatIds, $mensagensPorChamado);
-            }
+            $mensagensPorChat = $bitrixAdmin->getCrmChatMessages(array_values($chatIdsPorItem), $mensagensPorChamado);
         }
+
+        $etapaOrdem = array_flip(array_keys(self::ETAPAS));
 
         $chamados = [];
         foreach ($items as $it) {
@@ -191,11 +187,13 @@ class MonitoramentoChamadosService {
                 'prioridadeCor'  => self::PRIORIDADES[$prioridade]['cor'] ?? '#a0aec0',
                 'etapa'          => $stageId, // stageId bruto — usado pelo clique-pra-filtrar do gráfico de distribuição do Funil
                 'etapaLabel'     => self::ETAPAS[$stageId] ?? $stageId, // defensivo — não deveria faltar (ver nota da classe)
+                'etapaOrdem'     => $etapaOrdem[$stageId] ?? 999, // posição no pipeline real (ver ETAPAS) — usado pro sort por Etapa no frontend, não a ordem alfabética do label
                 'empresaId'      => $companyId ?: null,
                 'empresaNome'    => $companyId ? ($nomesEmpresas[$companyId] ?? "Empresa #{$companyId}") : null,
                 'responsaveis'   => $responsaveis,
                 'solicitante'    => trim((string)($it[self::F_SOLICITANTE] ?? '')),
                 'createdTime'    => $it['createdTime'] ?? null,
+                'previsao'       => substr((string)($it[self::F_PREVISAO] ?? ''), 0, 10) ?: null,
                 'temChat'        => $chatId !== null,
                 'chatErro'       => $chatErro,
             ];

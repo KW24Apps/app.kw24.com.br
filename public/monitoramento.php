@@ -628,7 +628,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .cha-dropdown-empty { padding: var(--mon-sp-sm); font-size: var(--mon-fs-sm); color: rgba(255,255,255,.35); white-space: normal; }
 .cha-thead {
     display: grid;
-    grid-template-columns: clamp(21px,1.54vw,26px) minmax(clamp(112px,8.2vw,140px),1.4fr) minmax(clamp(80px,5.86vw,100px),0.8fr) minmax(clamp(88px,6.44vw,110px),0.9fr) minmax(clamp(64px,4.69vw,82px),0.6fr) minmax(clamp(80px,5.86vw,100px),0.8fr) minmax(clamp(72px,5.27vw,90px),0.8fr) clamp(62px,4.54vw,78px) clamp(40px,2.93vw,50px);
+    grid-template-columns: clamp(21px,1.54vw,26px) minmax(clamp(112px,8.2vw,140px),1.4fr) minmax(clamp(82px,6vw,104px),0.75fr) minmax(clamp(80px,5.86vw,100px),0.8fr) minmax(clamp(88px,6.44vw,110px),0.9fr) minmax(clamp(64px,4.69vw,82px),0.6fr) minmax(clamp(80px,5.86vw,100px),0.8fr) minmax(clamp(72px,5.27vw,90px),0.8fr) clamp(62px,4.54vw,78px) clamp(40px,2.93vw,50px);
     gap: var(--mon-sp-base);
     align-items: center;
     padding: var(--mon-sp-sm) var(--mon-sp-lg);
@@ -677,7 +677,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .cha-row:last-child { border-bottom: none; }
 .cha-row-main {
     display: grid;
-    grid-template-columns: clamp(21px,1.54vw,26px) minmax(clamp(112px,8.2vw,140px),1.4fr) minmax(clamp(80px,5.86vw,100px),0.8fr) minmax(clamp(88px,6.44vw,110px),0.9fr) minmax(clamp(64px,4.69vw,82px),0.6fr) minmax(clamp(80px,5.86vw,100px),0.8fr) minmax(clamp(72px,5.27vw,90px),0.8fr) clamp(62px,4.54vw,78px) clamp(40px,2.93vw,50px);
+    grid-template-columns: clamp(21px,1.54vw,26px) minmax(clamp(112px,8.2vw,140px),1.4fr) minmax(clamp(82px,6vw,104px),0.75fr) minmax(clamp(80px,5.86vw,100px),0.8fr) minmax(clamp(88px,6.44vw,110px),0.9fr) minmax(clamp(64px,4.69vw,82px),0.6fr) minmax(clamp(80px,5.86vw,100px),0.8fr) minmax(clamp(72px,5.27vw,90px),0.8fr) clamp(62px,4.54vw,78px) clamp(40px,2.93vw,50px);
     gap: var(--mon-sp-base);
     align-items: center;
     padding: var(--mon-sp-xs) var(--mon-sp-lg);
@@ -728,6 +728,14 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     justify-self: start;
 }
 .cha-etapa {
+    font-size: var(--mon-fs-sm);
+    color: rgba(255,255,255,.5);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+.cha-data {
     font-size: var(--mon-fs-sm);
     color: rgba(255,255,255,.5);
     white-space: nowrap;
@@ -791,7 +799,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 /* ===== MONITORAMENTO KW24 — Tarefas ===== */
 .tsk-thead {
     display: grid;
-    grid-template-columns: clamp(21px,1.54vw,26px) clamp(56px,4.1vw,70px) minmax(clamp(88px,6.44vw,110px),1.6fr) minmax(clamp(56px,4.1vw,70px),0.8fr) minmax(clamp(56px,4.1vw,70px),0.8fr) minmax(clamp(48px,3.51vw,60px),0.7fr) minmax(clamp(48px,3.51vw,60px),0.7fr) minmax(clamp(64px,4.69vw,80px),0.7fr) clamp(16px,1.17vw,20px);
+    grid-template-columns: clamp(21px,1.54vw,26px) clamp(56px,4.1vw,70px) minmax(clamp(88px,6.44vw,110px),1.6fr) clamp(60px,4.4vw,76px) minmax(clamp(56px,4.1vw,70px),0.8fr) minmax(clamp(56px,4.1vw,70px),0.8fr) minmax(clamp(48px,3.51vw,60px),0.7fr) minmax(clamp(48px,3.51vw,60px),0.7fr) minmax(clamp(64px,4.69vw,80px),0.7fr) clamp(16px,1.17vw,20px);
     gap: var(--mon-sp-base);
     align-items: center;
     padding: var(--mon-sp-sm) var(--mon-sp-lg);
@@ -824,7 +832,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 .tsk-row:last-child { border-bottom: none; }
 .tsk-row-main {
     display: grid;
-    grid-template-columns: clamp(21px,1.54vw,26px) clamp(56px,4.1vw,70px) minmax(clamp(88px,6.44vw,110px),1.6fr) minmax(clamp(56px,4.1vw,70px),0.8fr) minmax(clamp(56px,4.1vw,70px),0.8fr) minmax(clamp(48px,3.51vw,60px),0.7fr) minmax(clamp(48px,3.51vw,60px),0.7fr) minmax(clamp(64px,4.69vw,80px),0.7fr) clamp(16px,1.17vw,20px);
+    grid-template-columns: clamp(21px,1.54vw,26px) clamp(56px,4.1vw,70px) minmax(clamp(88px,6.44vw,110px),1.6fr) clamp(60px,4.4vw,76px) minmax(clamp(56px,4.1vw,70px),0.8fr) minmax(clamp(56px,4.1vw,70px),0.8fr) minmax(clamp(48px,3.51vw,60px),0.7fr) minmax(clamp(48px,3.51vw,60px),0.7fr) minmax(clamp(64px,4.69vw,80px),0.7fr) clamp(16px,1.17vw,20px);
     gap: var(--mon-sp-base);
     align-items: center;
     padding: var(--mon-sp-xs) var(--mon-sp-lg);
@@ -863,6 +871,14 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
 }
 .tsk-th-prazo { justify-content: flex-end; } /* alinha com .tsk-deadline (text-align:right) */
 .tsk-pessoa-cell { min-width: 0; overflow: hidden; }
+.tsk-criado {
+    font-size: var(--mon-fs-sm);
+    color: rgba(255,255,255,.5);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
 .tsk-outros { display: flex; flex-wrap: wrap; gap: var(--mon-sp-xs); min-width: 0; }
 .tsk-badge {
     display: inline-block;
@@ -1352,12 +1368,13 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                 <div class="cha-thead">
                     <span></span>
                     <span class="cha-th">Chamado</span>
-                    <span class="cha-th">Empresa</span>
+                    <span class="cha-th cha-th-sort" data-col="data" onclick="chaOrdenarPor('data')">Criado/Prev.<i class="fas fa-sort mon-sort-icon"></i></span>
+                    <span class="cha-th cha-th-sort" data-col="empresa" onclick="chaOrdenarPor('empresa')">Empresa<i class="fas fa-sort mon-sort-icon"></i></span>
                     <span class="cha-th cha-th-sort" data-col="tipo" onclick="chaOrdenarPor('tipo')">Tipo<i class="fas fa-sort mon-sort-icon"></i></span>
                     <span class="cha-th cha-th-sort" data-col="prioridade" onclick="chaOrdenarPor('prioridade')">Prior.<i class="fas fa-sort mon-sort-icon"></i></span>
                     <span class="cha-th cha-th-sort" data-col="etapa" onclick="chaOrdenarPor('etapa')">Etapa<i class="fas fa-sort mon-sort-icon"></i></span>
-                    <span class="cha-th">Solicitante</span>
-                    <span class="cha-th">Resp.</span>
+                    <span class="cha-th cha-th-sort" data-col="solicitante" onclick="chaOrdenarPor('solicitante')">Solicitante<i class="fas fa-sort mon-sort-icon"></i></span>
+                    <span class="cha-th cha-th-sort" data-col="responsavel" onclick="chaOrdenarPor('responsavel')">Resp.<i class="fas fa-sort mon-sort-icon"></i></span>
                     <span></span>
                 </div>
                 <div class="cha-list" id="cha-list">
@@ -1370,6 +1387,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                     <span></span>
                     <span></span>
                     <span class="tsk-th">Tarefa</span>
+                    <span class="tsk-th">Criado</span>
                     <span class="tsk-th tsk-th-sort" data-col="criador" onclick="tskOrdenarPor('criador')">Criador<i class="fas fa-sort mon-sort-icon"></i></span>
                     <span class="tsk-th tsk-th-sort" data-col="responsavel" onclick="tskOrdenarPor('responsavel')">Responsável<i class="fas fa-sort mon-sort-icon"></i></span>
                     <span class="tsk-th tsk-th-sort" data-col="participantes" onclick="tskOrdenarPor('participantes')">Participantes<i class="fas fa-sort mon-sort-icon"></i></span>
@@ -1661,6 +1679,7 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
                 + '<button class="tsk-chevron-btn" id="tsk-btn-' + t.id + '"><i class="fas fa-chevron-right" style="font-size:.7rem"></i></button>'
                 + idHtml
                 + '<span class="tsk-row-title">' + escHtml(t.titulo) + '</span>'
+                + '<span class="tsk-criado" title="' + escHtml(fmtDiaMes((t.criadoEm || '').slice(0, 10))) + '">' + escHtml(fmtDiaMes((t.criadoEm || '').slice(0, 10))) + '</span>'
                 + '<span class="tsk-pessoa-cell">' + tskPessoaChipHtml(t.criador) + '</span>'
                 + '<span class="tsk-pessoa-cell">' + tskPessoaChipHtml(t.responsavel) + '</span>'
                 + '<span class="tsk-outros">' + participantesHtml + '</span>'
@@ -1912,7 +1931,11 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         }
     };
 
+    // Qualquer um dos 4 papéis conta (Responsável OU Participante OU Criador OU Observador) —
+    // antes só casava Participante/Observador (via badges); Criador/Responsável ficavam de fora.
     function tskEnvolveSelecionados(t) {
+        if (t.responsavel && tskSelectedUids.has(t.responsavel.bitrixUserId)) return true;
+        if (t.criador && tskSelectedUids.has(t.criador.bitrixUserId)) return true;
         return (t.badges || []).some(function (b) { return tskSelectedUids.has(b.bitrixUserId); });
     }
 
@@ -2083,10 +2106,13 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
             ? escHtml(c.resumo)
             : '<span style="color:rgba(255,255,255,.35)">Sem resumo</span>';
 
+        var dataHtml = fmtDiaMes((c.createdTime || '').slice(0, 10)) + (c.previsao ? ' / ' + fmtDiaMes(c.previsao) : '');
+
         return '<div class="cha-row">'
             + '<div class="cha-row-main" onclick="chaToggle(' + c.id + ')">'
                 + '<button class="cha-chevron-btn" id="cha-btn-' + c.id + '"><i class="fas fa-chevron-right" style="font-size:.7rem"></i></button>'
                 + '<div class="cha-row-chamado">' + idHtml + '<span class="cha-row-title" title="' + escHtml(c.titulo) + '">' + escHtml(c.titulo) + '</span></div>'
+                + '<span class="cha-data" title="' + escHtml(dataHtml) + '">' + escHtml(dataHtml) + '</span>'
                 + '<span class="cha-empresa" title="' + escHtml(c.empresaNome || '') + '">' + escHtml(c.empresaNome || '—') + '</span>'
                 + '<span class="cha-badge" title="' + escHtml(c.tipoLabel) + '" style="background:' + c.tipoCor + '22;color:' + c.tipoCor + ';border:1px solid ' + c.tipoCor + '55">' + escHtml(c.tipoLabel) + '</span>'
                 + (c.prioridadeLabel
@@ -2253,8 +2279,8 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
         return resp.some(function (r) { return chaSelectedPessoas.has(String(r.bitrixUserId)); });
     }
 
-    // ── Ordenação por coluna (Tipo/Prioridade/Etapa) ──────────────────────────────
-    var chaSortColuna = null; // 'tipo' | 'prioridade' | 'etapa' | null
+    // ── Ordenação por coluna (todas exceto Chamado) ───────────────────────────────
+    var chaSortColuna = null; // 'data' | 'empresa' | 'tipo' | 'prioridade' | 'etapa' | 'solicitante' | 'responsavel' | null
     var chaSortAsc    = true;
 
     // Ordena por urgência real (Urgente primeiro), não alfabética — "Alta" não pode vir antes
@@ -2262,9 +2288,15 @@ if (($user_data['perfil'] ?? '') !== 'admin_interno') {
     var CHA_PRIORIDADE_RANK = { 'Urgente': 1, 'Alta': 2, 'Média': 3, 'Baixa': 4 };
 
     function chaValorOrdenacao(c, coluna) {
-        if (coluna === 'tipo')       return c.tipoLabel  || '';
-        if (coluna === 'etapa')      return c.etapaLabel || '';
-        if (coluna === 'prioridade') return String(CHA_PRIORIDADE_RANK[c.prioridadeLabel] || 9);
+        if (coluna === 'data')        return c.createdTime || '';
+        if (coluna === 'empresa')     return c.empresaNome || '';
+        if (coluna === 'tipo')        return c.tipoLabel  || '';
+        // etapaOrdem = posição real no pipeline do Funil 208 (ver MonitoramentoChamadosService)
+        // — não a ordem alfabética do label. Zero-padded pra comparação lexicográfica correta.
+        if (coluna === 'etapa')       return String(c.etapaOrdem != null ? c.etapaOrdem : 999).padStart(3, '0');
+        if (coluna === 'prioridade')  return String(CHA_PRIORIDADE_RANK[c.prioridadeLabel] || 9);
+        if (coluna === 'solicitante') return c.solicitante || '';
+        if (coluna === 'responsavel') return (c.responsaveis && c.responsaveis[0] && c.responsaveis[0].nome) || '';
         return '';
     }
 

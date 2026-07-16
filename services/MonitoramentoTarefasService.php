@@ -25,7 +25,7 @@ class MonitoramentoTarefasService {
     private const ROLE_OBSERVADOR   = 'Observador';
 
     private const SELECT = [
-        'ID', 'TITLE', 'RESPONSIBLE_ID', 'CREATED_BY', 'ACCOMPLICES', 'AUDITORS',
+        'ID', 'TITLE', 'RESPONSIBLE_ID', 'CREATED_BY', 'CREATED_DATE', 'ACCOMPLICES', 'AUDITORS',
         'DEADLINE', 'CLOSED_DATE', 'DESCRIPTION',
     ];
 
@@ -86,6 +86,7 @@ class MonitoramentoTarefasService {
                 'id'            => $id,
                 'responsibleId' => (int)($t['responsibleId'] ?? 0), // usado p/ montar o deep link /company/personal/user/{id}/tasks/task/view/{id}/
                 'titulo'        => $t['title'] ?? '',
+                'criadoEm'      => $t['createdDate'] ?? null,
                 'deadline'      => $deadline,
                 'atrasada'      => $atrasada,
                 'criador'       => $this->pessoa((int)($t['createdBy']     ?? 0), $nomesExtras),
