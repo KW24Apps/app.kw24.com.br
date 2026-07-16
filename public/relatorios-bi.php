@@ -405,6 +405,7 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
     color: rgba(255,255,255,0.65);
     font-weight: 600;
 }
+.rbi-vis-btn:disabled { opacity: .35; cursor: not-allowed; }
 
 /* Modal footer */
 .rbi-modal-footer {
@@ -639,37 +640,6 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
     order: 98;
 }
 
-/* ── Toggle genérico (reaproveitado por Visibilidade e Em construção) ────────── */
-.rbi-toggle-row {
-    display: flex;
-    gap: 8px;
-}
-.rbi-toggle-btn {
-    flex: 1;
-    padding: .45rem .75rem;
-    border-radius: 8px;
-    border: 1.5px solid rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.05);
-    color: rgba(255,255,255,0.45);
-    font-family: 'Inter', sans-serif;
-    font-size: .8rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: border-color .15s, background .15s, color .15s;
-    text-align: center;
-}
-.rbi-toggle-btn.active-a {
-    border-color: #0DC2FF;
-    background: rgba(13,194,255,0.12);
-    color: #0DC2FF;
-    font-weight: 600;
-}
-.rbi-toggle-btn.active-b {
-    border-color: rgba(255,184,0,0.5);
-    background: rgba(255,184,0,0.12);
-    color: #ffb800;
-    font-weight: 600;
-}
 
 /* ── Modal "Criar relatório" ───────────────────────────────────────────────── */
 .rbi-create-modal { max-width: 480px; max-height: 85vh; overflow-y: auto; }
@@ -691,18 +661,16 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
 }
 .rbi-excel-tabela-row .rbi-field { flex: 1; min-width: 0; }
 
-/* ── Anexo de arquivo (custom — substitui o botão nativo "Escolher arquivo") ── */
+/* ── Anexo de arquivo (custom — substitui o botão nativo "Escolher arquivo") ──
+ * Sem caixa/fundo por padrão (não deve parecer um campo de texto) — só o botão
+ * "Escolher" sozinho. Depois de anexar, o botão some e dá lugar ao nome do
+ * arquivo (verde, com check) + um X pra remover, ocupando o mesmo espaço. */
 .rbi-file-attach {
     display: flex;
     align-items: center;
     gap: .5rem;
-    background: rgba(255,255,255,0.07);
-    border: 1.5px solid rgba(255,255,255,0.12);
-    border-radius: 8px;
-    padding: .3rem .4rem;
-    transition: border-color .15s;
+    min-height: 34px;
 }
-.rbi-file-attach:focus-within { border-color: #0DC2FF; }
 .rbi-file-attach-input { display: none; }
 .rbi-file-attach-btn {
     flex-shrink: 0;
@@ -720,20 +688,40 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
 }
 .rbi-file-attach-btn:hover { background: rgba(13,194,255,0.22); }
 .rbi-file-attach-name {
+    display: none;
     flex: 1;
     min-width: 0;
-    display: flex;
     align-items: center;
-    gap: .3rem;
+    gap: .4rem;
+    background: rgba(38,255,147,0.08);
+    border: 1.5px solid rgba(38,255,147,0.3);
+    border-radius: 8px;
+    padding: .4rem .6rem;
+    color: #26FF93;
     font-family: 'Inter', sans-serif;
     font-size: .78rem;
-    color: rgba(255,255,255,0.35);
+    font-weight: 500;
+}
+.rbi-file-attach-name.attached { display: flex; }
+.rbi-file-attach-name i.ti-circle-check-filled { flex-shrink: 0; }
+.rbi-file-attach-name-text {
+    flex: 1;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.rbi-file-attach-name.attached { color: #26FF93; font-weight: 500; }
-.rbi-file-attach-name.attached i { flex-shrink: 0; }
+.rbi-file-attach-clear {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: rgba(38,255,147,0.6);
+    cursor: pointer;
+    padding: 2px;
+    font-size: .82rem;
+    line-height: 1;
+}
+.rbi-file-attach-clear:hover { color: #26FF93; }
 
 .rbi-excel-remove {
     background: none;
@@ -761,6 +749,90 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
     transition: background .15s;
 }
 .rbi-btn-add-tabela:hover { background: rgba(13,194,255,0.18); }
+
+/* ── Aba Conexão — lista de tabelas Excel já existentes (somente leitura) ────── */
+.rbi-tabela-existente-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 8px;
+    padding: .5rem .7rem;
+}
+.rbi-tabela-existente-nome {
+    font-family: 'Inter', sans-serif;
+    font-size: .82rem;
+    color: #fff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+.rbi-tabela-existente-linhas {
+    flex-shrink: 0;
+    font-family: 'Inter', sans-serif;
+    font-size: .72rem;
+    color: rgba(255,255,255,0.4);
+    white-space: nowrap;
+}
+
+/* ── Aba Geral — "Publicar relatório" (substitui o toggle Sim/Não enquanto em_construcao) ── */
+.rbi-btn-publicar {
+    width: 100%;
+    background: rgba(255,184,0,0.14);
+    border: 1.5px solid rgba(255,184,0,0.4);
+    border-radius: 8px;
+    color: #ffb800;
+    font-family: 'Inter', sans-serif;
+    font-size: .82rem;
+    font-weight: 700;
+    padding: .55rem 1rem;
+    cursor: pointer;
+    transition: background .15s;
+}
+.rbi-btn-publicar:hover { background: rgba(255,184,0,0.22); }
+.rbi-publicado-label {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    font-family: 'Inter', sans-serif;
+    font-size: .78rem;
+    font-weight: 500;
+    color: #26FF93;
+}
+
+/* ── Aba Geral — excluir rascunho (só em_construcao=true) ─────────────────────── */
+.rbi-delete-box {
+    border: 1.5px solid rgba(229,62,62,0.3);
+    border-radius: 8px;
+    padding: .75rem .8rem;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+.rbi-delete-warn {
+    font-family: 'Inter', sans-serif;
+    font-size: .74rem;
+    color: rgba(255,255,255,0.5);
+    margin: 0;
+}
+.rbi-btn-delete {
+    width: 100%;
+    background: rgba(229,62,62,0.14);
+    border: 1.5px solid rgba(229,62,62,0.4);
+    border-radius: 8px;
+    color: #ff8080;
+    font-family: 'Inter', sans-serif;
+    font-size: .82rem;
+    font-weight: 700;
+    padding: .55rem 1rem;
+    cursor: pointer;
+    transition: background .15s;
+}
+.rbi-btn-delete:hover:not(:disabled) { background: rgba(229,62,62,0.24); }
+.rbi-btn-delete:disabled { opacity: .4; cursor: not-allowed; }
 
 .rbi-create-msg {
     font-family: 'Inter', sans-serif;
@@ -856,10 +928,14 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
 
             <?php if ($_rtIsAdmin): ?>
             <div class="rbi-field">
-                <label class="rbi-field-label">Em construção</label>
-                <div class="rbi-toggle-row" id="rbi-construcao-row">
-                    <button type="button" class="rbi-toggle-btn" id="rbi-construcao-sim" data-val="true">Sim — só admin vê</button>
-                    <button type="button" class="rbi-toggle-btn" id="rbi-construcao-nao" data-val="false">Não — publicado</button>
+                <label class="rbi-field-label">Status</label>
+                <!-- Enquanto em_construcao=true: só o botão "Publicar" (ação única, irreversível).
+                     Depois de publicado: rótulo neutro confirmando — nunca mais um botão pra voltar. -->
+                <button type="button" class="rbi-btn-publicar" id="rbi-btn-publicar" style="display:none">
+                    <i class="ti ti-rocket" style="margin-right:.35rem"></i>Publicar relatório
+                </button>
+                <div class="rbi-publicado-label" id="rbi-publicado-label" style="display:none">
+                    <i class="ti ti-circle-check-filled"></i> Publicado — visível conforme a Visibilidade abaixo
                 </div>
             </div>
             <?php endif; ?>
@@ -868,6 +944,18 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
                 <i class="ti ti-external-link" style="margin-right:.35rem"></i>Abrir relatório
             </button>
 
+            <?php if ($_rtIsAdmin): ?>
+            <!-- Excluir — só aparece pra rascunhos (em_construcao=true); publicado nunca pode ser excluído por aqui. -->
+            <div class="rbi-delete-box" id="rbi-delete-box" style="display:none">
+                <label class="rbi-field-label" style="color:#ff8080">Excluir relatório (rascunho)</label>
+                <p class="rbi-delete-warn">Ação permanente — remove o relatório e todos os dados/tabelas associados. Digite o nome amigável exato para confirmar.</p>
+                <input type="text" class="rbi-field-input" id="rbi-delete-confirm-input" placeholder="Digite o nome amigável para confirmar" autocomplete="off">
+                <button type="button" class="rbi-btn-delete" id="rbi-btn-delete-confirm" disabled>
+                    <i class="ti ti-trash" style="margin-right:.35rem"></i>Excluir relatório permanentemente
+                </button>
+            </div>
+            <?php endif; ?>
+
             <div class="rbi-modal-footer">
                 <button class="rbi-btn-cancel" id="rbi-btn-cancel">Cancelar</button>
                 <button class="rbi-btn-save"   id="rbi-btn-save">Salvar</button>
@@ -875,7 +963,9 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
         </div>
 
         <?php if ($_rtIsAdmin): ?>
-        <!-- Aba Conexão (tipo de conexão + campos de acesso ao banco) -->
+        <!-- Aba Conexão — detecta tipo_conexao do relatório e renderiza SQL ou Excel
+             (não é mais um seletor editável aqui; trocar de tipo depois de criado está
+             fora de escopo). -->
         <div class="rbi-tab-content rbi-tab-hidden" id="rbi-tab-conexao">
             <input type="hidden" id="rbi-conn-relatorio-id">
 
@@ -888,37 +978,51 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
 
             <div class="rbi-field">
                 <label class="rbi-field-label">Tipo de conexão</label>
-                <div class="rbi-conn-tipo-row">
-                    <button type="button" class="rbi-conn-tipo-btn active" id="rbi-conn-tipo-sql" data-val="sql">SQL</button>
-                    <button type="button" class="rbi-conn-tipo-btn" disabled title="Em breve">Webhook</button>
-                    <button type="button" class="rbi-conn-tipo-btn" disabled title="Em breve">Excel</button>
+                <span class="rbi-infra-value" id="rbi-conn-tipo-label" style="text-align:left">—</span>
+            </div>
+
+            <!-- Bloco SQL -->
+            <div id="rbi-conn-sql-block">
+                <div class="rbi-conn-grid">
+                    <div class="rbi-field full">
+                        <label class="rbi-field-label">Host</label>
+                        <input type="text" class="rbi-field-input" id="rbi-conn-host" autocomplete="off">
+                    </div>
+                    <div class="rbi-field">
+                        <label class="rbi-field-label">Porta</label>
+                        <input type="number" class="rbi-field-input" id="rbi-conn-port" autocomplete="off" value="5432">
+                    </div>
+                    <div class="rbi-field">
+                        <label class="rbi-field-label">Banco</label>
+                        <input type="text" class="rbi-field-input" id="rbi-conn-dbname" autocomplete="off">
+                    </div>
+                    <div class="rbi-field">
+                        <label class="rbi-field-label">Usuário</label>
+                        <input type="text" class="rbi-field-input" id="rbi-conn-user" autocomplete="off">
+                    </div>
+                    <div class="rbi-field">
+                        <label class="rbi-field-label">Senha</label>
+                        <div class="rbi-conn-pass-wrap">
+                            <input type="password" class="rbi-field-input" id="rbi-conn-password" autocomplete="new-password">
+                            <button type="button" class="rbi-conn-pass-toggle" id="rbi-conn-pass-toggle" title="Mostrar/ocultar"><i class="ti ti-eye"></i></button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="rbi-conn-grid">
-                <div class="rbi-field full">
-                    <label class="rbi-field-label">Host</label>
-                    <input type="text" class="rbi-field-input" id="rbi-conn-host" autocomplete="off">
+            <!-- Bloco Excel -->
+            <div id="rbi-conn-excel-block" style="display:none">
+                <div class="rbi-field">
+                    <label class="rbi-field-label">Tabelas existentes</label>
+                    <div id="rbi-conn-tabelas-existentes" style="display:flex;flex-direction:column;gap:.5rem"></div>
                 </div>
                 <div class="rbi-field">
-                    <label class="rbi-field-label">Porta</label>
-                    <input type="number" class="rbi-field-input" id="rbi-conn-port" autocomplete="off" value="5432">
+                    <label class="rbi-field-label">Adicionar tabela</label>
+                    <div id="rbi-conn-tabelas-novas" style="display:flex;flex-direction:column;gap:.6rem"></div>
                 </div>
-                <div class="rbi-field">
-                    <label class="rbi-field-label">Banco</label>
-                    <input type="text" class="rbi-field-input" id="rbi-conn-dbname" autocomplete="off">
-                </div>
-                <div class="rbi-field">
-                    <label class="rbi-field-label">Usuário</label>
-                    <input type="text" class="rbi-field-input" id="rbi-conn-user" autocomplete="off">
-                </div>
-                <div class="rbi-field">
-                    <label class="rbi-field-label">Senha</label>
-                    <div class="rbi-conn-pass-wrap">
-                        <input type="password" class="rbi-field-input" id="rbi-conn-password" autocomplete="new-password">
-                        <button type="button" class="rbi-conn-pass-toggle" id="rbi-conn-pass-toggle" title="Mostrar/ocultar"><i class="ti ti-eye"></i></button>
-                    </div>
-                </div>
+                <button type="button" class="rbi-btn-add-tabela" id="rbi-conn-btn-add-tabela" style="width:100%">
+                    <i class="ti ti-plus" style="margin-right:.3rem"></i>Adicionar tabela
+                </button>
             </div>
 
             <div class="rbi-conn-msg" id="rbi-conn-msg"></div>
@@ -1048,10 +1152,24 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
     const infraPasta    = document.getElementById('rbi-infra-pasta');
     const infraServico  = document.getElementById('rbi-infra-servico');
     const infraPorta    = document.getElementById('rbi-infra-porta');
+    const connTipoLabel  = document.getElementById('rbi-conn-tipo-label');
+    const connSqlBlock   = document.getElementById('rbi-conn-sql-block');
+    const connExcelBlock = document.getElementById('rbi-conn-excel-block');
+    const connTabelasExistentesList = document.getElementById('rbi-conn-tabelas-existentes');
+    const connTabelasNovasList      = document.getElementById('rbi-conn-tabelas-novas');
+    const connBtnAddTabela          = document.getElementById('rbi-conn-btn-add-tabela');
+    let connTipoAtual = 'sql'; // detectado a cada loadConexaoConfig() — nunca escolhido pelo usuário aqui
 
-    // ── Toggle "Em construção" na aba Geral (admin_interno only) ─────────────
-    const construcaoSimBtn = document.getElementById('rbi-construcao-sim');
-    const construcaoNaoBtn = document.getElementById('rbi-construcao-nao');
+    // ── "Publicar relatório" (substitui o toggle Sim/Não — admin_interno only) ──
+    const btnPublicar    = document.getElementById('rbi-btn-publicar');
+    const publicadoLabel = document.getElementById('rbi-publicado-label');
+    const visivelBtn     = document.getElementById('rbi-vis-visivel');
+    const ocultoBtn      = document.getElementById('rbi-vis-oculto');
+
+    // ── Excluir rascunho (admin_interno only, só quando em_construcao=true) ──
+    const deleteBox           = document.getElementById('rbi-delete-box');
+    const deleteConfirmInput  = document.getElementById('rbi-delete-confirm-input');
+    const btnDeleteConfirm    = document.getElementById('rbi-btn-delete-confirm');
 
     // ── Modal "Criar relatório" (admin_interno only) ─────────────────────────
     const createOverlay   = document.getElementById('rbi-create-overlay');
@@ -1101,14 +1219,83 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
     }
 
     // "Em construção" — admin_interno only, elementos null pra quem não é admin.
+    // Enquanto true: só o botão "Publicar" aparece (ação única, irreversível) e
+    // Visibilidade fica desabilitada (não faz sentido escolher visível/oculto pra
+    // algo que só admin enxerga de qualquer forma). Excluir (rascunho) só aparece
+    // também enquanto em_construcao=true.
     function setConstrucao(v) {
         emConstrucao = v;
-        if (!construcaoSimBtn || !construcaoNaoBtn) return;
-        construcaoSimBtn.className = 'rbi-toggle-btn' + (v ? ' active-b' : '');
-        construcaoNaoBtn.className = 'rbi-toggle-btn' + (!v ? ' active-a' : '');
+        if (btnPublicar)    btnPublicar.style.display    = v ? '' : 'none';
+        if (publicadoLabel) publicadoLabel.style.display = v ? 'none' : 'flex';
+        if (visivelBtn) visivelBtn.disabled = v;
+        if (ocultoBtn)  ocultoBtn.disabled  = v;
+        if (deleteBox) {
+            deleteBox.style.display = v ? 'flex' : 'none';
+            if (deleteConfirmInput) deleteConfirmInput.value = '';
+            if (btnDeleteConfirm)   btnDeleteConfirm.disabled = true;
+        }
     }
-    if (construcaoSimBtn) construcaoSimBtn.addEventListener('click', function () { setConstrucao(true); });
-    if (construcaoNaoBtn) construcaoNaoBtn.addEventListener('click', function () { setConstrucao(false); });
+
+    function publicarRelatorio() {
+        if (!confirm('Publicar este relatório?\n\nEssa ação é IRREVERSÍVEL — depois de publicado, não será possível voltar para "em construção" por aqui.')) return;
+        btnPublicar.disabled = true;
+        fetch('/api/relatorios-bi.php?action=update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: parseInt(editId.value, 10),
+                nome_amigavel: editNome.value.trim(),
+                visivel: visivel,
+                em_construcao: false
+            })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+            if (res.success) {
+                setConstrucao(false);
+                loadCards();
+            } else {
+                alert('Erro ao publicar: ' + (res.erro || 'desconhecido'));
+            }
+        })
+        .catch(function () { alert('Erro de rede ao publicar.'); })
+        .finally(function () { btnPublicar.disabled = false; });
+    }
+    if (btnPublicar) btnPublicar.addEventListener('click', publicarRelatorio);
+
+    // ── Excluir rascunho — habilita o botão só quando o texto digitado bate
+    // exatamente com o nome amigável ou o slug do relatório aberto. ──────────
+    if (deleteConfirmInput) {
+        deleteConfirmInput.addEventListener('input', function () {
+            const digitado = deleteConfirmInput.value.trim();
+            const bate = digitado !== '' && (digitado === editNome.value.trim() || digitado === editSlug.value.trim());
+            btnDeleteConfirm.disabled = !bate;
+        });
+    }
+    if (btnDeleteConfirm) {
+        btnDeleteConfirm.addEventListener('click', function () {
+            btnDeleteConfirm.disabled = true;
+            fetch('/api/relatorio-excluir.php?action=delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: parseInt(editId.value, 10) })
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (res.sucesso) {
+                    closeModal();
+                    loadCards();
+                } else {
+                    alert('Erro ao excluir: ' + (res.erro || 'desconhecido'));
+                    btnDeleteConfirm.disabled = false;
+                }
+            })
+            .catch(function () {
+                alert('Erro de rede ao excluir.');
+                btnDeleteConfirm.disabled = false;
+            });
+        });
+    }
 
     // ── Troca de aba (Geral | Conexão) — no-op se a aba Conexão não existir no DOM
     // (usuário não admin_interno, PHP não renderiza a aba). Não recarrega dados ao
@@ -1161,25 +1348,65 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
         connHost.value = ''; connPort.value = '5432'; connDbname.value = '';
         connUser.value = ''; connPassword.value = '';
         infraPasta.textContent = '—'; infraServico.textContent = '—'; infraPorta.textContent = '—';
+        if (connTabelasExistentesList) connTabelasExistentesList.innerHTML = '';
+        if (connTabelasNovasList)      connTabelasNovasList.innerHTML = '';
         connClearMsg();
         fetch('/api/relatorio-conexao.php?action=get&relatorio_id=' + encodeURIComponent(relatorioId))
             .then(function (r) { return r.json(); })
             .then(function (res) {
                 if (res.erro) { connShowMsg(res.erro, 'erro'); return; }
-                var cfg = (res.conexao && res.conexao.config) || {};
-                connHost.value     = cfg.host || '';
-                connPort.value     = cfg.port || 5432;
-                connDbname.value   = cfg.dbname || '';
-                connUser.value     = cfg.user || '';
-                connPassword.value = cfg.password || '';
 
                 var infra = res.infraestrutura || {};
                 infraPasta.textContent   = infra.pasta   || '—';
                 infraServico.textContent = infra.servico || '—';
                 infraPorta.textContent   = infra.porta   || '—';
+
+                renderConexaoPorTipo(res.conexao);
             })
             .catch(function () { connShowMsg('Erro de rede ao carregar configuração.', 'erro'); });
     }
+
+    // Detecta tipo_conexao e renderiza SQL ou Excel — não é mais um seletor editável
+    // aqui, só reflete o que o relatório já é. Sem conexão salva ainda (caso raro —
+    // hoje todo relatório nasce sempre com uma), assume SQL como padrão de exibição.
+    function renderConexaoPorTipo(conexao) {
+        var tipo = (conexao && conexao.tipo_conexao) || 'sql';
+        connTipoAtual = tipo;
+        if (connTipoLabel) connTipoLabel.textContent = tipo === 'excel' ? 'Excel' : 'SQL';
+        if (connSqlBlock)   connSqlBlock.style.display   = tipo === 'excel' ? 'none' : '';
+        if (connExcelBlock) connExcelBlock.style.display = tipo === 'excel' ? '' : 'none';
+
+        if (tipo === 'excel') {
+            if (connBtnSave) connBtnSave.textContent = 'Salvar novas tabelas';
+            var tabelasInfo = (conexao && conexao.tabelas_info) || [];
+            if (connTabelasExistentesList) {
+                connTabelasExistentesList.innerHTML = tabelasInfo.length
+                    ? tabelasInfo.map(function (t) {
+                        var linhasTxt = (t.linhas === null || t.linhas === undefined) ? '—' : (t.linhas + (t.linhas === 1 ? ' linha' : ' linhas'));
+                        return '<div class="rbi-tabela-existente-row">'
+                            + '<span class="rbi-tabela-existente-nome" title="' + escHtml(t.nome) + '">' + escHtml(t.nome) + '</span>'
+                            + '<span class="rbi-tabela-existente-linhas">' + escHtml(linhasTxt) + '</span>'
+                            + '</div>';
+                    }).join('')
+                    : '<span class="rbi-empty" style="padding:.25rem 0">Nenhuma tabela ainda.</span>';
+            }
+        } else {
+            if (connBtnSave) connBtnSave.textContent = 'Testar e salvar';
+            var cfg = (conexao && conexao.config) || {};
+            connHost.value     = cfg.host || '';
+            connPort.value     = cfg.port || 5432;
+            connDbname.value   = cfg.dbname || '';
+            connUser.value     = cfg.user || '';
+            connPassword.value = cfg.password || '';
+        }
+    }
+
+    if (connBtnAddTabela) {
+        connBtnAddTabela.addEventListener('click', function () {
+            connTabelasNovasList.appendChild(criarLinhaTabelaExcel());
+        });
+    }
+
     if (connPassToggle) {
         connPassToggle.addEventListener('click', function () {
             connPassword.type = connPassword.type === 'password' ? 'text' : 'password';
@@ -1190,6 +1417,53 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
 
     if (connBtnSave) connBtnSave.addEventListener('click', function () {
         connClearMsg();
+
+        // ── Excel: envia só as tabelas NOVAS (linhas preenchidas em "Adicionar tabela") ──
+        if (connTipoAtual === 'excel') {
+            var linhasNovas = connTabelasNovasList ? connTabelasNovasList.querySelectorAll('.rbi-excel-tabela-row') : [];
+            var formDataExcel = new FormData();
+            formDataExcel.append('relatorio_id', connRelId.value);
+            var algumaValidaConn = false;
+            for (var i = 0; i < linhasNovas.length; i++) {
+                var nomeTabConn = linhasNovas[i].querySelector('.rbi-excel-nome').value.trim();
+                var arquivoInputConn = linhasNovas[i].querySelector('.rbi-excel-arquivo');
+                var arquivoConn = arquivoInputConn.files[0];
+                if (!nomeTabConn && !arquivoConn) continue;
+                if (!nomeTabConn || !arquivoConn) {
+                    connShowMsg('Toda tabela precisa de nome e arquivo juntos.', 'erro');
+                    return;
+                }
+                formDataExcel.append('tabela_nome[]', nomeTabConn);
+                formDataExcel.append('tabela_arquivo[]', arquivoConn);
+                algumaValidaConn = true;
+            }
+            if (!algumaValidaConn) {
+                connShowMsg('Adicione pelo menos uma tabela nova (nome + arquivo) antes de salvar.', 'erro');
+                return;
+            }
+
+            connBtnSave.disabled = true;
+            connBtnSave.textContent = 'Processando arquivos...';
+            fetch('/api/relatorio-conexao.php?action=add-tabelas-excel', { method: 'POST', body: formDataExcel })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    if (res.sucesso) {
+                        connShowMsg('Tabela(s) adicionada(s) com sucesso.', 'ok');
+                        connTabelasNovasList.innerHTML = '';
+                        loadConexaoConfig(parseInt(connRelId.value, 10)); // recarrega lista de tabelas existentes
+                    } else {
+                        connShowMsg(res.erro || 'Erro ao salvar.', 'erro');
+                    }
+                })
+                .catch(function () { connShowMsg('Erro de rede ao salvar.', 'erro'); })
+                .finally(function () {
+                    connBtnSave.disabled = false;
+                    connBtnSave.textContent = 'Salvar novas tabelas';
+                });
+            return;
+        }
+
+        // ── SQL (comportamento existente, preservado) ──────────────────────
         var payload = {
             relatorio_id: parseInt(connRelId.value, 10),
             tipo_conexao: 'sql',
@@ -1224,7 +1498,7 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
         .catch(function () { connShowMsg('Erro de rede ao salvar.', 'erro'); })
         .finally(function () {
             connBtnSave.disabled = false;
-            connBtnSave.textContent = 'Testar e salvar';
+            connBtnSave.textContent = connTipoAtual === 'excel' ? 'Salvar novas tabelas' : 'Testar e salvar';
         });
     });
 
@@ -1295,10 +1569,12 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
     if (createTipoExcel) createTipoExcel.addEventListener('click', function () { setCreateTipo('excel'); });
 
     // ── Linhas de tabela Excel (repetíveis) ───────────────────────────────────
-    // Input de arquivo nativo fica escondido (.rbi-file-attach-input) — um botão
-    // custom (mesmo visual escuro/ciano do resto do modal) dispara o seletor de
-    // arquivo, e o nome do arquivo escolhido aparece com destaque (ícone + cor)
-    // em vez de depender só do texto minúsculo do input nativo.
+    // Input de arquivo nativo fica escondido (.rbi-file-attach-input). Antes de
+    // anexar: só o botão "Escolher" aparece, sem caixa/fundo ao redor (não deve
+    // parecer um campo de texto). Depois de anexar: o botão some e dá lugar ao
+    // nome do arquivo (verde, com check) + um X pra remover, no mesmo espaço.
+    // Reaproveitada tanto no modal "Criar relatório" quanto na aba Conexão
+    // (Excel existente, "Adicionar tabela").
     function criarLinhaTabelaExcel() {
         var linha = document.createElement('div');
         linha.className = 'rbi-excel-tabela-row';
@@ -1312,27 +1588,42 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
                 '<div class="rbi-file-attach">' +
                     '<input type="file" class="rbi-excel-arquivo rbi-file-attach-input" accept=".xlsx">' +
                     '<button type="button" class="rbi-file-attach-btn"><i class="ti ti-upload"></i> Escolher</button>' +
-                    '<span class="rbi-file-attach-name">Nenhum arquivo selecionado</span>' +
+                    '<span class="rbi-file-attach-name">' +
+                        '<i class="ti ti-circle-check-filled"></i>' +
+                        '<span class="rbi-file-attach-name-text"></span>' +
+                        '<button type="button" class="rbi-file-attach-clear" title="Remover arquivo"><i class="ti ti-x"></i></button>' +
+                    '</span>' +
                 '</div>' +
             '</div>' +
             '<button type="button" class="rbi-excel-remove" title="Remover"><i class="ti ti-trash"></i></button>';
 
-        var fileInput = linha.querySelector('.rbi-file-attach-input');
-        var fileBtn   = linha.querySelector('.rbi-file-attach-btn');
-        var fileName  = linha.querySelector('.rbi-file-attach-name');
-        fileBtn.addEventListener('click', function () { fileInput.click(); });
-        fileInput.addEventListener('change', function () {
+        var fileInput   = linha.querySelector('.rbi-file-attach-input');
+        var fileBtn     = linha.querySelector('.rbi-file-attach-btn');
+        var fileName    = linha.querySelector('.rbi-file-attach-name');
+        var fileNameTxt = linha.querySelector('.rbi-file-attach-name-text');
+        var fileClear   = linha.querySelector('.rbi-file-attach-clear');
+
+        function atualizarAnexo() {
             var arquivo = fileInput.files[0];
             if (arquivo) {
-                fileName.innerHTML = '<i class="ti ti-circle-check-filled"></i> ' + escHtml(arquivo.name);
-                fileName.className = 'rbi-file-attach-name attached';
+                fileBtn.style.display  = 'none';
+                fileNameTxt.textContent = arquivo.name;
                 fileName.title = arquivo.name;
+                fileName.classList.add('attached');
             } else {
-                fileName.textContent = 'Nenhum arquivo selecionado';
-                fileName.className = 'rbi-file-attach-name';
+                fileBtn.style.display  = '';
+                fileNameTxt.textContent = '';
                 fileName.title = '';
+                fileName.classList.remove('attached');
             }
+        }
+        fileBtn.addEventListener('click', function () { fileInput.click(); });
+        fileInput.addEventListener('change', atualizarAnexo);
+        fileClear.addEventListener('click', function () {
+            fileInput.value = '';
+            atualizarAnexo();
         });
+        atualizarAnexo(); // estado inicial: só o botão "Escolher"
 
         linha.querySelector('.rbi-excel-remove').addEventListener('click', function () { linha.remove(); });
         return linha;

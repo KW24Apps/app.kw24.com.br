@@ -30,22 +30,6 @@ if (($user['perfil'] ?? '') !== 'admin_interno') {
 $db = Database::getInstance();
 
 /**
- * Conexão dedicada ao banco relatorios_bi_excel — mesmo servidor/credenciais do
- * kwconfig (config/config.php), dbname diferente. Mesmo padrão de getBxPdo()/
- * getCtPdo() em api/portais-bi.php.
- */
-function getExcelPdo(): PDO {
-    $cfg = require __DIR__ . '/../config/config.php';
-    $dbCfg = $cfg['database'];
-    $dsn = "pgsql:host={$dbCfg['host']};port={$dbCfg['port']};dbname=relatorios_bi_excel";
-    return new PDO($dsn, $dbCfg['username'], $dbCfg['password'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-}
-
-function quoteIdent(string $ident): string {
-    return '"' . str_replace('"', '""', $ident) . '"';
-}
-
-/**
  * Insere a linha em relatorios_bi (sempre visivel=TRUE, em_construcao=TRUE) e
  * devolve o id gerado. ordem = próxima disponível (mesmo padrão de "adicionar
  * ao fim da lista" usado em outras telas do painel).
@@ -135,138 +119,11 @@ try {
                 exit;
             }
 
-            // ── Validação de linhas (nome + upload) ─────────────────────────
-            $tabelasValidas = [];
-            $total = count($arquivos['name']);
-            for ($i = 0; $i < $total; $i++) {
-                $nomeBruto  = trim($nomesTabelas[$i] ?? '');
-                $erroUpload = $arquivos['error'][$i] ?? UPLOAD_ERR_NO_FILE;
-                if ($nomeBruto === '' && $erroUpload === UPLOAD_ERR_NO_FILE) continue; // linha vazia da UI
-
-                if ($nomeBruto === '') { echo json_encode(['erro' => 'Toda tabela precisa de um nome']); exit; }
-                if ($erroUpload !== UPLOAD_ERR_OK) {
-                    echo json_encode(['erro' => "Tabela '{$nomeBruto}': falha no upload do arquivo"]);
-                    exit;
-                }
-
-                // Nome só com símbolos (ex.: "###") cai no fallback posicional em vez de
-                // bloquear — mesma lógica do cabeçalho de coluna, ver sanitizarIdentificadorComFallback().
-                [$nomeTabela, ] = sanitizarIdentificadorComFallback($nomeBruto, 'tabela', $i + 1);
-
-                $tabelasValidas[] = ['nome' => $nomeTabela, 'nome_original' => $nomeBruto, 'tmp_path' => $arquivos['tmp_name'][$i]];
-            }
-
-            if (!$tabelasValidas) { echo json_encode(['erro' => 'Pelo menos uma tabela (nome + arquivo) é obrigatória']); exit; }
-
-            $nomesSanit = array_column($tabelasValidas, 'nome');
-            if (count($nomesSanit) !== count(array_unique($nomesSanit))) {
-                $porNomeTabela = [];
-                foreach ($tabelasValidas as $t) $porNomeTabela[$t['nome']][] = "\"{$t['nome_original']}\"";
-                $detalhes = [];
-                foreach ($porNomeTabela as $nome => $originais) {
-                    if (count($originais) > 1) $detalhes[] = "'{$nome}' (" . implode(', ', $originais) . ")";
-                }
-                echo json_encode(['erro' => 'Duas ou mais tabelas resultaram no mesmo nome depois de normalizado: ' . implode('; ', $detalhes) . ' — renomeie para diferenciar']);
-                exit;
-            }
-
-            // ── Parse + validação de TODOS os arquivos antes de criar qualquer coisa no banco ──
-            $parseados = [];
-            foreach ($tabelasValidas as $t) {
-                try {
-                    $lido = XlsxReader::ler($t['tmp_path']);
-                } catch (XlsxLerException $e) {
-                    echo json_encode(['erro' => "Tabela '{$t['nome_original']}': " . $e->getMessage()]);
-                    exit;
-                }
-                $cabecalho = $lido['cabecalho'];
-                $linhas    = $lido['linhas'];
-
-                if (!$linhas) {
-                    echo json_encode(['erro' => "Tabela '{$t['nome_original']}': arquivo sem linhas de dados"]);
-                    exit;
-                }
-
-                // Coluna cujo cabeçalho não sobra nenhum caractere alfanumérico aproveitável
-                // (ex.: "#", comum como coluna de ID em exports de terceiros) cai num fallback
-                // posicional ("coluna_N") em vez de bloquear a tabela inteira — achado real
-                // testando com export do Bitrix Contact Center (Gabriel, jul/2026).
-                $colunas = [];
-                $colunasAjustadas = []; // pra avisar o admin quais headers foram renomeados
-                foreach ($cabecalho as $idx => $h) {
-                    $original = (string)($h ?? '');
-                    [$colNome, $foiFallback] = sanitizarIdentificadorComFallback($original, 'coluna', $idx + 1);
-                    if ($foiFallback) {
-                        $rotuloOriginal = trim($original) === '' ? '(vazio)' : $original;
-                        $colunasAjustadas[] = "coluna " . ($idx + 1) . " (\"{$rotuloOriginal}\") -> \"{$colNome}\"";
-                    }
-                    $colunas[] = $colNome;
-                }
-                if (count($colunas) !== count(array_unique($colunas))) {
-                    // Nomeia exatamente quais colunas colidiram (posição + cabeçalho original) —
-                    // sem isso o admin não tem como saber qual das N colunas causou o problema.
-                    $porNome = [];
-                    foreach ($colunas as $idx => $nome) $porNome[$nome][] = ($idx + 1) . " (\"{$cabecalho[$idx]}\")";
-                    $detalhes = [];
-                    foreach ($porNome as $nome => $posicoes) {
-                        if (count($posicoes) > 1) $detalhes[] = "'{$nome}' nas colunas " . implode(', ', $posicoes);
-                    }
-                    echo json_encode(['erro' => "Tabela '{$t['nome_original']}': cabeçalho com colunas duplicadas depois de normalizado — " . implode('; ', $detalhes)]);
-                    exit;
-                }
-
-                $tipos = [];
-                foreach (array_keys($colunas) as $idx) {
-                    $valoresColuna = array_map(fn($linha) => $linha[$idx] ?? null, $linhas);
-                    $tipos[] = inferirTipoColuna($valoresColuna);
-                }
-
-                $parseados[] = [
-                    'nome' => $t['nome'], 'colunas' => $colunas, 'tipos' => $tipos, 'linhas' => $linhas,
-                    'colunas_ajustadas' => $colunasAjustadas,
-                ];
-            }
-
-            // ── Tudo validado — cria schema + tabelas + insere dados (transação) ──
-            $schema = 'rbi_' . str_replace('-', '_', $slug);
-            $excelPdo = getExcelPdo();
-            $excelPdo->beginTransaction();
-            try {
-                $excelPdo->exec('CREATE SCHEMA IF NOT EXISTS ' . quoteIdent($schema));
-
-                foreach ($parseados as $tab) {
-                    $tabelaQuoted = quoteIdent($schema) . '.' . quoteIdent($tab['nome']);
-
-                    $defsColunas = [];
-                    foreach ($tab['colunas'] as $i => $col) {
-                        $tipoSql = ['numeric' => 'numeric', 'date' => 'date'][$tab['tipos'][$i]] ?? 'text';
-                        $defsColunas[] = quoteIdent($col) . ' ' . $tipoSql;
-                    }
-                    // DROP defensivo: o slug é novo (checado acima), então a tabela não deveria
-                    // existir — evita erro caso o schema já tenha sido criado numa tentativa anterior.
-                    $excelPdo->exec('DROP TABLE IF EXISTS ' . $tabelaQuoted);
-                    $excelPdo->exec('CREATE TABLE ' . $tabelaQuoted . ' (' . implode(', ', $defsColunas) . ')');
-
-                    $colunasQuoted = implode(', ', array_map('quoteIdent', $tab['colunas']));
-                    $placeholders  = implode(', ', array_fill(0, count($tab['colunas']), '?'));
-                    $stmt = $excelPdo->prepare("INSERT INTO {$tabelaQuoted} ({$colunasQuoted}) VALUES ({$placeholders})");
-
-                    foreach ($tab['linhas'] as $linha) {
-                        $valores = [];
-                        foreach ($tab['colunas'] as $i => $col) {
-                            $v = $linha[$i] ?? null;
-                            $vazio = ($v === null || trim((string)$v) === '');
-                            if (!$vazio && $tab['tipos'][$i] === 'date') $v = normalizarValorData((string)$v);
-                            $valores[] = $vazio ? null : $v;
-                        }
-                        $stmt->execute($valores);
-                    }
-                }
-                $excelPdo->commit();
-            } catch (Exception $e) {
-                $excelPdo->rollBack();
-                error_log('[relatorio-criar] falha ao criar tabelas Excel: ' . $e->getMessage());
-                echo json_encode(['erro' => 'Falha ao criar as tabelas: ' . $e->getMessage()]);
+            // Schema novo (slug já checado como inédito acima) — sem nomes existentes pra colidir.
+            $schema = schemaExcelRelatorio($slug);
+            $resultado = processarUploadTabelasExcel($schema, $nomesTabelas, $arquivos, []);
+            if (!$resultado['sucesso']) {
+                echo json_encode(['erro' => $resultado['erro']]);
                 exit;
             }
 
@@ -277,7 +134,7 @@ try {
                 $configExcel = [
                     'database' => 'relatorios_bi_excel',
                     'schema'   => $schema,
-                    'tabelas'  => array_column($parseados, 'nome'),
+                    'tabelas'  => $resultado['tabelas_criadas'],
                 ];
                 $db->execute(
                     "INSERT INTO relatorios_bi_conexoes (relatorio_id, tipo_conexao, config, testado_em)
@@ -293,16 +150,11 @@ try {
                 throw $e;
             }
 
-            $ajustesPorTabela = [];
-            foreach ($parseados as $tab) {
-                if ($tab['colunas_ajustadas']) $ajustesPorTabela[$tab['nome']] = $tab['colunas_ajustadas'];
-            }
-
             echo json_encode([
-                'sucesso'          => true,
-                'relatorio'        => ['id' => $novoId, 'slug' => $slug],
-                'tabelas_criadas'  => array_column($parseados, 'nome'),
-                'colunas_ajustadas' => $ajustesPorTabela, // {} se nenhuma coluna precisou de fallback
+                'sucesso'           => true,
+                'relatorio'         => ['id' => $novoId, 'slug' => $slug],
+                'tabelas_criadas'   => $resultado['tabelas_criadas'],
+                'colunas_ajustadas' => $resultado['colunas_ajustadas'], // {} se nenhuma coluna precisou de fallback
             ]);
             exit;
         }

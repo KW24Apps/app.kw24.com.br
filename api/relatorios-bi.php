@@ -106,12 +106,20 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     // "Em construção" só pode ser alterado por admin_interno — nunca confiar no
     // cliente pra isso, mesmo que o campo venha no payload (não-admin não deveria
     // nem enxergar o controle na UI, mas o servidor nunca aplica sem checar de novo).
+    // Além disso, é uma via de mão única: "Publicar relatório" (UI) só manda TRUE->FALSE,
+    // nunca o contrário — mas o servidor reforça isso também, não confia só na UI não
+    // oferecer o caminho de volta. Uma vez FALSE, nenhum payload consegue voltar pra TRUE.
     $isAdmin = (($auth->getCurrentUser()['perfil'] ?? '') === 'admin_interno');
     $sets    = 'nome_amigavel = :nome, visivel = :visivel';
     $params  = [':nome' => $nome, ':visivel' => $visivel ? 'true' : 'false', ':id' => $id];
     if ($isAdmin && isset($body['em_construcao'])) {
-        $sets .= ', em_construcao = :em_construcao';
-        $params[':em_construcao'] = ((bool)$body['em_construcao']) ? 'true' : 'false';
+        $novoValor = (bool)$body['em_construcao'];
+        $atual = $db->fetchOne('SELECT em_construcao FROM relatorios_bi WHERE id = :id', [':id' => $id]);
+        $jaPublicado = $atual && !filter_var($atual['em_construcao'], FILTER_VALIDATE_BOOLEAN);
+        if (!($jaPublicado && $novoValor)) { // bloqueia só a tentativa de voltar pra TRUE
+            $sets .= ', em_construcao = :em_construcao';
+            $params[':em_construcao'] = $novoValor ? 'true' : 'false';
+        }
     }
 
     // slug is immutable — never updated, only set at row creation
