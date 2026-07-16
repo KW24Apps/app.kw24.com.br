@@ -870,6 +870,40 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
 .rbi-btn-delete:hover:not(:disabled) { background: rgba(229,62,62,0.24); }
 .rbi-btn-delete:disabled { opacity: .4; cursor: not-allowed; }
 
+/* ── Aba Geral — "Mover para lixeira" (qualquer relatório, publicado ou rascunho) ──
+ * Cor âmbar (não vermelha) porque é reversível — vermelho fica reservado pra ações
+ * genuinamente destrutivas (Substituir dados de tabela, Excluir definitivamente na
+ * tela Lixeira). Reaproveita .rbi-delete-warn (texto neutro) dentro da caixa. */
+.rbi-lixeira-box {
+    border: 1.5px solid rgba(255,184,0,0.3);
+    border-radius: 8px;
+    padding: .75rem .8rem;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+.rbi-lixeira-resumo {
+    font-family: 'Inter', sans-serif;
+    font-size: .78rem;
+    color: rgba(255,255,255,0.75);
+    margin: 0;
+}
+.rbi-btn-lixeira {
+    width: 100%;
+    background: rgba(255,184,0,0.14);
+    border: 1.5px solid rgba(255,184,0,0.4);
+    border-radius: 8px;
+    color: #ffb800;
+    font-family: 'Inter', sans-serif;
+    font-size: .82rem;
+    font-weight: 700;
+    padding: .55rem 1rem;
+    cursor: pointer;
+    transition: background .15s;
+}
+.rbi-btn-lixeira:hover:not(:disabled) { background: rgba(255,184,0,0.24); }
+.rbi-btn-lixeira:disabled { opacity: .4; cursor: not-allowed; }
+
 .rbi-create-msg {
     font-family: 'Inter', sans-serif;
     font-size: .78rem;
@@ -981,13 +1015,17 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
             </button>
 
             <?php if ($_rtIsAdmin): ?>
-            <!-- Excluir — só aparece pra rascunhos (em_construcao=true); publicado nunca pode ser excluído por aqui. -->
-            <div class="rbi-delete-box" id="rbi-delete-box" style="display:none">
-                <label class="rbi-field-label" style="color:#ff8080">Excluir relatório (rascunho)</label>
-                <p class="rbi-delete-warn">Ação permanente — remove o relatório e todos os dados/tabelas associados. Digite o nome amigável exato para confirmar.</p>
-                <input type="text" class="rbi-field-input" id="rbi-delete-confirm-input" placeholder="Digite o nome amigável para confirmar" autocomplete="off">
-                <button type="button" class="rbi-btn-delete" id="rbi-btn-delete-confirm" disabled>
-                    <i class="ti ti-trash" style="margin-right:.35rem"></i>Excluir relatório permanentemente
+            <!-- Mover para lixeira — disponível pra QUALQUER relatório (publicado ou rascunho).
+                 Reversível: fica na tela Lixeira por 30 dias (restaurar ou excluir definitivamente
+                 de lá) — nunca apaga dado aqui. Resumo (empresas/usuários/portais) buscado ao abrir
+                 o modal (ver fetchResumoLixeira em openModal). -->
+            <div class="rbi-lixeira-box" id="rbi-lixeira-box">
+                <label class="rbi-field-label" style="color:#ffb800">Mover para lixeira</label>
+                <p class="rbi-lixeira-resumo" id="rbi-lixeira-resumo">Carregando resumo...</p>
+                <p class="rbi-delete-warn">Reversível — fica na Lixeira por 30 dias antes da exclusão automática (ou exclua definitivamente de lá quando quiser). Digite o nome amigável exato para confirmar.</p>
+                <input type="text" class="rbi-field-input" id="rbi-lixeira-confirm-input" placeholder="Digite o nome amigável para confirmar" autocomplete="off">
+                <button type="button" class="rbi-btn-lixeira" id="rbi-btn-lixeira-confirm" disabled>
+                    <i class="ti ti-trash" style="margin-right:.35rem"></i>Mover para lixeira
                 </button>
             </div>
             <?php endif; ?>
@@ -1266,10 +1304,11 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
     const visivelBtn     = document.getElementById('rbi-vis-visivel');
     const ocultoBtn      = document.getElementById('rbi-vis-oculto');
 
-    // ── Excluir rascunho (admin_interno only, só quando em_construcao=true) ──
-    const deleteBox           = document.getElementById('rbi-delete-box');
-    const deleteConfirmInput  = document.getElementById('rbi-delete-confirm-input');
-    const btnDeleteConfirm    = document.getElementById('rbi-btn-delete-confirm');
+    // ── Mover para lixeira (admin_interno only, disponível pra QUALQUER relatório) ──
+    const lixeiraBox          = document.getElementById('rbi-lixeira-box');
+    const lixeiraResumoEl     = document.getElementById('rbi-lixeira-resumo');
+    const lixeiraConfirmInput = document.getElementById('rbi-lixeira-confirm-input');
+    const btnLixeiraConfirm   = document.getElementById('rbi-btn-lixeira-confirm');
 
     // ── Modal "Criar relatório" (admin_interno only) ─────────────────────────
     const createOverlay   = document.getElementById('rbi-create-overlay');
@@ -1321,19 +1360,31 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
     // "Em construção" — admin_interno only, elementos null pra quem não é admin.
     // Enquanto true: só o botão "Publicar" aparece (ação única, irreversível) e
     // Visibilidade fica desabilitada (não faz sentido escolher visível/oculto pra
-    // algo que só admin enxerga de qualquer forma). Excluir (rascunho) só aparece
-    // também enquanto em_construcao=true.
+    // algo que só admin enxerga de qualquer forma). "Mover para lixeira" NÃO depende
+    // de em_construcao — disponível pra qualquer relatório, publicado ou rascunho.
     function setConstrucao(v) {
         emConstrucao = v;
         if (btnPublicar)    btnPublicar.style.display    = v ? '' : 'none';
         if (publicadoLabel) publicadoLabel.style.display = v ? 'none' : 'flex';
         if (visivelBtn) visivelBtn.disabled = v;
         if (ocultoBtn)  ocultoBtn.disabled  = v;
-        if (deleteBox) {
-            deleteBox.style.display = v ? 'flex' : 'none';
-            if (deleteConfirmInput) deleteConfirmInput.value = '';
-            if (btnDeleteConfirm)   btnDeleteConfirm.disabled = true;
-        }
+    }
+
+    // Resumo (contagens de empresas/usuários/portais) exibido na caixa "Mover para
+    // lixeira" — buscado uma vez por abertura do modal (ver openModal). 0 é uma
+    // resposta válida (ex.: rascunho sem nada ligado ainda) e é mostrado como tal.
+    function fetchResumoLixeira(relatorioId) {
+        if (!lixeiraResumoEl) return;
+        lixeiraResumoEl.textContent = 'Carregando resumo...';
+        fetch('/api/relatorio-excluir.php?action=resumo&relatorio_id=' + encodeURIComponent(relatorioId))
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (!res.sucesso) { lixeiraResumoEl.textContent = res.erro || 'Erro ao carregar resumo.'; return; }
+                var r = res.resumo;
+                lixeiraResumoEl.textContent = 'Este relatório tem: ' + r.empresas + ' empresa(s) habilitada(s), ' +
+                    r.usuarios + ' usuário(s) com acesso individual, ' + r.portais + ' portal(is) ativo(s).';
+            })
+            .catch(function () { lixeiraResumoEl.textContent = 'Erro de rede ao carregar resumo.'; });
     }
 
     function publicarRelatorio() {
@@ -1363,19 +1414,19 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
     }
     if (btnPublicar) btnPublicar.addEventListener('click', publicarRelatorio);
 
-    // ── Excluir rascunho — habilita o botão só quando o texto digitado bate
+    // ── Mover para lixeira — habilita o botão só quando o texto digitado bate
     // exatamente com o nome amigável ou o slug do relatório aberto. ──────────
-    if (deleteConfirmInput) {
-        deleteConfirmInput.addEventListener('input', function () {
-            const digitado = deleteConfirmInput.value.trim();
+    if (lixeiraConfirmInput) {
+        lixeiraConfirmInput.addEventListener('input', function () {
+            const digitado = lixeiraConfirmInput.value.trim();
             const bate = digitado !== '' && (digitado === editNome.value.trim() || digitado === editSlug.value.trim());
-            btnDeleteConfirm.disabled = !bate;
+            btnLixeiraConfirm.disabled = !bate;
         });
     }
-    if (btnDeleteConfirm) {
-        btnDeleteConfirm.addEventListener('click', function () {
-            btnDeleteConfirm.disabled = true;
-            fetch('/api/relatorio-excluir.php?action=delete', {
+    if (btnLixeiraConfirm) {
+        btnLixeiraConfirm.addEventListener('click', function () {
+            btnLixeiraConfirm.disabled = true;
+            fetch('/api/relatorio-excluir.php?action=mover-lixeira', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: parseInt(editId.value, 10) })
@@ -1386,13 +1437,13 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
                     closeModal();
                     loadCards();
                 } else {
-                    alert('Erro ao excluir: ' + (res.erro || 'desconhecido'));
-                    btnDeleteConfirm.disabled = false;
+                    alert('Erro ao mover para a lixeira: ' + (res.erro || 'desconhecido'));
+                    btnLixeiraConfirm.disabled = false;
                 }
             })
             .catch(function () {
-                alert('Erro de rede ao excluir.');
-                btnDeleteConfirm.disabled = false;
+                alert('Erro de rede ao mover para a lixeira.');
+                btnLixeiraConfirm.disabled = false;
             });
         });
     }
@@ -1418,6 +1469,9 @@ window.RBI_IS_ADMIN           = <?= json_encode($_rtIsAdmin) ?>;
         setVis(card.visivel !== false);
         setConstrucao(card.em_construcao === true);
         switchTab('geral'); // sempre abre na aba Geral, independente da aba deixada aberta da última vez
+        if (lixeiraConfirmInput) lixeiraConfirmInput.value = '';
+        if (btnLixeiraConfirm)   btnLixeiraConfirm.disabled = true;
+        if (window.RBI_IS_ADMIN) fetchResumoLixeira(card.id);
         if (window.RBI_IS_ADMIN && connRelId) {
             connRelId.value = card.id;
             loadConexaoConfig(card.id);

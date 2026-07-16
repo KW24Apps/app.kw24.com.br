@@ -93,7 +93,7 @@ $_podeAcessarPortaisBi = ($user_data['perfil'] ?? '') === 'admin_interno' || !em
 // Requisição AJAX — retorna só o conteúdo da página
 if (isset($_GET['ajax'])) {
     $page          = $_GET['page'] ?? 'dashboard';
-    $allowed_pages = ['dashboard', 'cadastro', 'usuarios', 'aplicacoes', 'permissoes', 'relatorio', 'relatorios-bi', 'logs', 'configuracoes', 'bancodados', 'financeiro', 'financeiro-relatorios', 'portais', 'portais-bi', 'base-conhecimento', 'organizacoes', 'mcp-bitrix24', 'monitoramento'];
+    $allowed_pages = ['dashboard', 'cadastro', 'usuarios', 'aplicacoes', 'permissoes', 'relatorio', 'relatorios-bi', 'lixeira-bi', 'logs', 'configuracoes', 'bancodados', 'financeiro', 'financeiro-relatorios', 'portais', 'portais-bi', 'base-conhecimento', 'organizacoes', 'mcp-bitrix24', 'monitoramento'];
     if (!in_array($page, $allowed_pages)) $page = 'dashboard';
     if ($allowedPagesByProfile !== null && !in_array($page, $allowedPagesByProfile)) $page = 'dashboard';
     if ($page === 'portais-bi' && !$_podeAcessarPortaisBi) $page = 'relatorios-bi';
@@ -104,10 +104,10 @@ if (isset($_GET['ajax'])) {
 
 // Determina qual página carregar
 $page = $_GET['page'] ?? 'dashboard';
-$allowed_pages = ['dashboard', 'cadastro', 'usuarios', 'aplicacoes', 'permissoes', 'relatorio', 'relatorios-bi', 'logs', 'configuracoes', 'financeiro', 'financeiro-relatorios', 'portais', 'portais-bi', 'base-conhecimento', 'organizacoes', 'mcp-bitrix24', 'monitoramento'];
+$allowed_pages = ['dashboard', 'cadastro', 'usuarios', 'aplicacoes', 'permissoes', 'relatorio', 'relatorios-bi', 'lixeira-bi', 'logs', 'configuracoes', 'financeiro', 'financeiro-relatorios', 'portais', 'portais-bi', 'base-conhecimento', 'organizacoes', 'mcp-bitrix24', 'monitoramento'];
 
-// configuracoes, organizacoes, mcp-bitrix24 e monitoramento: apenas admin_interno
-if (in_array($page, ['configuracoes', 'organizacoes', 'mcp-bitrix24', 'monitoramento']) && ($user_data['perfil'] ?? '') !== 'admin_interno') {
+// configuracoes, organizacoes, mcp-bitrix24, monitoramento e lixeira-bi: apenas admin_interno
+if (in_array($page, ['configuracoes', 'organizacoes', 'mcp-bitrix24', 'monitoramento', 'lixeira-bi']) && ($user_data['perfil'] ?? '') !== 'admin_interno') {
     header('Location: ?page=dashboard&error=access_denied');
     exit;
 }

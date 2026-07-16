@@ -138,6 +138,10 @@ class TopbarManager {
         if (_biPodeCriarPortal) {
             _biSubmenus.push({ id: 'bi-portais', text: 'Portais', icon: 'fas fa-globe', url: '?page=portais-bi' });
         }
+        // Lixeira — admin_interno only (mover/restaurar/excluir definitivamente relatórios).
+        if (window.IS_ADMIN_INTERNO) {
+            _biSubmenus.push({ id: 'bi-lixeira', text: 'Lixeira', icon: 'fas fa-trash', url: '?page=lixeira-bi' });
+        }
         const submenusMap = {
             'dashboard': [
                 { id: 'dash-overview', text: 'Visão Geral', icon: 'fas fa-chart-line',    url: '?page=dashboard' },
@@ -174,7 +178,7 @@ class TopbarManager {
         const action    = curParams.get('action') || '';
 
         // Sub-páginas agrupadas sob o menu pai para exibir os mesmos submenus
-        const subpageMap = { 'usuarios': 'cadastro', 'aplicacoes': 'cadastro', 'permissoes': 'cadastro', 'organizacoes': 'cadastro', 'financeiro-relatorios': 'financeiro', 'portais-bi': 'relatorios-bi', 'monitoramento': 'dashboard' };
+        const subpageMap = { 'usuarios': 'cadastro', 'aplicacoes': 'cadastro', 'permissoes': 'cadastro', 'organizacoes': 'cadastro', 'financeiro-relatorios': 'financeiro', 'portais-bi': 'relatorios-bi', 'lixeira-bi': 'relatorios-bi', 'monitoramento': 'dashboard' };
         const parentPage = subpageMap[page] || page;
         const submenus  = submenusMap[parentPage] || [];
 

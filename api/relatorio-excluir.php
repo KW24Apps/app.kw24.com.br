@@ -1,8 +1,9 @@
 <?php
-// Excluir relatório BI — SOMENTE rascunhos (em_construcao=TRUE). admin_interno only.
-// Relatório publicado (em_construcao=FALSE) NUNCA pode ser excluído por aqui — decisão
-// deliberada: clientes/portais podem depender de um relatório já publicado; excluir um
-// publicado é uma conversa separada e mais cuidadosa, fora de escopo aqui.
+// Lixeira de relatórios BI — admin_interno only. Substitui o modelo antigo (exclusão
+// imediata, só pra rascunhos) por um fluxo único de 2 passos pra QUALQUER relatório
+// (publicado ou rascunho): mover pra lixeira (reversível, nunca apaga dado) e, só depois,
+// excluir definitivamente (cascata destrutiva, manual ou pela purga automática de 30 dias
+// em crons/lixeira-purge.php). Ver seção "Lixeira" em RELATORIOS_BI.md.
 session_start();
 require_once __DIR__ . '/../services/AuthenticationService.php';
 require_once __DIR__ . '/../helpers/Database.php';
@@ -27,61 +28,94 @@ $db = Database::getInstance();
 $action = $_GET['action'] ?? '';
 
 try {
-    if ($action === 'delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    // ── resumo ──────────────────────────────────────────────────────────────
+    // Contagens (empresas/usuários/portais) exibidas ANTES de confirmar mover pra
+    // lixeira — nunca lista item a item, só o total (0 é uma resposta válida).
+    if ($action === 'resumo' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+        $id = (int)($_GET['relatorio_id'] ?? 0);
+        if (!$id) { echo json_encode(['erro' => 'relatorio_id inválido']); exit; }
+
+        $relatorio = $db->fetchOne('SELECT id, slug FROM relatorios_bi WHERE id = :id', ['id' => $id]);
+        if (!$relatorio) { echo json_encode(['erro' => 'Relatório não encontrado']); exit; }
+
+        echo json_encode(['sucesso' => true, 'resumo' => resumoAtivosRelatorio($db, $relatorio['slug'], $id)]);
+        exit;
+    }
+
+    // ── mover-lixeira ───────────────────────────────────────────────────────
+    // Aplica a QUALQUER relatório (publicado ou rascunho) — reversível, nunca apaga dado.
+    if ($action === 'mover-lixeira' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $body = json_decode(file_get_contents('php://input'), true) ?? [];
         $id   = (int)($body['id'] ?? 0);
         if (!$id) { echo json_encode(['erro' => 'id inválido']); exit; }
 
-        $relatorio = $db->fetchOne(
-            'SELECT id, slug, nome_amigavel, em_construcao FROM relatorios_bi WHERE id = :id',
-            ['id' => $id]
-        );
+        $relatorio = $db->fetchOne('SELECT id, slug, nome_amigavel, lixeira_em FROM relatorios_bi WHERE id = :id', ['id' => $id]);
         if (!$relatorio) { echo json_encode(['erro' => 'Relatório não encontrado']); exit; }
-
-        // Guard de segurança no servidor — nunca confia só na UI escondendo o botão pra
-        // relatórios publicados. Mesmo que alguém force a chamada, isso bloqueia.
-        if (!filter_var($relatorio['em_construcao'], FILTER_VALIDATE_BOOLEAN)) {
-            http_response_code(403);
-            echo json_encode(['erro' => 'Só é possível excluir relatórios ainda em construção (rascunhos). Relatórios publicados não podem ser excluídos por aqui.']);
+        if ($relatorio['lixeira_em'] !== null) {
+            echo json_encode(['erro' => 'Este relatório já está na lixeira']);
             exit;
         }
 
-        $conexao = $db->fetchOne(
-            'SELECT tipo_conexao, config FROM relatorios_bi_conexoes WHERE relatorio_id = :id',
-            ['id' => $id]
+        $res = moverRelatorioParaLixeira($db, $relatorio);
+        echo json_encode(array_merge(['sucesso' => true], $res));
+        exit;
+    }
+
+    // ── lixeira-list ────────────────────────────────────────────────────────
+    if ($action === 'lixeira-list' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+        $rows = $db->fetchAll(
+            "SELECT id, slug, nome_amigavel, em_construcao, lixeira_em,
+                    EXTRACT(DAY FROM (lixeira_em + INTERVAL '30 days' - NOW()))::int AS dias_restantes
+               FROM relatorios_bi
+              WHERE lixeira_em IS NOT NULL
+              ORDER BY lixeira_em ASC"
         );
+        foreach ($rows as &$r) {
+            $r['em_construcao']   = filter_var($r['em_construcao'], FILTER_VALIDATE_BOOLEAN);
+            $r['dias_restantes']  = max(0, (int)$r['dias_restantes']);
+        }
+        echo json_encode(['sucesso' => true, 'relatorios' => $rows]);
+        exit;
+    }
 
-        // Excel: apaga o schema real (tabelas + dados) — SQL: nunca toca no banco externo
-        // do cliente, só a linha de credencial local é removida (abaixo, junto com o resto).
-        if ($conexao && $conexao['tipo_conexao'] === 'excel') {
-            $cfg    = json_decode($conexao['config'], true) ?? [];
-            $schema = $cfg['schema'] ?? schemaExcelRelatorio($relatorio['slug']);
-            try {
-                $excelPdo = getExcelPdo();
-                $excelPdo->exec('DROP SCHEMA IF EXISTS ' . quoteIdent($schema) . ' CASCADE');
-            } catch (Exception $e) {
-                error_log('[relatorio-excluir] falha ao dropar schema Excel: ' . $e->getMessage());
-                echo json_encode(['erro' => 'Falha ao remover as tabelas Excel: ' . $e->getMessage()]);
-                exit;
-            }
+    // ── restaurar ───────────────────────────────────────────────────────────
+    if ($action === 'restaurar' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $body = json_decode(file_get_contents('php://input'), true) ?? [];
+        $id   = (int)($body['id'] ?? 0);
+        if (!$id) { echo json_encode(['erro' => 'id inválido']); exit; }
+
+        $relatorio = $db->fetchOne('SELECT id, slug, lixeira_em, lixeira_portais_estado FROM relatorios_bi WHERE id = :id', ['id' => $id]);
+        if (!$relatorio) { echo json_encode(['erro' => 'Relatório não encontrado']); exit; }
+        if ($relatorio['lixeira_em'] === null) {
+            echo json_encode(['erro' => 'Este relatório não está na lixeira']);
+            exit;
         }
 
-        $conn = $db->getConnection();
-        $conn->beginTransaction();
-        try {
-            // Defensivo — normalmente um rascunho não tem nenhuma dessas linhas ainda,
-            // mas limpa de qualquer forma pra nunca deixar referência órfã.
-            $db->execute('DELETE FROM relatorio_usuario_permissoes WHERE relatorio_id = :id', ['id' => $id]);
-            $db->execute('DELETE FROM portais_bi WHERE relatorio_slug = :slug', ['slug' => $relatorio['slug']]);
-            $db->execute('DELETE FROM relatorios_bi_conexoes WHERE relatorio_id = :id', ['id' => $id]);
-            $db->execute('DELETE FROM relatorios_bi WHERE id = :id', ['id' => $id]);
-            $conn->commit();
-        } catch (Exception $e) {
-            $conn->rollBack();
-            throw $e;
+        $res = restaurarRelatorioDaLixeira($db, $relatorio);
+        echo json_encode(array_merge(['sucesso' => true], $res));
+        exit;
+    }
+
+    // ── excluir-definitivo ──────────────────────────────────────────────────
+    // Cascata destrutiva completa. Só permitido a partir da lixeira (guard abaixo) —
+    // confirmação forte (digitar nome/slug exato) é responsabilidade do frontend, mesmo
+    // padrão já usado no antigo delete de rascunho.
+    if ($action === 'excluir-definitivo' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $body = json_decode(file_get_contents('php://input'), true) ?? [];
+        $id   = (int)($body['id'] ?? 0);
+        if (!$id) { echo json_encode(['erro' => 'id inválido']); exit; }
+
+        $relatorio = $db->fetchOne('SELECT id, slug, nome_amigavel, lixeira_em FROM relatorios_bi WHERE id = :id', ['id' => $id]);
+        if (!$relatorio) { echo json_encode(['erro' => 'Relatório não encontrado']); exit; }
+        if ($relatorio['lixeira_em'] === null) {
+            http_response_code(403);
+            echo json_encode(['erro' => 'Só é possível excluir definitivamente relatórios que já estejam na lixeira.']);
+            exit;
         }
 
-        echo json_encode(['sucesso' => true]);
+        $res = excluirRelatorioDefinitivamente($db, $relatorio);
+        if (!$res['sucesso']) { echo json_encode($res); exit; }
+        echo json_encode($res);
         exit;
     }
 

@@ -2,10 +2,13 @@
 /**
  * Funções compartilhadas do módulo Relatórios BI — usadas por api/relatorio-conexao.php
  * (editar conexão de um relatório existente), api/relatorio-criar.php (cadastrar um
- * relatório novo, Etapa 2) e api/relatorio-excluir.php (excluir rascunho). Ver
- * RELATORIOS_BI.md para o desenho completo do módulo.
+ * relatório novo, Etapa 2), api/relatorio-excluir.php (lixeira/exclusão definitiva) e
+ * crons/lixeira-purge.php (purga automática de 30 dias). Ver RELATORIOS_BI.md para o
+ * desenho completo do módulo.
  */
 require_once __DIR__ . '/XlsxReader.php';
+require_once __DIR__ . '/../services/NimbusTaxPortalSync.php';
+require_once __DIR__ . '/../scripts/regenerar-nginx-relatorios-bi.php';
 
 // Tipos de conexão suportados hoje; 'webhook' reservado para o futuro (desabilitado na UI).
 const RBI_TIPOS_CONEXAO_HABILITADOS = ['sql', 'excel'];
@@ -547,5 +550,252 @@ function atualizarDadosTabelaExcel(string $schema, string $tabela, string $modo,
         'sucesso'          => true,
         'linhas_inseridas' => count($parse['linhas']),
         'colunas_criadas'  => array_keys($colunasNovasCriar),
+    ];
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Lixeira (jul/2026) — mover/restaurar/excluir definitivamente QUALQUER relatório
+// (publicado ou rascunho). Ver seção "Lixeira" em RELATORIOS_BI.md.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Resumo (contagens, não lista item a item) do que está ligado a um relatório — exibido
+ * antes de confirmar mover pra lixeira, pra deixar claro o que está em jogo mesmo que o
+ * número seja zero. Empresas = cliente_aplicacoes ativas com o slug no config_extra;
+ * usuários = relatorio_usuario_permissoes distintos com pode_ver; portais = portais_bi
+ * ATIVOS (não conta os já inativos por outro motivo).
+ *
+ * @return array{empresas:int, usuarios:int, portais:int}
+ */
+function resumoAtivosRelatorio(Database $db, string $slug, int $relatorioId): array {
+    $rowEmp = $db->fetchOne(
+        "SELECT COUNT(DISTINCT ca.cliente_id) AS total
+           FROM cliente_aplicacoes ca
+           JOIN aplicacoes a ON a.id = ca.aplicacao_id AND a.slug = 'relatorios-bi'
+          WHERE ca.ativo = TRUE AND jsonb_exists(ca.config_extra -> 'relatorios', :slug)",
+        ['slug' => $slug]
+    );
+    $rowUsr = $db->fetchOne(
+        'SELECT COUNT(DISTINCT usuario_id) AS total FROM relatorio_usuario_permissoes WHERE relatorio_id = :id AND pode_ver = TRUE',
+        ['id' => $relatorioId]
+    );
+    $rowPortal = $db->fetchOne(
+        'SELECT COUNT(*) AS total FROM portais_bi WHERE relatorio_slug = :slug AND ativo = TRUE',
+        ['slug' => $slug]
+    );
+    return [
+        'empresas' => (int)($rowEmp['total'] ?? 0),
+        'usuarios' => (int)($rowUsr['total'] ?? 0),
+        'portais'  => (int)($rowPortal['total'] ?? 0),
+    ];
+}
+
+/** Nome do serviço systemd — determinístico, mesma fórmula de infraestruturaRelatorio(). */
+function servicoSystemdRelatorio(string $slug): string {
+    return 'kw24-relatorio-' . $slug . '.service';
+}
+
+/**
+ * Para e desabilita o serviço systemd de um relatório — best-effort. Um relatório que
+ * nunca teve dashboard Python de verdade (ex.: ainda em_construcao, ou um rascunho de
+ * teste) não tem nenhum unit — `systemctl stop/disable` num serviço inexistente falha,
+ * mas isso NUNCA bloqueia mover pra lixeira. Resultado é só informativo pro admin.
+ */
+function pararEDesabilitarServicoRelatorio(string $slug): bool {
+    $servico = escapeshellarg(servicoSystemdRelatorio($slug));
+    exec("sudo systemctl stop {$servico} 2>&1", $outStop, $rcStop);
+    exec("sudo systemctl disable {$servico} 2>&1", $outDisable, $rcDisable);
+    return $rcStop === 0 && $rcDisable === 0;
+}
+
+/**
+ * Reabilita e reinicia o serviço systemd de um relatório restaurado da lixeira — mesma
+ * ressalva best-effort do irmão acima (nunca bloqueia o restore).
+ */
+function reabilitarEIniciarServicoRelatorio(string $slug): bool {
+    $servico = escapeshellarg(servicoSystemdRelatorio($slug));
+    exec("sudo systemctl enable {$servico} 2>&1", $outEnable, $rcEnable);
+    exec("sudo systemctl start {$servico} 2>&1", $outStart, $rcStart);
+    return $rcEnable === 0 && $rcStart === 0;
+}
+
+/**
+ * Move QUALQUER relatório (publicado ou rascunho) pra lixeira — soft-delete reversível,
+ * NUNCA apaga dado nenhum. Para/desabilita o serviço systemd, tira o slug do map do
+ * nginx (regenerarMapNginxRelatoriosBi() já ignora quem está na lixeira — ver ali),
+ * some do hub pra todo mundo (api/relatorios-bi.php?action=list filtra lixeira_em IS
+ * NULL) e desativa (nunca apaga) os portais ligados a ele — gravando o estado ANTERIOR
+ * de cada um (alguns podem já estar inativos por outro motivo) pra restaurar exato.
+ *
+ * @return array{sucesso:bool, systemd_ok:bool, nginx_ok:bool, nginx_erro:?string, portais_desativados:int}
+ */
+function moverRelatorioParaLixeira(Database $db, array $relatorio): array {
+    $id   = (int)$relatorio['id'];
+    $slug = $relatorio['slug'];
+
+    $portais = $db->fetchAll(
+        'SELECT id, filter_type, filter_values, slug, ativo FROM portais_bi WHERE relatorio_slug = :slug',
+        ['slug' => $slug]
+    );
+    $estadoAntes = [];
+    foreach ($portais as $p) {
+        $estadoAntes[(string)$p['id']] = filter_var($p['ativo'], FILTER_VALIDATE_BOOLEAN);
+    }
+
+    foreach ($portais as $p) {
+        if (!filter_var($p['ativo'], FILTER_VALIDATE_BOOLEAN)) continue; // já inativo, nada a fazer
+        $oldForSync = [
+            'relatorio_slug' => $slug, 'filter_type' => $p['filter_type'],
+            'filter_values'  => json_decode($p['filter_values'], true) ?? [],
+            'slug'           => $p['slug'], 'ativo' => true,
+        ];
+        $newForSync = $oldForSync; $newForSync['ativo'] = false;
+        $db->execute('UPDATE portais_bi SET ativo = FALSE WHERE id = :id', ['id' => $p['id']]);
+        NimbusTaxPortalSync::sync($oldForSync, $newForSync, null);
+    }
+
+    $systemdOk = pararEDesabilitarServicoRelatorio($slug);
+
+    $db->execute(
+        'UPDATE relatorios_bi SET lixeira_em = NOW(), lixeira_portais_estado = :estado::jsonb WHERE id = :id',
+        ['estado' => json_encode($estadoAntes), 'id' => $id]
+    );
+
+    $nginx = regenerarMapNginxRelatoriosBi();
+
+    return [
+        'sucesso'             => true,
+        'systemd_ok'          => $systemdOk,
+        'nginx_ok'            => $nginx['sucesso'],
+        'nginx_erro'          => $nginx['sucesso'] ? null : $nginx['erro'],
+        'portais_desativados' => count(array_filter($estadoAntes)),
+    ];
+}
+
+/**
+ * Restaura um relatório da lixeira ao estado exato de antes: cada portal volta ao seu
+ * PRÓPRIO estado anterior (gravado em lixeira_portais_estado) — um portal que já estava
+ * inativo antes de mover pra lixeira NÃO reativa só porque o relatório voltou. Reabilita
+ * o serviço systemd e recoloca o slug no map do nginx.
+ *
+ * @return array{sucesso:bool, systemd_ok:bool, nginx_ok:bool, nginx_erro:?string}
+ */
+function restaurarRelatorioDaLixeira(Database $db, array $relatorio): array {
+    $id          = (int)$relatorio['id'];
+    $slug        = $relatorio['slug'];
+    $estadoAntes = json_decode($relatorio['lixeira_portais_estado'] ?? '[]', true) ?: [];
+
+    $portais = $db->fetchAll(
+        'SELECT id, filter_type, filter_values, slug, ativo FROM portais_bi WHERE relatorio_slug = :slug',
+        ['slug' => $slug]
+    );
+    foreach ($portais as $p) {
+        $idStr = (string)$p['id'];
+        if (!array_key_exists($idStr, $estadoAntes)) continue; // portal criado depois do trash — não mexe
+        $deveEstarAtivo = (bool)$estadoAntes[$idStr];
+        $estaAtivo      = filter_var($p['ativo'], FILTER_VALIDATE_BOOLEAN);
+        if ($deveEstarAtivo === $estaAtivo) continue; // já está no estado correto, nada a fazer
+
+        $oldForSync = [
+            'relatorio_slug' => $slug, 'filter_type' => $p['filter_type'],
+            'filter_values'  => json_decode($p['filter_values'], true) ?? [],
+            'slug'           => $p['slug'], 'ativo' => $estaAtivo,
+        ];
+        $newForSync = $oldForSync; $newForSync['ativo'] = $deveEstarAtivo;
+        $db->execute('UPDATE portais_bi SET ativo = :ativo WHERE id = :id', ['ativo' => $deveEstarAtivo ? 'true' : 'false', 'id' => $p['id']]);
+        NimbusTaxPortalSync::sync($oldForSync, $newForSync, null);
+    }
+
+    $systemdOk = reabilitarEIniciarServicoRelatorio($slug);
+
+    $db->execute('UPDATE relatorios_bi SET lixeira_em = NULL, lixeira_portais_estado = NULL WHERE id = :id', ['id' => $id]);
+
+    $nginx = regenerarMapNginxRelatoriosBi();
+
+    return [
+        'sucesso'    => true,
+        'systemd_ok' => $systemdOk,
+        'nginx_ok'   => $nginx['sucesso'],
+        'nginx_erro' => $nginx['sucesso'] ? null : $nginx['erro'],
+    ];
+}
+
+/**
+ * Cascata destrutiva completa — chamada tanto pelo botão manual "Excluir definitivamente"
+ * (tela Lixeira) quanto pela purga automática de 30 dias (crons/lixeira-purge.php). Quem
+ * chama garante que o relatório já está na lixeira antes de invocar esta função. Nunca
+ * apaga a pasta relatorios-bi/{slug}/ (código) nem toca no unit systemd além do que a
+ * lixeira já fez (parar/desabilitar) — fica pro dev arquivar manualmente se quiser.
+ *
+ * @return array{sucesso:bool, erro?:string, bitrix_limpeza?:array, nginx_ok?:bool}
+ */
+function excluirRelatorioDefinitivamente(Database $db, array $relatorio): array {
+    $id   = (int)$relatorio['id'];
+    $slug = $relatorio['slug'];
+
+    // Excel: apaga o schema real (tabelas + dados) — SQL: nunca toca no banco externo do
+    // cliente, só a linha de credencial local é removida (abaixo, junto com o resto).
+    $conexao = $db->fetchOne('SELECT tipo_conexao, config FROM relatorios_bi_conexoes WHERE relatorio_id = :id', ['id' => $id]);
+    if ($conexao && $conexao['tipo_conexao'] === 'excel') {
+        $cfg    = json_decode($conexao['config'], true) ?? [];
+        $schema = $cfg['schema'] ?? schemaExcelRelatorio($slug);
+        try {
+            $excelPdo = getExcelPdo();
+            $excelPdo->exec('DROP SCHEMA IF EXISTS ' . quoteIdent($schema) . ' CASCADE');
+        } catch (Exception $e) {
+            error_log('[lixeira] falha ao dropar schema Excel: ' . $e->getMessage());
+            return ['sucesso' => false, 'erro' => 'Falha ao remover as tabelas Excel: ' . $e->getMessage()];
+        }
+    }
+
+    // Bitrix — best-effort: tenta limpar os campos de Company de todo portal que qualificava
+    // pro sync NimbusTax. Nunca bloqueia a exclusão se a chamada falhar — só é reportado.
+    $portais = $db->fetchAll(
+        'SELECT id, filter_type, filter_values, slug, ativo FROM portais_bi WHERE relatorio_slug = :slug',
+        ['slug' => $slug]
+    );
+    $bitrixLimpeza = [];
+    foreach ($portais as $p) {
+        $rowForSync = [
+            'relatorio_slug' => $slug, 'filter_type' => $p['filter_type'],
+            'filter_values'  => json_decode($p['filter_values'], true) ?? [],
+            'slug'           => $p['slug'], 'ativo' => filter_var($p['ativo'], FILTER_VALIDATE_BOOLEAN),
+        ];
+        if (!NimbusTaxPortalSync::qualifies($rowForSync)) continue;
+        try {
+            NimbusTaxPortalSync::sync($rowForSync, null, null);
+            $bitrixLimpeza[] = ['portal_slug' => $p['slug'], 'tentativa' => true];
+        } catch (Exception $e) {
+            $bitrixLimpeza[] = ['portal_slug' => $p['slug'], 'tentativa' => true, 'erro' => $e->getMessage()];
+        }
+    }
+
+    $conn = $db->getConnection();
+    $conn->beginTransaction();
+    try {
+        // Remove o slug de TODO cliente_aplicacoes.config_extra->relatorios que o referencia —
+        // jsonb - text remove só o elemento que bate exatamente, preserva os demais da lista.
+        $db->execute(
+            "UPDATE cliente_aplicacoes
+                SET config_extra = jsonb_set(config_extra, '{relatorios}', (config_extra->'relatorios') - :slug)
+              WHERE jsonb_exists(config_extra -> 'relatorios', :slug)",
+            ['slug' => $slug]
+        );
+        $db->execute('DELETE FROM relatorio_usuario_permissoes WHERE relatorio_id = :id', ['id' => $id]);
+        $db->execute('DELETE FROM portais_bi WHERE relatorio_slug = :slug', ['slug' => $slug]);
+        $db->execute('DELETE FROM relatorios_bi_conexoes WHERE relatorio_id = :id', ['id' => $id]);
+        $db->execute('DELETE FROM relatorios_bi WHERE id = :id', ['id' => $id]);
+        $conn->commit();
+    } catch (Exception $e) {
+        $conn->rollBack();
+        throw $e;
+    }
+
+    $nginx = regenerarMapNginxRelatoriosBi();
+
+    return [
+        'sucesso'        => true,
+        'bitrix_limpeza' => $bitrixLimpeza,
+        'nginx_ok'       => $nginx['sucesso'],
     ];
 }

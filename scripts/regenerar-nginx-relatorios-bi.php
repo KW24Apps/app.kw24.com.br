@@ -9,8 +9,13 @@
  * outro fluxo hoje cria/altera id ou slug, que são imutáveis).
  *
  * Uso direto (SSH, no servidor): php scripts/regenerar-nginx-relatorios-bi.php
+ *
+ * Também é reaproveitado via require (não só CLI) por helpers/RelatoriosBiHelper.php,
+ * pra que mover/restaurar um relatório da lixeira só precise chamar
+ * regenerarMapNginxRelatoriosBi() de novo — daí o guard no define() abaixo, já que
+ * quem inclui pode já ter definido SYSTEM_ACCESS antes.
  */
-define('SYSTEM_ACCESS', true);
+if (!defined('SYSTEM_ACCESS')) define('SYSTEM_ACCESS', true);
 require_once __DIR__ . '/../helpers/Database.php';
 
 function portaRelatorioBi(int $relatorioId): int {
@@ -22,7 +27,10 @@ function portaRelatorioBi(int $relatorioId): int {
  */
 function regenerarMapNginxRelatoriosBi(): array {
     $db   = Database::getInstance();
-    $rows = $db->fetchAll('SELECT id, slug FROM relatorios_bi ORDER BY id');
+    // Relatório na lixeira (lixeira_em preenchido) nunca tem entrada no map — é assim que
+    // "tirar do nginx" é implementado pra ele: chamar esta função de novo depois de mover
+    // pra lixeira/restaurar já basta, sem lógica de remoção de linha específica.
+    $rows = $db->fetchAll('SELECT id, slug FROM relatorios_bi WHERE lixeira_em IS NULL ORDER BY id');
 
     $linhas = ["# Gerado automaticamente por scripts/regenerar-nginx-relatorios-bi.php — NÃO editar à mão.",
                "# slug => porta interna do Gunicorn (8100 + relatorios_bi.id)"];

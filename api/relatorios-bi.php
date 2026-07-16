@@ -20,8 +20,10 @@ if ($action === 'list') {
     $isAdmin = ($user['perfil'] ?? '') === 'admin_interno';
     $uid     = (int)($user['id'] ?? 0);
 
+    // Na lixeira (lixeira_em preenchido) some do hub INTEIRO, admin incluído — só aparece
+    // na tela dedicada Lixeira (api/relatorio-excluir.php?action=lixeira-list).
     $rows = $db->fetchAll(
-        'SELECT id, slug, nome_amigavel, visivel, em_construcao FROM relatorios_bi ORDER BY ordem ASC'
+        'SELECT id, slug, nome_amigavel, visivel, em_construcao FROM relatorios_bi WHERE lixeira_em IS NULL ORDER BY ordem ASC'
     );
 
     // "Em construção" (Etapa 2 do self-service): visível SÓ para admin_interno,
