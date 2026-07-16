@@ -56,6 +56,17 @@
     overflow: visible;
 }
 
+/* Divisor de seção (ex.: "Aplicações") — colapsado mostra só o traço, sem a palavra (o texto em
+ * white-space:nowrap forçava a sidebar a ficar mais larga que --sidebar-collapsed-width, criando
+ * scroll horizontal). Mesmo par colapsado/hover de .sidebar-link-text acima. */
+.sidebar.collapsed .sidebar-divider-label {
+    display: none;
+}
+
+.sidebar.collapsed.hovered .sidebar-divider-label {
+    display: inline;
+}
+
 /* Cabeçalho */
 .sidebar-header {
     flex-shrink: 0;

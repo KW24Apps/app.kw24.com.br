@@ -71,7 +71,7 @@ $_sidebarMostraRelatoriosBi = ($user_data['perfil'] ?? '') === 'admin_interno'
         <li style="padding:.4rem 1rem" aria-hidden="true">
             <div style="display:flex;align-items:center;gap:.5rem">
                 <span style="flex:1;height:1px;background:rgba(255,255,255,.13)"></span>
-                <span style="font-size:.62rem;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.35);text-transform:uppercase;white-space:nowrap">Aplicações</span>
+                <span class="sidebar-divider-label" style="font-size:.62rem;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.35);text-transform:uppercase;white-space:nowrap">Aplicações</span>
                 <span style="flex:1;height:1px;background:rgba(255,255,255,.13)"></span>
             </div>
         </li>
