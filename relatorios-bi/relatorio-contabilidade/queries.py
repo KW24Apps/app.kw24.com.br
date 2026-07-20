@@ -7,14 +7,21 @@ Tabela: tbl_onboard
 Campos usados:
   - criado_em                  → data (filtro de período De/Até)
   - etapa                      → estágio (classifica a aba: Vendas Fechadas / Em Negociação)
-  - valor                      → valor monetário do negócio
+  - contrato_mensal_valor_aprovado                       → mensalidade aprovada  ┐ soma = valor
+  - constituicao_alteracao_servico_extra_valor_aprovado  → constituição/serviço  ┘ monetário (ver VALOR)
   - responsavel_pela_execucao  → vendedor (linha da tabela do Bloco 2)
   - parceiro_indicacao         → origem do negócio (própria x indicada — ver REGRAS)
   - tipo_de_contrato           → tipo de contrato (Bloco 3)
 
-✅ Schema VERIFICADO em 2026-06-26 (via túnel SSH para o banco real):
-     - Todas as 8 colunas usadas existem em tbl_onboard.
-     - `valor` é NUMERIC → COALESCE(SUM(valor),0) direto está correto.
+⚠️ VALOR MONETÁRIO (regra definida pelo usuário em 2026-07-20): o campo antigo
+   `valor` NÃO é mais usado (dados não confiáveis). O valor de CADA negócio, para
+   TODOS os tipos de contrato, é a soma de contrato_mensal_valor_aprovado +
+   constituicao_alteracao_servico_extra_valor_aprovado (ver constante VALOR).
+
+✅ Schema VERIFICADO (via túnel SSH para o banco real; 2026-06-26 e 2026-07-20):
+     - Colunas de etapa/vendedor/parceiro/tipo/contab existem em tbl_onboard.
+     - `contrato_mensal_valor_aprovado` e `constituicao_alteracao_servico_extra_valor_aprovado`
+       são NUMERIC nullable → COALESCE(...,0) nos dois (ver VALOR).
      - `criado_em` é TIMESTAMP → ::date no filtro de período está correto.
      - parceiro_indicacao: os dois nomes de venda própria batem EXATAMENTE
        ('CAPITON CONTABILIDADE S/S', 'FF CONTABILIDADE LTDA'); 9 NULLs, 0 vazios.
@@ -74,6 +81,18 @@ EH_CAPITON    = "UPPER(TRIM(t.contabilidade_responsavel_operacional)) = 'CAPITON
 # de vendedores serem re-derivadas no cross-filter). 'contafarma' | 'capiton' | 'outro'.
 CONTAB_GRUPO_CASE = (f"CASE WHEN {EH_CONTAFARMA} THEN 'contafarma' "
                      f"WHEN {EH_CAPITON} THEN 'capiton' ELSE 'outro' END")
+
+# ── Valor monetário do negócio ────────────────────────────────────────────────
+# REGRA (definida pelo usuário, 20/07/2026): o campo antigo `valor` NÃO é mais
+# usado (dados não confiáveis, preenchidos incorretamente pelo time do funil). O
+# valor total de CADA negócio, para TODOS os tipos de contrato (sem exceção), é a
+# soma de:
+#   contrato_mensal_valor_aprovado  (mensalidade aprovada)
+#   + constituicao_alteracao_servico_extra_valor_aprovado  (constituição/alteração/serviço extra)
+# Ambos NUMERIC nullable → COALESCE(...,0) nos dois. Usar esta expressão em toda
+# soma/leitura monetária (KPIs, vendedores, contratos, detalhamento, indicadas).
+VALOR = ("(COALESCE(t.contrato_mensal_valor_aprovado, 0) + "
+         "COALESCE(t.constituicao_alteracao_servico_extra_valor_aprovado, 0))")
 
 
 # ── Helpers de cláusula ──────────────────────────────────────────────────────
@@ -142,11 +161,11 @@ def get_kpis(aba, data_de=None, data_ate=None, ct_completo=True, ct_indicador=No
     for pref, cond in _grupos.items():
         _cols += [
             f"COUNT(*) FILTER (WHERE {cond}) AS {pref}total_qtd",
-            f"COALESCE(SUM(t.valor) FILTER (WHERE {cond}), 0) AS {pref}total_valor",
+            f"COALESCE(SUM({VALOR}) FILTER (WHERE {cond}), 0) AS {pref}total_valor",
             f"COUNT(*) FILTER (WHERE {cond} AND {EH_PROPRIA}) AS {pref}propria_qtd",
-            f"COALESCE(SUM(t.valor) FILTER (WHERE {cond} AND {EH_PROPRIA}), 0) AS {pref}propria_valor",
+            f"COALESCE(SUM({VALOR}) FILTER (WHERE {cond} AND {EH_PROPRIA}), 0) AS {pref}propria_valor",
             f"COUNT(*) FILTER (WHERE {cond} AND {EH_INDICADA}) AS {pref}indicada_qtd",
-            f"COALESCE(SUM(t.valor) FILTER (WHERE {cond} AND {EH_INDICADA}), 0) AS {pref}indicada_valor",
+            f"COALESCE(SUM({VALOR}) FILTER (WHERE {cond} AND {EH_INDICADA}), 0) AS {pref}indicada_valor",
         ]
     sql = f"SELECT {', '.join(_cols)} FROM tbl_onboard t WHERE {where}"
     row = fetch_one(sql, params) or {}
@@ -170,16 +189,16 @@ def get_vendedores(aba, data_de=None, data_ate=None, ct_completo=True, ct_indica
         SELECT
             COALESCE(NULLIF(TRIM(t.responsavel_pela_execucao), ''), '(Sem responsável)') AS responsavel,
             COUNT(*) FILTER (WHERE {EH_PROPRIA})                  AS propria_qtd,
-            COALESCE(SUM(t.valor) FILTER (WHERE {EH_PROPRIA}), 0)  AS propria_valor,
+            COALESCE(SUM({VALOR}) FILTER (WHERE {EH_PROPRIA}), 0)  AS propria_valor,
             COUNT(*) FILTER (WHERE {EH_INDICADA})                 AS indicada_qtd,
-            COALESCE(SUM(t.valor) FILTER (WHERE {EH_INDICADA}), 0) AS indicada_valor,
+            COALESCE(SUM({VALOR}) FILTER (WHERE {EH_INDICADA}), 0) AS indicada_valor,
             COUNT(*)                                              AS total_qtd,
-            COALESCE(SUM(t.valor), 0)                             AS total_valor,
+            COALESCE(SUM({VALOR}), 0)                             AS total_valor,
             -- Breakdown por contabilidade (sublinhas ContaFarma/Capiton)
             COUNT(*) FILTER (WHERE {EH_CONTAFARMA})                  AS cf_qtd,
-            COALESCE(SUM(t.valor) FILTER (WHERE {EH_CONTAFARMA}), 0)  AS cf_valor,
+            COALESCE(SUM({VALOR}) FILTER (WHERE {EH_CONTAFARMA}), 0)  AS cf_valor,
             COUNT(*) FILTER (WHERE {EH_CAPITON})                     AS cap_qtd,
-            COALESCE(SUM(t.valor) FILTER (WHERE {EH_CAPITON}), 0)     AS cap_valor
+            COALESCE(SUM({VALOR}) FILTER (WHERE {EH_CAPITON}), 0)     AS cap_valor
         FROM tbl_onboard t
         WHERE {where}
         GROUP BY 1
@@ -216,10 +235,10 @@ def get_indicadas(aba, data_de=None, data_ate=None, ct_completo=True, ct_indicad
             TRIM(t.parceiro_indicacao)                                       AS indicador,
             COALESCE(NULLIF(TRIM(t.tipo_de_contrato), ''), '(Sem tipo)')     AS tipo_de_contrato,
             TO_CHAR(t.criado_em, 'DD/MM/YYYY')                               AS data,
-            COALESCE(t.valor, 0)                                             AS valor
+            {VALOR}                                                          AS valor
         FROM tbl_onboard t
         WHERE {where} AND {EH_INDICADA}
-        ORDER BY t.valor DESC, responsavel ASC
+        ORDER BY {VALOR} DESC, responsavel ASC
     """
     return fetch_all(sql, params)
 
@@ -236,12 +255,12 @@ def get_contratos(aba, data_de=None, data_ate=None, ct_completo=True, ct_indicad
         SELECT
             COALESCE(NULLIF(TRIM(t.tipo_de_contrato), ''), '(Sem tipo)') AS tipo_de_contrato,
             COUNT(*)                  AS qtd,
-            COALESCE(SUM(t.valor), 0) AS valor_soma,
+            COALESCE(SUM({VALOR}), 0) AS valor_soma,
             -- Breakdown por contabilidade (sublinhas ContaFarma/Capiton)
             COUNT(*) FILTER (WHERE {EH_CONTAFARMA})                  AS cf_qtd,
-            COALESCE(SUM(t.valor) FILTER (WHERE {EH_CONTAFARMA}), 0)  AS cf_valor,
+            COALESCE(SUM({VALOR}) FILTER (WHERE {EH_CONTAFARMA}), 0)  AS cf_valor,
             COUNT(*) FILTER (WHERE {EH_CAPITON})                     AS cap_qtd,
-            COALESCE(SUM(t.valor) FILTER (WHERE {EH_CAPITON}), 0)     AS cap_valor
+            COALESCE(SUM({VALOR}) FILTER (WHERE {EH_CAPITON}), 0)     AS cap_valor
         FROM tbl_onboard t
         WHERE {where}
         GROUP BY 1
@@ -297,10 +316,10 @@ def get_detalhamento(date_from, date_to, tab, vendedor_filter=None, tipo_venda_f
             NULLIF(TRIM(t.parceiro_indicacao), '')                       AS parceiro_indicacao,
             -- Dias em negociação (só usado na aba "Em Negociação"): TODAY - criado_em
             (CURRENT_DATE - t.criado_em::date)                           AS dias_negociacao,
-            COALESCE(t.valor, 0)                                         AS valor
+            {VALOR}                                                      AS valor
         FROM tbl_onboard t
         WHERE {where}{extra}
-        ORDER BY t.valor DESC, t.bitrix_id DESC
+        ORDER BY {VALOR} DESC, t.bitrix_id DESC
     """
     return fetch_all(sql, params)
 
