@@ -213,11 +213,15 @@ class MonitoramentoAtendimentoService {
         ];
     }
 
-    /** Detecta conversas de grupo de WhatsApp (não são atendimento 1:1) — confirmado ao vivo
-     *  que o título vem no formato "WA: WhatsApp group - {nome do grupo} - {fila}". Case
-     *  insensitive por segurança (o conector pode variar capitalização entre canais). */
+    /** Detecta conversas de grupo de WhatsApp (não são atendimento 1:1). Dois formatos, OR'd:
+     *  formato antigo do conector "WA: WhatsApp group - {nome do grupo} - {fila}" e formato
+     *  novo "WA Group {nome do grupo} - {fila}" (conector trocou o formato de título em
+     *  jul/2026, confirmado ao vivo — sessões novas de grupo estavam caindo em "conversas"
+     *  individuais, inflando o tempo médio de resposta). Case insensitive por segurança (o
+     *  conector pode variar capitalização entre canais). */
     private function ehGrupo(string $titulo): bool {
-        return stripos($titulo, 'whatsapp group') !== false;
+        return stripos($titulo, 'whatsapp group') !== false
+            || stripos($titulo, 'wa group') !== false;
     }
 
     /** Uma identidade por webhook pessoal cadastrado (ver WebhooksPessoaisAtendimento) — se
