@@ -1,0 +1,921 @@
+/* ── Relatórios BI Hub ──────────────────────────────────────────────────── */
+.rbi-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: .25rem 0;
+}
+
+/* Page header */
+.rbi-page-header {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+}
+.rbi-page-icon {
+    font-size: 1.4rem;
+    color: #0DC2FF;
+}
+.rbi-page-title {
+    font-family: 'Rubik', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1;
+}
+
+/* Top bar — título + busca + filtro de empresa + toggle grade/lista */
+.rbi-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.rbi-controls {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    flex-wrap: wrap;
+}
+.rbi-search-wrap { position: relative; }
+.rbi-search-wrap i {
+    position: absolute;
+    left: .7rem; top: 50%; transform: translateY(-50%);
+    color: rgba(255,255,255,.3);
+    font-size: .85rem;
+    pointer-events: none;
+}
+#rbi-search {
+    background: rgba(255,255,255,0.07);
+    border: 1.5px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    padding: .5rem .75rem .5rem 2.15rem;
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    font-size: .82rem;
+    outline: none;
+    width: 210px;
+    box-sizing: border-box;
+    transition: border-color .15s;
+}
+#rbi-search:focus { border-color: #0DC2FF; }
+#rbi-search::placeholder { color: rgba(255,255,255,.3); }
+
+.rbi-select {
+    background: rgba(255,255,255,0.07);
+    border: 1.5px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    padding: .5rem .75rem;
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    font-size: .82rem;
+    outline: none;
+    cursor: pointer;
+    max-width: 220px;
+}
+.rbi-select option { background: #0d1e2d; }
+
+.rbi-view-toggle {
+    display: flex;
+    gap: .25rem;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    padding: .2rem;
+    flex-shrink: 0;
+}
+.rbi-view-btn {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,.4);
+    padding: .4rem .55rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: .95rem;
+    line-height: 1;
+    transition: background .15s, color .15s;
+}
+.rbi-view-btn:hover { color: rgba(255,255,255,.75); }
+.rbi-view-btn.active { background: #0DC2FF; color: #061920; }
+
+/* Cards row — modo grade */
+.rbi-cards-row.view-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+.rbi-cards-row.view-grid .rbi-card {
+    display: flex;
+    flex-direction: column;
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.05);
+    border: 1.5px solid rgba(255,255,255,0.10);
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+}
+.rbi-cards-row.view-grid .rbi-thumb {
+    height: 130px;
+    width: 100%;
+    overflow: hidden;
+    background: #0a1620;
+    position: relative;
+    flex-shrink: 0;
+}
+.rbi-cards-row.view-grid .rbi-card-body {
+    padding: .75rem .85rem .15rem;
+}
+.rbi-cards-row.view-grid .rbi-user-chip {
+    margin: .5rem .85rem .8rem;
+}
+
+/* Cards row — modo lista */
+.rbi-cards-row.view-list {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+.rbi-cards-row.view-list .rbi-card {
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.05);
+    border: 1.5px solid rgba(255,255,255,0.10);
+    padding: .5rem .75rem;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+}
+.rbi-cards-row.view-list .rbi-thumb {
+    width: 64px;
+    height: 48px;
+    flex-shrink: 0;
+    overflow: hidden;
+    border-radius: 6px;
+    background: #0a1620;
+    position: relative;
+}
+.rbi-cards-row.view-list .rbi-card-body {
+    flex: 1;
+    min-width: 0;
+}
+.rbi-cards-row.view-list .rbi-user-chip {
+    flex-shrink: 0;
+}
+
+/* Card — elementos compartilhados entre grade e lista */
+.rbi-card { position: relative; }
+.rbi-card:hover {
+    border-color: rgba(13,194,255,.4);
+    background: rgba(255,255,255,0.08);
+}
+.rbi-thumb-iframe {
+    position: absolute;
+    top: 0; left: 0;
+    width: 320px;
+    height: 170px;
+    border: none;
+    transform-origin: top left;
+    pointer-events: none;
+}
+.rbi-thumb-fallback {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(13,194,255,0.10);
+}
+.rbi-thumb-fallback i { font-size: 1.7rem; color: #0DC2FF; }
+
+.rbi-card-name {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: #fff;
+    margin-bottom: .45rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.rbi-empresas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3rem;
+}
+.rbi-empresa-badge {
+    font-size: .62rem;
+    padding: .15rem .5rem;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,.6);
+    white-space: nowrap;
+}
+.rbi-user-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    font-size: .72rem;
+    color: rgba(255,255,255,.5);
+    cursor: default;
+}
+.rbi-user-chip i { font-size: .78rem; }
+
+/* Tooltip flutuante de usuários */
+.rbi-user-tooltip {
+    position: fixed;
+    z-index: 99999;
+    background: #0d1e2d;
+    border: 1.5px solid rgba(13,194,255,.3);
+    border-radius: 10px;
+    padding: .55rem .7rem;
+    box-shadow: 0 12px 32px rgba(0,0,0,.4);
+    max-width: 240px;
+    pointer-events: none;
+}
+.rbi-tooltip-row {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .2rem 0;
+    font-size: .78rem;
+    color: rgba(255,255,255,.8);
+    white-space: nowrap;
+}
+.rbi-tooltip-badge {
+    font-size: .6rem;
+    font-weight: 700;
+    padding: .1rem .35rem;
+    border-radius: 4px;
+    flex-shrink: 0;
+    min-width: 16px;
+    text-align: center;
+}
+.rbi-tooltip-badge.v  { background: rgba(38,255,147,.15); color: #26FF93; }
+.rbi-tooltip-badge.vp { background: rgba(13,194,255,.15); color: #0DC2FF; }
+.rbi-tooltip-empty {
+    font-size: .75rem;
+    color: rgba(255,255,255,.35);
+    white-space: nowrap;
+}
+
+/* Empty state */
+.rbi-empty {
+    color: rgba(255,255,255,0.25);
+    font-size: .875rem;
+    font-family: 'Inter', sans-serif;
+    padding: 1rem 0;
+}
+
+/* ── Config Modal ─────────────────────────────────────────────────────────── */
+.rbi-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(6,25,32,0.72);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+.rbi-overlay.open {
+    display: flex;
+}
+
+.rbi-modal {
+    background: #0d1e2d;
+    border: 1.5px solid rgba(13,194,255,0.25);
+    border-radius: 16px;
+    padding: 1.75rem 1.75rem 1.5rem;
+    width: 100%;
+    max-width: 440px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    animation: rbiPop .18s ease;
+}
+@keyframes rbiPop {
+    from { transform: scale(.92); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+}
+
+.rbi-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.rbi-modal-title {
+    font-family: 'Rubik', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+}
+.rbi-modal-close {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.40);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 2px 4px;
+    line-height: 1;
+    transition: color .12s;
+}
+.rbi-modal-close:hover { color: #fff; }
+
+.rbi-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.rbi-field-label {
+    font-family: 'Rubik', sans-serif;
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: rgba(255,255,255,0.40);
+}
+.rbi-field-input {
+    background: rgba(255,255,255,0.07);
+    border: 1.5px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    padding: .55rem .8rem;
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    font-size: .875rem;
+    outline: none;
+    transition: border-color .15s;
+    width: 100%;
+    box-sizing: border-box;
+}
+.rbi-field-input:focus { border-color: #0DC2FF; }
+
+/* Visibility toggle */
+.rbi-vis-row {
+    display: flex;
+    gap: 8px;
+}
+.rbi-vis-btn {
+    flex: 1;
+    padding: .45rem .75rem;
+    border-radius: 8px;
+    border: 1.5px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.45);
+    font-family: 'Inter', sans-serif;
+    font-size: .8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color .15s, background .15s, color .15s;
+    text-align: center;
+}
+.rbi-vis-btn.active-vis {
+    border-color: #0DC2FF;
+    background: rgba(13,194,255,0.12);
+    color: #0DC2FF;
+    font-weight: 600;
+}
+.rbi-vis-btn.active-oculto {
+    border-color: rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.65);
+    font-weight: 600;
+}
+.rbi-vis-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+/* Modal footer */
+.rbi-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-top: .25rem;
+}
+.rbi-btn-cancel {
+    background: transparent;
+    border: 1.5px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    color: rgba(255,255,255,0.50);
+    font-family: 'Inter', sans-serif;
+    font-size: .82rem;
+    font-weight: 500;
+    padding: .45rem 1rem;
+    cursor: pointer;
+    transition: border-color .15s, color .15s;
+}
+.rbi-btn-cancel:hover { border-color: rgba(255,255,255,0.35); color: #fff; }
+
+.rbi-btn-save {
+    background: #0DC2FF;
+    border: none;
+    border-radius: 8px;
+    color: #061920;
+    font-family: 'Inter', sans-serif;
+    font-size: .82rem;
+    font-weight: 700;
+    padding: .45rem 1.1rem;
+    cursor: pointer;
+    transition: background .15s;
+}
+.rbi-btn-save:hover    { background: #08aadd; }
+.rbi-btn-save:disabled { opacity: .55; cursor: not-allowed; }
+
+.rbi-btn-open {
+    display: block;
+    width: 100%;
+    background: #0DC2FF;
+    border: none;
+    border-radius: 8px;
+    color: #061920;
+    font-family: 'Inter', sans-serif;
+    font-size: .82rem;
+    font-weight: 700;
+    padding: .55rem 1rem;
+    cursor: pointer;
+    text-align: center;
+    transition: background .15s;
+}
+.rbi-btn-open:hover { background: #08aadd; }
+
+/* ── Logo do relatório (aba Geral, admin_interno only) — padrão pra portais sem override ── */
+.rbi-logo-row { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; }
+.rbi-logo-preview {
+    width: 44px; height: 44px; object-fit: contain; border-radius: 8px;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); padding: .2rem;
+}
+.rbi-logo-empty { font-size: .72rem; color: rgba(255,255,255,.35); }
+.rbi-btn-logo-upload {
+    display: inline-flex; align-items: center; gap: .35rem;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 7px; color: rgba(255,255,255,.8); font-size: .72rem; font-weight: 600;
+    padding: .4rem .75rem; cursor: pointer; transition: background .15s;
+}
+.rbi-btn-logo-upload:hover { background: rgba(255,255,255,0.15); }
+.rbi-btn-logo-remove {
+    background: none; border: none; color: #fc8181; font-size: .72rem; font-weight: 600;
+    cursor: pointer; padding: .4rem .5rem;
+}
+.rbi-btn-logo-remove:hover { text-decoration: underline; }
+.rbi-logo-msg { font-size: .68rem; margin-top: .4rem; }
+.rbi-logo-msg.erro { color: #fc8181; }
+.rbi-logo-msg.ok   { color: #26FF93; }
+
+/* ── Tabs do modal de configuração (Geral | Conexão — Conexão admin_interno only) ── */
+.rbi-tab-bar {
+    display: flex;
+    gap: 4px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    padding: .25rem;
+}
+.rbi-tab-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    color: rgba(255,255,255,0.45);
+    font-family: 'Inter', sans-serif;
+    font-size: .8rem;
+    font-weight: 500;
+    padding: .45rem .5rem;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+}
+.rbi-tab-btn:hover { color: rgba(255,255,255,0.7); }
+.rbi-tab-btn.active {
+    background: #0DC2FF;
+    color: #061920;
+    font-weight: 700;
+}
+.rbi-tab-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+.rbi-tab-content.rbi-tab-hidden { display: none; }
+
+/* ── Bloco "Infraestrutura" (somente leitura) no topo da aba Conexão ─────────── */
+.rbi-infra-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: rgba(255,255,255,0.04);
+    border: 1px dashed rgba(255,255,255,0.15);
+    border-radius: 8px;
+    padding: .65rem .8rem;
+}
+.rbi-infra-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .75rem;
+}
+.rbi-infra-label {
+    font-family: 'Rubik', sans-serif;
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: rgba(255,255,255,0.35);
+}
+.rbi-infra-value {
+    font-family: 'Inter', sans-serif;
+    font-size: .78rem;
+    color: rgba(255,255,255,0.75);
+    text-align: right;
+    word-break: break-all;
+}
+
+/* ── Conteúdo da aba "Conexão" ─────────────────────────────────────────────── */
+.rbi-conn-tipo-row {
+    display: flex;
+    gap: 8px;
+}
+.rbi-conn-tipo-btn {
+    flex: 1;
+    padding: .45rem .5rem;
+    border-radius: 8px;
+    border: 1.5px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.45);
+    font-family: 'Inter', sans-serif;
+    font-size: .78rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+    transition: border-color .15s, background .15s, color .15s;
+}
+.rbi-conn-tipo-btn.active {
+    border-color: #0DC2FF;
+    background: rgba(13,194,255,0.12);
+    color: #0DC2FF;
+    font-weight: 600;
+}
+.rbi-conn-tipo-btn:disabled {
+    cursor: not-allowed;
+    opacity: .4;
+}
+.rbi-conn-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+.rbi-conn-grid .rbi-field.full { grid-column: 1 / -1; }
+.rbi-conn-pass-wrap { position: relative; }
+.rbi-conn-pass-wrap .rbi-field-input { padding-right: 2.3rem; }
+.rbi-conn-pass-toggle {
+    position: absolute;
+    right: .6rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.4);
+    cursor: pointer;
+    font-size: .85rem;
+    padding: 2px;
+}
+.rbi-conn-pass-toggle:hover { color: #fff; }
+.rbi-conn-msg {
+    font-family: 'Inter', sans-serif;
+    font-size: .78rem;
+    padding: .5rem .7rem;
+    border-radius: 8px;
+    display: none;
+}
+.rbi-conn-msg.show { display: block; }
+.rbi-conn-msg.erro {
+    background: rgba(229,62,62,0.12);
+    color: #ff8080;
+    border: 1px solid rgba(229,62,62,0.3);
+}
+.rbi-conn-msg.ok {
+    background: rgba(38,255,147,0.10);
+    color: #26FF93;
+    border: 1px solid rgba(38,255,147,0.25);
+}
+
+/* ── Botão "+" (criar relatório — admin_interno only) ─────────────────────── */
+.rbi-btn-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    background: #0DC2FF;
+    border: none;
+    border-radius: 8px;
+    color: #061920;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background .15s;
+}
+.rbi-btn-add:hover { background: #08aadd; }
+
+/* ── Badge "Em construção" no card ─────────────────────────────────────────── */
+.rbi-badge-construcao {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    font-size: .6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    padding: .2rem .55rem;
+    border-radius: 20px;
+    background: rgba(255,184,0,0.15);
+    color: #ffb800;
+    white-space: nowrap;
+}
+.rbi-cards-row.view-grid .rbi-badge-construcao {
+    position: absolute;
+    top: .5rem;
+    left: .5rem;
+    z-index: 2;
+}
+.rbi-cards-row.view-list .rbi-badge-construcao {
+    flex-shrink: 0;
+    order: 98;
+}
+
+
+/* ── Modal "Criar relatório" ───────────────────────────────────────────────── */
+.rbi-create-modal { max-width: 480px; max-height: 85vh; overflow-y: auto; }
+.rbi-slug-preview {
+    font-family: 'Inter', sans-serif;
+    font-size: .72rem;
+    color: rgba(255,255,255,0.4);
+}
+.rbi-slug-preview.ok  { color: #26FF93; }
+.rbi-slug-preview.bad { color: #ff8080; }
+
+.rbi-excel-tabela-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    border: 1px dashed rgba(255,255,255,0.15);
+    border-radius: 8px;
+    padding: .6rem;
+}
+.rbi-excel-tabela-row .rbi-field { flex: 1; min-width: 0; }
+
+/* ── Anexo de arquivo (custom — substitui o botão nativo "Escolher arquivo") ──
+ * Sem caixa/fundo por padrão (não deve parecer um campo de texto) — só o botão
+ * "Escolher" sozinho. Depois de anexar, o botão some e dá lugar ao nome do
+ * arquivo (verde, com check) + um X pra remover, ocupando o mesmo espaço. */
+.rbi-file-attach {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    min-height: 34px;
+}
+.rbi-file-attach-input { display: none; }
+.rbi-file-attach-btn {
+    flex-shrink: 0;
+    background: rgba(13,194,255,0.14);
+    border: 1px solid rgba(13,194,255,0.4);
+    border-radius: 6px;
+    color: #0DC2FF;
+    font-family: 'Inter', sans-serif;
+    font-size: .76rem;
+    font-weight: 600;
+    padding: .4rem .7rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s;
+}
+.rbi-file-attach-btn:hover { background: rgba(13,194,255,0.22); }
+.rbi-file-attach-name {
+    display: none;
+    flex: 1;
+    min-width: 0;
+    align-items: center;
+    gap: .4rem;
+    background: rgba(38,255,147,0.08);
+    border: 1.5px solid rgba(38,255,147,0.3);
+    border-radius: 8px;
+    padding: .4rem .6rem;
+    color: #26FF93;
+    font-family: 'Inter', sans-serif;
+    font-size: .78rem;
+    font-weight: 500;
+}
+.rbi-file-attach-name.attached { display: flex; }
+.rbi-file-attach-name i.ti-circle-check-filled { flex-shrink: 0; }
+.rbi-file-attach-name-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.rbi-file-attach-clear {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: rgba(38,255,147,0.6);
+    cursor: pointer;
+    padding: 2px;
+    font-size: .82rem;
+    line-height: 1;
+}
+.rbi-file-attach-clear:hover { color: #26FF93; }
+
+.rbi-excel-remove {
+    background: none;
+    border: 1.5px solid rgba(229,62,62,0.3);
+    border-radius: 8px;
+    color: #ff8080;
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+}
+.rbi-excel-remove:hover { background: rgba(229,62,62,0.12); }
+
+.rbi-btn-add-tabela {
+    background: rgba(13,194,255,0.10);
+    border: 1.5px dashed rgba(13,194,255,0.4);
+    border-radius: 8px;
+    color: #0DC2FF;
+    font-family: 'Inter', sans-serif;
+    font-size: .8rem;
+    font-weight: 600;
+    padding: .5rem;
+    cursor: pointer;
+    transition: background .15s;
+}
+.rbi-btn-add-tabela:hover { background: rgba(13,194,255,0.18); }
+
+/* ── Aba Conexão — lista de tabelas Excel já existentes (somente leitura) ────── */
+.rbi-tabela-existente-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 8px;
+    padding: .5rem .7rem;
+}
+.rbi-tabela-existente-nome {
+    font-family: 'Inter', sans-serif;
+    font-size: .82rem;
+    color: #fff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+.rbi-tabela-existente-linhas {
+    flex-shrink: 0;
+    font-family: 'Inter', sans-serif;
+    font-size: .72rem;
+    color: rgba(255,255,255,0.4);
+    white-space: nowrap;
+}
+.rbi-tabela-existente-btn-atualizar {
+    flex-shrink: 0;
+    background: rgba(13,194,255,0.12);
+    border: 1px solid rgba(13,194,255,0.35);
+    border-radius: 6px;
+    color: #0DC2FF;
+    font-family: 'Inter', sans-serif;
+    font-size: .72rem;
+    font-weight: 600;
+    padding: .3rem .55rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s;
+}
+.rbi-tabela-existente-btn-atualizar:hover { background: rgba(13,194,255,0.22); }
+
+/* ── Modal "Atualizar dados da tabela" (Substituir/Atualizar + revisão de colunas) ── */
+.rbi-atualizar-revisao-row {
+    display: flex;
+    flex-direction: column;
+    gap: .4rem;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,184,0,0.3);
+    border-radius: 8px;
+    padding: .55rem .7rem;
+}
+.rbi-atualizar-revisao-titulo {
+    font-family: 'Inter', sans-serif;
+    font-size: .78rem;
+    color: #ffb800;
+}
+.rbi-atualizar-resumo-item {
+    font-family: 'Inter', sans-serif;
+    font-size: .78rem;
+    color: rgba(255,255,255,0.75);
+}
+
+/* ── Aba Geral — "Publicar relatório" (substitui o toggle Sim/Não enquanto em_construcao) ── */
+.rbi-btn-publicar {
+    width: 100%;
+    background: rgba(255,184,0,0.14);
+    border: 1.5px solid rgba(255,184,0,0.4);
+    border-radius: 8px;
+    color: #ffb800;
+    font-family: 'Inter', sans-serif;
+    font-size: .82rem;
+    font-weight: 700;
+    padding: .55rem 1rem;
+    cursor: pointer;
+    transition: background .15s;
+}
+.rbi-btn-publicar:hover { background: rgba(255,184,0,0.22); }
+.rbi-publicado-label {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    font-family: 'Inter', sans-serif;
+    font-size: .78rem;
+    font-weight: 500;
+    color: #26FF93;
+}
+
+/* ── Aba Geral — excluir rascunho (só em_construcao=true) ─────────────────────── */
+.rbi-delete-box {
+    border: 1.5px solid rgba(229,62,62,0.3);
+    border-radius: 8px;
+    padding: .75rem .8rem;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+.rbi-delete-warn {
+    font-family: 'Inter', sans-serif;
+    font-size: .74rem;
+    color: rgba(255,255,255,0.5);
+    margin: 0;
+}
+.rbi-btn-delete {
+    width: 100%;
+    background: rgba(229,62,62,0.14);
+    border: 1.5px solid rgba(229,62,62,0.4);
+    border-radius: 8px;
+    color: #ff8080;
+    font-family: 'Inter', sans-serif;
+    font-size: .82rem;
+    font-weight: 700;
+    padding: .55rem 1rem;
+    cursor: pointer;
+    transition: background .15s;
+}
+.rbi-btn-delete:hover:not(:disabled) { background: rgba(229,62,62,0.24); }
+.rbi-btn-delete:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Aba Geral — "Mover para lixeira" (qualquer relatório, publicado ou rascunho) ──
+ * Cor âmbar (não vermelha) porque é reversível — vermelho fica reservado pra ações
+ * genuinamente destrutivas (Substituir dados de tabela, Excluir definitivamente na
+ * tela Lixeira). Reaproveita .rbi-delete-warn (texto neutro) dentro da caixa. */
+.rbi-lixeira-box {
+    border: 1.5px solid rgba(255,184,0,0.3);
+    border-radius: 8px;
+    padding: .75rem .8rem;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+.rbi-lixeira-resumo {
+    font-family: 'Inter', sans-serif;
+    font-size: .78rem;
+    color: rgba(255,255,255,0.75);
+    margin: 0;
+}
+.rbi-btn-lixeira {
+    width: 100%;
+    background: rgba(255,184,0,0.14);
+    border: 1.5px solid rgba(255,184,0,0.4);
+    border-radius: 8px;
+    color: #ffb800;
+    font-family: 'Inter', sans-serif;
+    font-size: .82rem;
+    font-weight: 700;
+    padding: .55rem 1rem;
+    cursor: pointer;
+    transition: background .15s;
+}
+.rbi-btn-lixeira:hover:not(:disabled) { background: rgba(255,184,0,0.24); }
+.rbi-btn-lixeira:disabled { opacity: .4; cursor: not-allowed; }
+
+.rbi-create-msg {
+    font-family: 'Inter', sans-serif;
+    font-size: .78rem;
+    padding: .5rem .7rem;
+    border-radius: 8px;
+    display: none;
+}
+.rbi-create-msg.show { display: block; }
+.rbi-create-msg.erro {
+    background: rgba(229,62,62,0.12);
+    color: #ff8080;
+    border: 1px solid rgba(229,62,62,0.3);
+}
+.rbi-create-msg.ok {
+    background: rgba(38,255,147,0.10);
+    color: #26FF93;
+    border: 1px solid rgba(38,255,147,0.25);
+}
