@@ -122,14 +122,27 @@ class TopbarManager {
 
     setupSidebarIntegration() {
         this.addEventListenerWithCleanup(document, 'sidebar:menuClick', (e) => {
-            const { menuItem, submenus } = e.detail;
-            this.updateSubmenus(submenus, menuItem);
+            const { menuItem } = e.detail;
+            // NÃO usar e.detail.submenus (array próprio de sidebar.js/getSubmenusForMenu(),
+            // desatualizado e sem checagem de permissão em alguns casos — já causava o link
+            // "Portais" aparecer indevidamente sem pode_criar_portal, ver ARQUITETURA.md, e
+            // fazia "Lixeira" sumir ~600ms depois do load: detectCurrentPage() renderizava a
+            // lista certa (com Lixeira) na carga inicial, mas o disparo atrasado de
+            // sidebar.js/detectActivePage() (setTimeout 600ms) chegava depois e sobrescrevia
+            // com essa lista incompleta). getSubmenusForPage() é a mesma fonte canônica usada
+            // por detectCurrentPage() — sempre recalculada a partir das flags de permissão
+            // atuais, nunca uma cópia que pode divergir.
+            const targetPage = window.KW24TopbarPermissions.extractPageSlug(menuItem?.url);
+            this.updateSubmenus(this.getSubmenusForPage(targetPage), menuItem);
             this.applyActiveSubmenu();
         });
     }
 
-    detectCurrentPage() {
-        // "Portais" só aparece para admin_interno ou usuários com pode_criar_portal
+    // Fonte única dos submenus por página-pai — usada tanto na carga inicial
+    // (detectCurrentPage) quanto na sincronização vinda do clique na sidebar
+    // (setupSidebarIntegration), pra nunca ter duas listas divergentes decidindo a mesma UI.
+    getSubmenusForPage(page) {
+        // "Portais" (BI) só aparece para admin_interno ou usuários com pode_criar_portal
         // (flags globais setadas em index.php a partir da sessão — ver Relatórios BI/aplicação).
         const _biPodeCriarPortal = !!(window.IS_ADMIN_INTERNO || window.PODE_CRIAR_PORTAL);
         const _biSubmenus = [
@@ -165,22 +178,35 @@ class TopbarManager {
                 { id: 'log-system', text: 'Sistema', icon: 'fas fa-server',              url: '?page=logs&type=system' },
                 { id: 'log-errors', text: 'Erros',   icon: 'fas fa-exclamation-triangle', url: '?page=logs&type=errors' }
             ],
-            'financeiro': [
-                { id: 'fin-dashboard',  text: 'Dashboard',  icon: 'fas fa-chart-pie',           url: '?page=financeiro' },
-                { id: 'fin-relatorios', text: 'Relatórios', icon: 'fas fa-file-invoice-dollar', url: '?page=financeiro-relatorios' }
-            ],
+            'financeiro': (() => {
+                const items = [
+                    { id: 'fin-dashboard',  text: 'Dashboard',  icon: 'fas fa-chart-pie',           url: '?page=financeiro' },
+                    { id: 'fin-relatorios', text: 'Relatórios', icon: 'fas fa-file-invoice-dollar', url: '?page=financeiro-relatorios' }
+                ];
+                // "Portais" (Financeiro) — mesma regra admin_interno já aplicada em
+                // sidebar.js/getSubmenusForMenu(); precisa existir aqui também agora que este
+                // mapa é a única fonte usada pelo topbar (antes só aparecia via o array
+                // duplicado de sidebar.js, ~600ms depois do load).
+                if (window.IS_ADMIN_INTERNO) {
+                    items.push({ id: 'fin-portais', text: 'Portais', icon: 'fas fa-globe', url: '?page=portais' });
+                }
+                return items;
+            })(),
             'relatorios-bi': _biSubmenus,
             'portais-bi': _biSubmenus
         };
 
-        const curParams = new URLSearchParams(window.location.search);
-        const page      = curParams.get('page') || 'dashboard';
-        const action    = curParams.get('action') || '';
-
         // Sub-páginas agrupadas sob o menu pai para exibir os mesmos submenus
         const subpageMap = { 'usuarios': 'cadastro', 'aplicacoes': 'cadastro', 'permissoes': 'cadastro', 'organizacoes': 'cadastro', 'financeiro-relatorios': 'financeiro', 'portais-bi': 'relatorios-bi', 'lixeira-bi': 'relatorios-bi', 'monitoramento': 'dashboard' };
         const parentPage = subpageMap[page] || page;
-        const submenus  = submenusMap[parentPage] || [];
+        return submenusMap[parentPage] || [];
+    }
+
+    detectCurrentPage() {
+        const curParams = new URLSearchParams(window.location.search);
+        const page      = curParams.get('page') || 'dashboard';
+
+        const submenus = this.getSubmenusForPage(page);
 
         if (!submenus.length) return;
 
